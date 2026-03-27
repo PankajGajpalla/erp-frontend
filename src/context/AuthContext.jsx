@@ -6,12 +6,17 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
 
   useEffect(() => {
-    // On app load, check if token exists and decode it
     const token = localStorage.getItem("token");
     if (token) {
       try {
         const payload = JSON.parse(atob(token.split(".")[1]));
-        setUser(payload);
+        // Check if token is expired
+        const currentTime = Date.now() / 1000;
+        if (payload.exp < currentTime) {
+          localStorage.removeItem("token");
+        } else {
+          setUser(payload);
+        }
       } catch {
         localStorage.removeItem("token");
       }
