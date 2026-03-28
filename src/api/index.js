@@ -55,3 +55,6 @@ export const deleteTimetableAPI = (id) => API.delete(`/delete_timetable/${id}`)
 export const getNoticesAPI = () => API.get("/notices")
 export const addNoticeAPI = (data) => API.post("/add_notice", data)
 export const deleteNoticeAPI = (id) => API.delete(`/delete_notice/${id}`)
+
+// Import
+export const importStudentsAPI = (data) => API.post("/import_students", data)

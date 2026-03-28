@@ -12,6 +12,8 @@ import Grades from "./pages/Grades"
 import Timetable from "./pages/Timetable"
 import Notices from "./pages/Notices"
 
+import ImportStudents from "./pages/ImportStudents"
+
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth()
   if (loading) return <div className="flex items-center justify-center min-h-screen">Loading...</div>
@@ -57,6 +59,10 @@ export default function App() {
         }/>
         <Route path="/notices" element={
           <ProtectedRoute><Notices /></ProtectedRoute>
+        }/>
+
+        <Route path="/import" element={
+          <AdminRoute><ImportStudents /></AdminRoute>
         }/>
       </Routes>
     </BrowserRouter>

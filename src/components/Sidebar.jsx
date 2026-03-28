@@ -14,6 +14,7 @@ export default function Sidebar() {
   { to: "/grades", label: "📝 Grades" },
   { to: "/timetable", label: "🗓️ Timetable" },
   { to: "/notices", label: "📢 Notices" },
+  { to: "/import", label: "📥 Import Students" },
 ]
 
   const studentLinks = [
