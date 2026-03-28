@@ -7,7 +7,7 @@ import {
   getStudentAPI,
   getStudentAttendanceAPI,
   attendanceSummaryAPI,
-  getFeesAPI,
+  // getFeesAPI,
   feesSummaryAPI
 } from "../api"
 
@@ -87,22 +87,20 @@ function StudentDashboard({ studentId }) {
   const [profile, setProfile] = useState(null)
   const [attendance, setAttendance] = useState([])
   const [summary, setSummary] = useState(null)
-  const [fees, setFees] = useState([])
+  // const [fees, setFees] = useState([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     async function load() {
       try {
-        const [profileRes, attRes, summaryRes, feesRes] = await Promise.all([
+        const [profileRes, attRes, summaryRes] = await Promise.all([
           getStudentAPI(studentId),
           getStudentAttendanceAPI(studentId),
           attendanceSummaryAPI(studentId),
-          getFeesAPI(studentId),
         ])
         setProfile(profileRes.data)
         setAttendance(attRes.data.attendance)
         setSummary(summaryRes.data)
-        setFees(feesRes.data.fees)
       } catch (err) {
         console.error(err)
       } finally {
@@ -179,39 +177,6 @@ function StudentDashboard({ studentId }) {
           </table>
         </div>
       )}
-
-      {/* Fees Table */}
-      <div className="bg-white rounded-xl shadow p-6">
-        <h3 className="text-lg font-semibold text-gray-700 mb-4">💰 My Fees</h3>
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="bg-gray-100">
-              <th className="text-left px-4 py-2">Amount</th>
-              <th className="text-left px-4 py-2">Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            {fees.length === 0 ? (
-              <tr><td colSpan="2" className="px-4 py-3 text-gray-400">No fee records yet.</td></tr>
-            ) : (
-              fees.map((f, i) => (
-                <tr key={i} className="border-t">
-                  <td className="px-4 py-2">₹{f.amount}</td>
-                  <td className="px-4 py-2">
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium
-                      ${f.status === "paid"
-                        ? "bg-green-100 text-green-700"
-                        : "bg-red-100 text-red-700"}`}>
-                      {f.status}
-                    </span>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
-
     </div>
   )
 }
