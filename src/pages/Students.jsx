@@ -58,30 +58,39 @@ export default function Students() {
       return
     }
 
+    // Build clean payload
+    const payload = {
+      name: String(form.name).trim(),
+      age: parseInt(form.age),
+      email: String(form.email).trim(),
+      phone: form.phone ? String(form.phone).trim() : null,
+      address: form.address ? String(form.address).trim() : null,
+      course: form.course ? String(form.course).trim() : null,
+      fees: form.fees ? parseFloat(form.fees) : null
+    }
+
     try {
       if (editId) {
-        await updateStudentAPI(editId, {
-          ...form,
-          age: parseInt(form.age),
-          fees: form.fees ? parseFloat(form.fees) : null
-        })
+        await updateStudentAPI(editId, payload)
         setSuccess("Student updated!")
         setEditId(null)
       } else {
-        await addStudentAPI({
-          ...form,
-          age: parseInt(form.age),
-          fees: form.fees ? parseFloat(form.fees) : null
-        })
+        await addStudentAPI(payload)
         setSuccess("Student added!")
       }
       setForm({ name: "", age: "", email: "", phone: "", address: "", course: "", fees: "" })
       fetchStudents()
     } catch (err) {
-      setError(err.response?.data?.detail || "Something went wrong")
+      const detail = err.response?.data?.detail
+      if (Array.isArray(detail)) {
+        setError(detail.map(d => d.msg).join(", "))
+      } else {
+        setError(detail || "Something went wrong")
+      }
     }
   }
 
+  
   function handleEdit(student) {
     setEditId(student.id)
     setForm({
