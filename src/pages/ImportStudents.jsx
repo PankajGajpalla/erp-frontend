@@ -68,8 +68,10 @@ export default function ImportStudents() {
         age: parseInt(row.age),
         email: String(row.email),
         phone: row.phone ? String(row.phone) : null,
-        address: row.address ? String(row.address) : null
-      }))
+        address: row.address ? String(row.address) : null,
+        course: row.course ? String(row.course) : null,
+        fees: row.fees ? parseFloat(row.fees) : null
+        }))
 
       const res = await importStudentsAPI({ students })
       setResult(res.data)
@@ -107,14 +109,14 @@ export default function ImportStudents() {
               Excel file must have these columns:
             </p>
             <div className="flex justify-center gap-2 mb-4 flex-wrap">
-              {["name", "age", "email", "phone", "address"].map((col) => (
+              {["name", "age", "email", "phone", "address", "course", "fees"].map((col) => (
                 <span key={col} className={`px-3 py-1 rounded-full text-xs font-medium
-                  ${["name", "age", "email"].includes(col)
+                    ${["name", "age", "email"].includes(col)
                     ? "bg-blue-100 text-blue-700"
                     : "bg-gray-100 text-gray-500"}`}>
-                  {col} {["name", "age", "email"].includes(col) ? "✱" : "(optional)"}
+                    {col} {["name", "age", "email"].includes(col) ? "✱" : "(optional)"}
                 </span>
-              ))}
+                ))}
             </div>
             <input
               type="file"
@@ -186,6 +188,8 @@ export default function ImportStudents() {
                     <th className="text-left px-6 py-3">Email</th>
                     <th className="text-left px-6 py-3">Phone</th>
                     <th className="text-left px-6 py-3">Address</th>
+                    <th className="text-left px-6 py-3">Course</th>
+                    <th className="text-left px-6 py-3">Fees</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -196,7 +200,9 @@ export default function ImportStudents() {
                       <td className="px-6 py-3">{row.age || <span className="text-red-500">Missing!</span>}</td>
                       <td className="px-6 py-3">{row.email || <span className="text-red-500">Missing!</span>}</td>
                       <td className="px-6 py-3">{row.phone || "—"}</td>
-                      <td className="px-6 py-3">{row.address || "—"}</td>
+                        <td className="px-6 py-3">{row.address || "—"}</td>
+                        <td className="px-6 py-3">{row.course || "—"}</td>
+                        <td className="px-6 py-3">{row.fees ? `₹${row.fees}` : "—"}</td>
                     </tr>
                   ))}
                 </tbody>
