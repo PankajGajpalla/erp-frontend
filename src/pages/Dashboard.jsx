@@ -5,8 +5,8 @@ import {
   getStudentsAPI,
   getAttendanceAPI,
   getStudentAPI,
-  getStudentAttendanceAPI,
-  attendanceSummaryAPI,
+  // getStudentAttendanceAPI,
+  // attendanceSummaryAPI,
   // getFeesAPI,
   feesSummaryAPI
 } from "../api"
@@ -85,9 +85,6 @@ function AdminDashboard() {
 // ─── Student Dashboard ───────────────────────────────────────
 function StudentDashboard({ studentId }) {
   const [profile, setProfile] = useState(null)
-  const [attendance, setAttendance] = useState([])
-  const [summary, setSummary] = useState(null)
-  // const [fees, setFees] = useState([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -95,8 +92,6 @@ function StudentDashboard({ studentId }) {
       try {
         const [profileRes, attRes, summaryRes] = await Promise.all([
           getStudentAPI(studentId),
-          getStudentAttendanceAPI(studentId),
-          attendanceSummaryAPI(studentId),
         ])
         setProfile(profileRes.data)
         setAttendance(attRes.data.attendance)
@@ -128,55 +123,7 @@ function StudentDashboard({ studentId }) {
         </div>
       )}
 
-      {/* Attendance Summary */}
-      {summary && (
-        <div className="bg-white rounded-xl shadow p-6">
-          <h3 className="text-lg font-semibold text-gray-700 mb-4">📋 Attendance Summary</h3>
-          <div className="flex gap-6 text-center">
-            <div>
-              <p className="text-2xl font-bold text-green-600">{summary.attendance_percentage}%</p>
-              <p className="text-sm text-gray-500">Attendance</p>
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-blue-600">{summary.present}</p>
-              <p className="text-sm text-gray-500">Present</p>
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-gray-600">{summary.total_classes}</p>
-              <p className="text-sm text-gray-500">Total Classes</p>
-            </div>
-          </div>
-
-          {/* Attendance Table */}
-          <table className="w-full mt-4 text-sm">
-            <thead>
-              <tr className="bg-gray-100">
-                <th className="text-left px-4 py-2">Date</th>
-                <th className="text-left px-4 py-2">Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {attendance.length === 0 ? (
-                <tr><td colSpan="2" className="px-4 py-3 text-gray-400">No records yet.</td></tr>
-              ) : (
-                attendance.map((a, i) => (
-                  <tr key={i} className="border-t">
-                    <td className="px-4 py-2">{a.date}</td>
-                    <td className="px-4 py-2">
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium
-                        ${a.status === "present"
-                          ? "bg-green-100 text-green-700"
-                          : "bg-red-100 text-red-700"}`}>
-                        {a.status}
-                      </span>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      )}
+      
     </div>
   )
 }

@@ -21,6 +21,7 @@ export default function Sidebar() {
 
   const studentLinks = [
     { to: "/dashboard", label: "🏠 My Dashboard" },
+    { to: "/attendance", label: "📋 My Attendance" },
     { to: "/fees", label: "💰 My Fees" },
     { to: "/grades", label: "📝 My Grades" },
     { to: "/timetable", label: "🗓️ Timetable" },
