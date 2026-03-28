@@ -124,6 +124,9 @@ function StudentDashboard({ studentId }) {
           <StatCard label="Name" value={profile.name} color="border-blue-500" />
           <StatCard label="Age" value={profile.age} color="border-purple-500" />
           <StatCard label="Email" value={profile.email} color="border-pink-500" />
+          <StatCard label="Course" value={profile.course || "—"} color="border-yellow-500" />
+          <StatCard label="Phone" value={profile.phone || "—"} color="border-green-500" />
+          <StatCard label="Address" value={profile.address || "—"} color="border-orange-500" />
         </div>
       )}
 
