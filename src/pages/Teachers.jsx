@@ -1,12 +1,7 @@
 import { useEffect, useState } from "react"
 import Sidebar from "../components/Sidebar"
 import { useAuth } from "../context/AuthContext"
-import {
-  getTeachersAPI,
-  addTeacherAPI,
-  updateTeacherAPI,
-  deleteTeacherAPI
-} from "../api"
+import { getTeachersAPI, addTeacherAPI, updateTeacherAPI, deleteTeacherAPI, createTeacherLoginAPI } from "../api"
 
 export default function Teachers() {
   const { user } = useAuth()
@@ -21,6 +16,10 @@ export default function Teachers() {
   const [success, setSuccess] = useState("")
   const [editId, setEditId] = useState(null)
   const [form, setForm] = useState({ name: "", email: "", subject: "", phone: "" })
+  const [loginModal, setLoginModal] = useState(null) // holds teacher object
+  const [loginForm, setLoginForm] = useState({ username: "", password: "" })
+  const [loginError, setLoginError] = useState("")
+  const [loginSuccess, setLoginSuccess] = useState("")
 
   useEffect(() => {
     fetchTeachers()
@@ -98,6 +97,36 @@ export default function Teachers() {
       fetchTeachers()
     } catch (err) {
       setError(err.response?.data?.detail || "Delete failed")
+    }
+  }
+
+  function handleCreateLogin(teacher) {
+    setLoginModal(teacher)
+    setLoginForm({ username: "", password: "" })
+    setLoginError("")
+    setLoginSuccess("")
+  }
+
+  async function submitCreateLogin(e) {
+    e.preventDefault()
+    setLoginError("")
+    setLoginSuccess("")
+
+    if (!loginForm.username || !loginForm.password) {
+      setLoginError("All fields required")
+      return
+    }
+
+    try {
+      const res = await createTeacherLoginAPI({
+        username: loginForm.username,
+        password: loginForm.password,
+        teacher_id: loginModal.id
+      })
+      setLoginSuccess(res.data.message)
+      setTimeout(() => setLoginModal(null), 2000)
+    } catch (err) {
+      setLoginError(err.response?.data?.detail || "Failed to create login")
     }
   }
 
@@ -231,19 +260,21 @@ export default function Teachers() {
                     <td className="px-6 py-3">{t.subject}</td>
                     <td className="px-6 py-3">{t.phone || "—"}</td>
                     {isAdmin && (
-                      <td className="px-6 py-3 flex gap-2">
-                        <button
-                          onClick={() => handleEdit(t)}
-                          className="bg-yellow-400 hover:bg-yellow-500 text-white px-3 py-1 rounded-lg text-xs transition"
-                        >
-                          Edit
-                        </button>
-                        <button
-                          onClick={() => handleDelete(t.id)}
-                          className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded-lg text-xs transition"
-                        >
-                          Delete
-                        </button>
+                      <td className="px-6 py-3">
+                        <div className="flex gap-2 flex-wrap">
+                          <button onClick={() => handleEdit(t)}
+                            className="bg-yellow-400 hover:bg-yellow-500 text-white px-3 py-1 rounded-lg text-xs transition">
+                            Edit
+                          </button>
+                          <button onClick={() => handleDelete(t.id)}
+                            className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded-lg text-xs transition">
+                            Delete
+                          </button>
+                          <button onClick={() => handleCreateLogin(t)}
+                            className="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded-lg text-xs transition">
+                            Create Login
+                          </button>
+                        </div>
                       </td>
                     )}
                   </tr>
@@ -252,7 +283,47 @@ export default function Teachers() {
             </table>
           )}
         </div>
-
+          {/* Create Login Modal */}
+          {loginModal && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+              <div className="bg-white rounded-xl shadow-xl p-8 w-full max-w-md">
+                <h3 className="text-lg font-bold text-gray-800 mb-2">
+                  Create Login for {loginModal.name}
+                </h3>
+                <p className="text-sm text-gray-500 mb-4">
+                  Teacher ID: {loginModal.id} · Subject: {loginModal.subject}
+                </p>
+                <form onSubmit={submitCreateLogin} className="space-y-3">
+                  <input
+                    type="text"
+                    placeholder="Username"
+                    value={loginForm.username}
+                    onChange={(e) => setLoginForm({ ...loginForm, username: e.target.value })}
+                    className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  <input
+                    type="password"
+                    placeholder="Password"
+                    value={loginForm.password}
+                    onChange={(e) => setLoginForm({ ...loginForm, password: e.target.value })}
+                    className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  {loginError && <p className="text-red-500 text-sm">{loginError}</p>}
+                  {loginSuccess && <p className="text-green-500 text-sm">{loginSuccess}</p>}
+                  <div className="flex gap-3 mt-4">
+                    <button type="submit"
+                      className="flex-1 bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition">
+                      Create Login
+                    </button>
+                    <button type="button" onClick={() => setLoginModal(null)}
+                      className="flex-1 bg-gray-300 text-gray-700 py-2 rounded-lg hover:bg-gray-400 transition">
+                      Cancel
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
       </main>
     </div>
   )

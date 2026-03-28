@@ -58,3 +58,10 @@ export const deleteNoticeAPI = (id) => API.delete(`/delete_notice/${id}`)
 
 // Import
 export const importStudentsAPI = (data) => API.post("/import_students", data)
+
+
+// Teacher
+export const createTeacherLoginAPI = (data) => API.post("/create_teacher_login", data)
+export const getStudentsByCourseAPI = (course) => API.get(`/students/course/${course}`)
+export const getTeacherMeAPI = () => API.get("/teacher/me")
+export const markAttendanceBulkAPI = (data) => API.post("/mark_attendance_bulk", data)

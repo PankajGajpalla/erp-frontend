@@ -28,7 +28,18 @@ export default function Sidebar() {
     { to: "/notices", label: "📢 Notices" },
   ]
 
-  const links = user?.role === "admin" ? adminLinks : studentLinks
+  const teacherLinks = [
+    { to: "/teacher", label: "🏠 Dashboard" },
+    { to: "/attendance", label: "📋 Attendance" },
+    { to: "/timetable", label: "🗓️ Timetable" },
+    { to: "/notices", label: "📢 Notices" },
+  ]
+
+  const links = user?.role === "admin"
+    ? adminLinks
+    : user?.role === "teacher"
+    ? teacherLinks
+    : studentLinks
 
   return (
     <div className={`${collapsed ? "w-16" : "w-64"} min-h-screen bg-gray-900 text-white flex flex-col sticky top-0 h-screen transition-all duration-300`}>
