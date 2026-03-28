@@ -4,13 +4,13 @@ const AuthContext = createContext();
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const token = localStorage.getItem("token");
     if (token) {
       try {
         const payload = JSON.parse(atob(token.split(".")[1]));
-        // Check if token is expired
         const currentTime = Date.now() / 1000;
         if (payload.exp < currentTime) {
           localStorage.removeItem("token");
@@ -21,6 +21,7 @@ export function AuthProvider({ children }) {
         localStorage.removeItem("token");
       }
     }
+    setLoading(false);
   }, []);
 
   const login = (token) => {
@@ -35,13 +36,12 @@ export function AuthProvider({ children }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, logout }}>
+    <AuthContext.Provider value={{ user, login, logout, loading }}>
       {children}
     </AuthContext.Provider>
   );
 }
 
-// Custom hook for easy access
 export function useAuth() {
   return useContext(AuthContext);
 }

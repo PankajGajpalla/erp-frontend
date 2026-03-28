@@ -13,12 +13,14 @@ import Timetable from "./pages/Timetable"
 import Notices from "./pages/Notices"
 
 function ProtectedRoute({ children }) {
-  const { user } = useAuth()
+  const { user, loading } = useAuth()
+  if (loading) return <div className="flex items-center justify-center min-h-screen">Loading...</div>
   return user ? children : <Navigate to="/login" />
 }
 
 function AdminRoute({ children }) {
-  const { user } = useAuth()
+  const { user, loading } = useAuth()
+  if (loading) return <div className="flex items-center justify-center min-h-screen">Loading...</div>
   if (!user) return <Navigate to="/login" />
   if (user.role !== "admin") return <Navigate to="/dashboard" />
   return children
