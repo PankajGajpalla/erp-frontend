@@ -17,6 +17,7 @@ import ImportStudents from "./pages/ImportStudents"
 import TeacherDashboard from "./pages/TeacherDashboard"
 import TeacherAttendance from "./pages/TeacherAttendance"
 import TeacherStudents from "./pages/TeacherStudents"
+import TeacherGrades from "./pages/TeacherGrades"
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth()
@@ -63,6 +64,9 @@ export default function App() {
         }/>
         <Route path="/teacher/students" element={
           <ProtectedRoute><TeacherStudents /></ProtectedRoute>
+        }/>
+        <Route path="/teacher/grades" element={
+          <ProtectedRoute><TeacherGrades /></ProtectedRoute>
         }/>
         <Route path="/grades" element={
           <ProtectedRoute><Grades /></ProtectedRoute>

@@ -32,6 +32,7 @@ export default function Sidebar() {
   { to: "/teacher", label: "🏠 Dashboard" },
   { to: "/teacher/attendance", label: "📋 Attendance" },
   { to: "/teacher/students", label: "🎓 My Students" },
+  { to: "/teacher/grades", label: "📝 Grades" },
   { to: "/timetable", label: "🗓️ Timetable" },
   { to: "/notices", label: "📢 Notices" },
 ]
