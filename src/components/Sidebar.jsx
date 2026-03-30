@@ -29,11 +29,12 @@ export default function Sidebar() {
   ]
 
   const teacherLinks = [
-    { to: "/teacher", label: "🏠 Dashboard" },
-    { to: "/attendance", label: "📋 Attendance" },
-    { to: "/timetable", label: "🗓️ Timetable" },
-    { to: "/notices", label: "📢 Notices" },
-  ]
+  { to: "/teacher", label: "🏠 Dashboard" },
+  { to: "/teacher/attendance", label: "📋 Attendance" },
+  { to: "/teacher/students", label: "🎓 My Students" },
+  { to: "/timetable", label: "🗓️ Timetable" },
+  { to: "/notices", label: "📢 Notices" },
+]
 
   const links = user?.role === "admin"
     ? adminLinks
