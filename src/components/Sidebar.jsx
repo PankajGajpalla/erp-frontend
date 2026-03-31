@@ -20,12 +20,12 @@ export default function Sidebar() {
   ]
 
   const studentLinks = [
-    { to: "/dashboard", label: "🏠 My Dashboard" },
-    { to: "/attendance", label: "📋 My Attendance" },
-    { to: "/fees", label: "💰 My Fees" },
-    { to: "/grades", label: "📝 My Grades" },
-    { to: "/timetable", label: "🗓️ Timetable" },
-    { to: "/notices", label: "📢 Notices" },
+    { to: "/student/dashboard", label: "🏠 My Dashboard" },
+    { to: "/student/attendance", label: "📋 My Attendance" },
+    { to: "/student/fees", label: "💰 My Fees" },
+    { to: "/student/grades", label: "📝 My Grades" },
+    { to: "/student/timetable", label: "🗓️ Timetable" },
+    { to: "/student/notices", label: "📢 Notices" },
   ]
 
   const teacherLinks = [
