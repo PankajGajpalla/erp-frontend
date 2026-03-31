@@ -1,6 +1,18 @@
-import { createContext, useContext, useState, useEffect } from "react";
+import { createContext, useContext, useState, useEffect, useCallback } from "react";
 
 const AuthContext = createContext();
+
+// Helper to decode and validate JWT token
+function decodeToken(token) {
+  try {
+    const payload = JSON.parse(atob(token.split(".")[1]));
+    const currentTime = Date.now() / 1000;
+    if (payload.exp < currentTime) return null; // expired
+    return payload;
+  } catch {
+    return null;
+  }
+}
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
@@ -9,34 +21,54 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     const token = localStorage.getItem("token");
     if (token) {
-      try {
-        const payload = JSON.parse(atob(token.split(".")[1]));
-        const currentTime = Date.now() / 1000;
-        if (payload.exp < currentTime) {
-          localStorage.removeItem("token");
-        } else {
-          setUser(payload);
-        }
-      } catch {
+      const payload = decodeToken(token);
+      if (payload) {
+        setUser(payload);
+      } else {
+        // Token expired or invalid — clean up
         localStorage.removeItem("token");
       }
     }
     setLoading(false);
   }, []);
 
-  const login = (token) => {
+  const login = useCallback((token) => {
+    const payload = decodeToken(token);
+    if (!payload) {
+      throw new Error("Invalid token received from server");
+    }
     localStorage.setItem("token", token);
-    const payload = JSON.parse(atob(token.split(".")[1]));
     setUser(payload);
-  };
+  }, []);
 
-  const logout = () => {
+  const logout = useCallback(() => {
     localStorage.removeItem("token");
     setUser(null);
+  }, []);
+
+  // ✅ Helper role checks — use these in components instead of user?.role === "admin"
+  const isAdmin = user?.role === "admin";
+  const isTeacher = user?.role === "teacher";
+  const isStudent = user?.role === "student";
+
+  // ✅ Check if token is still valid (useful for protected routes)
+  const isAuthenticated = () => {
+    const token = localStorage.getItem("token");
+    if (!token) return false;
+    return decodeToken(token) !== null;
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, loading }}>
+    <AuthContext.Provider value={{
+      user,
+      loading,
+      login,
+      logout,
+      isAdmin,
+      isTeacher,
+      isStudent,
+      isAuthenticated,
+    }}>
       {children}
     </AuthContext.Provider>
   );
