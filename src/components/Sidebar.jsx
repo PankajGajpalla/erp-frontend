@@ -3,7 +3,7 @@ import { Link, useLocation } from "react-router-dom"
 import { useAuth } from "../context/AuthContext"
 
 export default function Sidebar() {
-  const { user, logout } = useAuth()
+  const { user, logout, isAdmin, isTeacher } = useAuth()
   const location = useLocation()
   const [collapsed, setCollapsed] = useState(false)
 
@@ -29,19 +29,23 @@ export default function Sidebar() {
   ]
 
   const teacherLinks = [
-  { to: "/teacher", label: "🏠 Dashboard" },
-  { to: "/teacher/attendance", label: "📋 Attendance" },
-  { to: "/teacher/students", label: "🎓 My Students" },
-  { to: "/teacher/grades", label: "📝 Grades" },
-  { to: "/timetable", label: "🗓️ Timetable" },
-  { to: "/notices", label: "📢 Notices" },
-]
+    { to: "/teacher", label: "🏠 Dashboard" },
+    { to: "/teacher/attendance", label: "📋 Attendance" },
+    { to: "/teacher/students", label: "🎓 My Students" },
+    { to: "/teacher/grades", label: "📝 Grades" },
+    { to: "/teacher/timetable", label: "🗓️ Timetable" },  // ✅ fixed
+    { to: "/teacher/notices", label: "📢 Notices" },        // ✅ fixed
+  ]
 
-  const links = user?.role === "admin"
-    ? adminLinks
-    : user?.role === "teacher"
-    ? teacherLinks
-    : studentLinks
+  const links = isAdmin ? adminLinks : isTeacher ? teacherLinks : studentLinks
+
+  // ✅ Active link — supports nested routes
+  function isActive(path) {
+    if (path === "/teacher") return location.pathname === "/teacher"
+    if (path === "/dashboard") return location.pathname === "/dashboard"
+    if (path === "/student/dashboard") return location.pathname === "/student/dashboard"
+    return location.pathname.startsWith(path)
+  }
 
   return (
     <div className={`${collapsed ? "w-16" : "w-64"} min-h-screen bg-gray-900 text-white flex flex-col sticky top-0 h-screen transition-all duration-300`}>
@@ -50,13 +54,15 @@ export default function Sidebar() {
       <div className="flex items-center justify-between px-4 py-5 border-b border-gray-700">
         {!collapsed && (
           <div>
-            <h1 className="text-xl font-bold text-blue-400">ERP</h1>
-            <p className="text-xs text-gray-400 mt-0.5">{user?.sub} · {user?.role}</p>
+            <h1 className="text-xl font-bold text-blue-400">ERP System</h1>
+            <p className="text-xs text-gray-400 mt-0.5 truncate">
+              {user?.sub} · <span className="capitalize">{user?.role}</span>
+            </p>
           </div>
         )}
         <button
           onClick={() => setCollapsed(!collapsed)}
-          className="text-gray-400 hover:text-white transition p-1 rounded-lg hover:bg-gray-700"
+          className="text-gray-400 hover:text-white transition p-1 rounded-lg hover:bg-gray-700 ml-auto"
         >
           {collapsed ? "→" : "←"}
         </button>
@@ -70,14 +76,18 @@ export default function Sidebar() {
             to={link.to}
             title={collapsed ? link.label : ""}
             className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition
-              ${location.pathname === link.to
+              ${isActive(link.to)
                 ? "bg-blue-600 text-white"
                 : "text-gray-300 hover:bg-gray-700 hover:text-white"
               }`}
           >
-            <span className="text-lg">{link.label.split(" ")[0]}</span>
+            <span className="text-lg flex-shrink-0">
+              {link.label.split(" ")[0]}
+            </span>
             {!collapsed && (
-              <span>{link.label.split(" ").slice(1).join(" ")}</span>
+              <span className="truncate">
+                {link.label.split(" ").slice(1).join(" ")}
+              </span>
             )}
           </Link>
         ))}
