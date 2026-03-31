@@ -2,13 +2,10 @@ import { useEffect, useState } from "react"
 import { useAuth } from "../context/AuthContext"
 import Sidebar from "../components/Sidebar"
 import {
-  getStudentsAPI,
-  getAttendanceAPI,
+  getDashboardSummaryAPI,
   getStudentAPI,
-  // getStudentAttendanceAPI,
-  // attendanceSummaryAPI,
-  // getFeesAPI,
-  feesSummaryAPI
+  getStudentAttendanceAPI,
+  attendanceSummaryAPI,
 } from "../api"
 
 // ─── Admin Stats Card ───────────────────────────────────────
@@ -33,29 +30,15 @@ function AdminDashboard() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-        async function load() {
+    async function load() {
       try {
-        const studentsRes = await getStudentsAPI()
-        const attendanceRes = await getAttendanceAPI()
-        const students = studentsRes.data.students
-
-        let totalFees = 0
-        let totalPaid = 0
-        let totalPending = 0
-
-        for (let s of students) {
-          const res = await feesSummaryAPI(s.id)
-          totalFees += res.data.total_fees
-          totalPaid += res.data.paid
-          totalPending += res.data.pending
-        }
-
+        const res = await getDashboardSummaryAPI()
         setStats({
-          totalStudents: students.length,
-          totalAttendance: attendanceRes.data.attendance.length,
-          totalFees,
-          totalPaid,
-          totalPending,
+          totalStudents: res.data.total_students,
+          totalAttendance: res.data.total_attendance,
+          totalFees: res.data.total_fees,
+          totalPaid: res.data.total_paid,
+          totalPending: res.data.total_pending,
         })
       } catch (err) {
         console.error(err)
@@ -69,16 +52,16 @@ function AdminDashboard() {
   if (loading) return <p className="text-gray-500">Loading dashboard...</p>
 
   return (
-  <div>
-    <h2 className="text-2xl font-bold text-gray-800 mb-6">Admin Dashboard</h2>
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-      <StatCard label="Total Students" value={stats.totalStudents} color="border-blue-500" />
-      <StatCard label="Attendance Records" value={stats.totalAttendance} color="border-green-500" />
-      <StatCard label="Total Fees ₹" value={`₹${stats.totalFees}`} color="border-yellow-500" />
-      <StatCard label="Fees Collected ₹" value={`₹${stats.totalPaid}`} color="border-green-500" />
-      <StatCard label="Fees Pending ₹" value={`₹${stats.totalPending}`} color="border-red-500" />
+    <div>
+      <h2 className="text-2xl font-bold text-gray-800 mb-6">Admin Dashboard</h2>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <StatCard label="Total Students" value={stats.totalStudents} color="border-blue-500" />
+        <StatCard label="Attendance Records" value={stats.totalAttendance} color="border-green-500" />
+        <StatCard label="Total Fees ₹" value={`₹${stats.totalFees}`} color="border-yellow-500" />
+        <StatCard label="Fees Collected ₹" value={`₹${stats.totalPaid}`} color="border-green-500" />
+        <StatCard label="Fees Pending ₹" value={`₹${stats.totalPending}`} color="border-red-500" />
+      </div>
     </div>
-  </div>
   )
 }
 

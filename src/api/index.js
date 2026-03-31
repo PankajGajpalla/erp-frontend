@@ -15,6 +15,9 @@ API.interceptors.request.use((config) => {
 export const loginAPI = (data) => API.post("/login", data);
 export const registerAPI = (data) => API.post("/register", data);
 
+// summary
+export const getDashboardSummaryAPI = () => API.get("/dashboard/summary")
+
 // Students
 export const getStudentsAPI = () => API.get("/students");
 export const getStudentAPI = (id) => API.get(`/student/${id}`);
