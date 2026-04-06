@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useEffect, useState, useRef } from "react"
 import Sidebar from "../components/Sidebar"
 import {
   getStudentsAPI,
@@ -7,25 +7,39 @@ import {
   deleteStudentAPI
 } from "../api"
 
+const EMPTY_FORM = { name: "", age: "", email: "", phone: "", address: "", course: "", fees: "" }
+
 export default function Students() {
   const [students, setStudents] = useState([])
   const [filtered, setFiltered] = useState([])
   const [search, setSearch] = useState("")
   const [courseFilter, setCourseFilter] = useState("all")
   const [loading, setLoading] = useState(true)
-  const [form, setForm] = useState({ name: "", age: "", email: "", phone: "", address: "", course: "", fees: "" })
+  const [submitting, setSubmitting] = useState(false)
+  const [form, setForm] = useState(EMPTY_FORM)
   const [editId, setEditId] = useState(null)
   const [error, setError] = useState("")
   const [success, setSuccess] = useState("")
+  const [deleteConfirmId, setDeleteConfirmId] = useState(null)
+  const formRef = useRef(null)
 
   useEffect(() => { fetchStudents() }, [])
+
+  // Auto clear success after 3 seconds
+  useEffect(() => {
+    if (success) {
+      const timer = setTimeout(() => setSuccess(""), 3000)
+      return () => clearTimeout(timer)
+    }
+  }, [success])
 
   useEffect(() => {
     const q = search.toLowerCase()
     let result = students.filter(
       (s) =>
         s.name.toLowerCase().includes(q) ||
-        s.email.toLowerCase().includes(q)
+        s.email.toLowerCase().includes(q) ||
+        (s.course && s.course.toLowerCase().includes(q))
     )
     if (courseFilter !== "all") {
       result = result.filter((s) => s.course === courseFilter)
@@ -46,6 +60,16 @@ export default function Students() {
 
   function handleChange(e) {
     setForm({ ...form, [e.target.name]: e.target.value })
+    if (error) setError("")
+  }
+
+  function validateForm() {
+    if (!form.name.trim()) return "Name is required"
+    if (!form.age || parseInt(form.age) < 5 || parseInt(form.age) > 100) return "Age must be between 5 and 100"
+    if (!form.email.trim()) return "Email is required"
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) return "Invalid email format"
+    if (form.fees && parseFloat(form.fees) < 0) return "Fees cannot be negative"
+    return null
   }
 
   async function handleSubmit(e) {
@@ -53,32 +77,33 @@ export default function Students() {
     setError("")
     setSuccess("")
 
-    if (!form.name || !form.age || !form.email) {
-      setError("Name, age and email are required")
+    const validationError = validateForm()
+    if (validationError) {
+      setError(validationError)
       return
     }
 
-    // Build clean payload
     const payload = {
-      name: String(form.name).trim(),
+      name: form.name.trim(),
       age: parseInt(form.age),
-      email: String(form.email).trim(),
-      phone: form.phone ? String(form.phone).trim() : null,
-      address: form.address ? String(form.address).trim() : null,
-      course: form.course ? String(form.course).trim() : null,
+      email: form.email.trim().toLowerCase(),
+      phone: form.phone ? form.phone.trim() : null,
+      address: form.address ? form.address.trim() : null,
+      course: form.course ? form.course.trim() : null,
       fees: form.fees ? parseFloat(form.fees) : null
     }
 
+    setSubmitting(true)
     try {
       if (editId) {
         await updateStudentAPI(editId, payload)
-        setSuccess("Student updated!")
+        setSuccess("✅ Student updated successfully!")
         setEditId(null)
       } else {
         await addStudentAPI(payload)
-        setSuccess("Student added!")
+        setSuccess("✅ Student added successfully!")
       }
-      setForm({ name: "", age: "", email: "", phone: "", address: "", course: "", fees: "" })
+      setForm(EMPTY_FORM)
       fetchStudents()
     } catch (err) {
       const detail = err.response?.data?.detail
@@ -87,10 +112,11 @@ export default function Students() {
       } else {
         setError(detail || "Something went wrong")
       }
+    } finally {
+      setSubmitting(false)
     }
   }
 
-  
   function handleEdit(student) {
     setEditId(student.id)
     setForm({
@@ -104,16 +130,26 @@ export default function Students() {
     })
     setError("")
     setSuccess("")
+    // ✅ Scroll to form
+    formRef.current?.scrollIntoView({ behavior: "smooth" })
+  }
+
+  function handleCancel() {
+    setEditId(null)
+    setForm(EMPTY_FORM)
+    setError("")
+    setSuccess("")
   }
 
   async function handleDelete(id) {
-    if (!confirm("Are you sure you want to delete this student?")) return
     try {
       await deleteStudentAPI(id)
-      setSuccess("Student deleted!")
+      setSuccess("✅ Student deleted!")
+      setDeleteConfirmId(null)
       fetchStudents()
     } catch (err) {
       setError(err.response?.data?.detail || "Delete failed")
+      setDeleteConfirmId(null)
     }
   }
 
@@ -127,46 +163,53 @@ export default function Students() {
         <h2 className="text-2xl font-bold text-gray-800 mb-6">🎓 Students</h2>
 
         {/* Add / Edit Form */}
-        <div className="bg-white rounded-xl shadow p-6 mb-6">
+        <div ref={formRef} className="bg-white rounded-xl shadow p-6 mb-6">
           <h3 className="text-lg font-semibold text-gray-700 mb-4">
-            {editId ? "Edit Student" : "Add Student"}
+            {editId ? "✏️ Edit Student" : "➕ Add Student"}
           </h3>
           <form onSubmit={handleSubmit} className="flex flex-wrap gap-3">
-            <input type="text" name="name" placeholder="Name" value={form.name}
+            <input type="text" name="name" placeholder="Name *" value={form.name}
               onChange={handleChange}
               className="border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
-            <input type="number" name="age" placeholder="Age" value={form.age}
-              onChange={handleChange}
+            <input type="number" name="age" placeholder="Age *" value={form.age}
+              onChange={handleChange} min="5" max="100"
               className="border border-gray-300 rounded-lg px-4 py-2 w-24 focus:outline-none focus:ring-2 focus:ring-blue-500" />
-            <input type="email" name="email" placeholder="Email" value={form.email}
+            <input type="email" name="email" placeholder="Email *" value={form.email}
               onChange={handleChange}
               className="border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
-            <input type="text" name="phone" placeholder="Phone (optional)" value={form.phone}
+            <input type="text" name="phone" placeholder="Phone" value={form.phone}
               onChange={handleChange}
               className="border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
-            <input type="text" name="address" placeholder="Address (optional)" value={form.address}
+            <input type="text" name="address" placeholder="Address" value={form.address}
               onChange={handleChange}
               className="border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
-            <input type="text" name="course" placeholder="Course (optional)" value={form.course}
+            <input type="text" name="course" placeholder="Course" value={form.course}
               onChange={handleChange}
               className="border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
-            <input type="number" name="fees" placeholder="Fees (optional)" value={form.fees}
-              onChange={handleChange}
+            <input type="number" name="fees" placeholder="Fees" value={form.fees}
+              onChange={handleChange} min="0"
               className="border border-gray-300 rounded-lg px-4 py-2 w-32 focus:outline-none focus:ring-2 focus:ring-blue-500" />
-            <button type="submit"
-              className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition">
-              {editId ? "Update" : "Add"}
+            <button type="submit" disabled={submitting}
+              className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition disabled:opacity-50">
+              {submitting ? "Saving..." : editId ? "Update" : "Add"}
             </button>
             {editId && (
-              <button type="button"
-                onClick={() => { setEditId(null); setForm({ name: "", age: "", email: "", phone: "", address: "", course: "", fees: "" }) }}
+              <button type="button" onClick={handleCancel}
                 className="bg-gray-400 text-white px-6 py-2 rounded-lg hover:bg-gray-500 transition">
                 Cancel
               </button>
             )}
           </form>
-          {error && <p className="text-red-500 text-sm mt-3">{error}</p>}
-          {success && <p className="text-green-500 text-sm mt-3">{success}</p>}
+          {error && (
+            <div className="mt-3 bg-red-50 border border-red-200 rounded-lg px-4 py-2">
+              <p className="text-red-600 text-sm">{error}</p>
+            </div>
+          )}
+          {success && (
+            <div className="mt-3 bg-green-50 border border-green-200 rounded-lg px-4 py-2">
+              <p className="text-green-600 text-sm">{success}</p>
+            </div>
+          )}
         </div>
 
         {/* Search & Filter */}
@@ -174,7 +217,7 @@ export default function Students() {
           <div className="flex flex-wrap gap-3 items-center">
             <input
               type="text"
-              placeholder="🔍 Search by name or email..."
+              placeholder="🔍 Search by name, email or course..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="flex-1 border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -204,9 +247,16 @@ export default function Students() {
         {/* Table */}
         <div className="bg-white rounded-xl shadow overflow-hidden">
           {loading ? (
-            <p className="p-6 text-gray-500">Loading students...</p>
+            <div className="p-6 flex items-center gap-3 text-gray-500">
+              <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+              Loading students...
+            </div>
           ) : filtered.length === 0 ? (
-            <p className="p-6 text-gray-400">No students found.</p>
+            <div className="p-12 text-center">
+              <p className="text-4xl mb-3">🎓</p>
+              <p className="text-gray-400">No students found.</p>
+              {search && <p className="text-gray-400 text-sm mt-1">Try clearing the search filter.</p>}
+            </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
@@ -225,7 +275,7 @@ export default function Students() {
                 <tbody>
                   {filtered.map((s) => (
                     <tr key={s.id} className="border-t hover:bg-gray-50 transition">
-                      <td className="px-6 py-3">{s.id}</td>
+                      <td className="px-6 py-3 text-gray-400">{s.id}</td>
                       <td className="px-6 py-3 font-medium">{s.name}</td>
                       <td className="px-6 py-3">{s.age}</td>
                       <td className="px-6 py-3">{s.email}</td>
@@ -236,15 +286,32 @@ export default function Students() {
                           : "—"}
                       </td>
                       <td className="px-6 py-3">{s.fees ? `₹${s.fees}` : "—"}</td>
-                      <td className="px-6 py-3 flex gap-2">
-                        <button onClick={() => handleEdit(s)}
-                          className="bg-yellow-400 hover:bg-yellow-500 text-white px-3 py-1 rounded-lg text-xs transition">
-                          Edit
-                        </button>
-                        <button onClick={() => handleDelete(s.id)}
-                          className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded-lg text-xs transition">
-                          Delete
-                        </button>
+                      <td className="px-6 py-3">
+                        {deleteConfirmId === s.id ? (
+                          // ✅ Inline delete confirmation
+                          <div className="flex gap-2 items-center">
+                            <span className="text-xs text-red-600 font-medium">Sure?</span>
+                            <button onClick={() => handleDelete(s.id)}
+                              className="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded text-xs transition">
+                              Yes
+                            </button>
+                            <button onClick={() => setDeleteConfirmId(null)}
+                              className="bg-gray-300 hover:bg-gray-400 text-gray-700 px-2 py-1 rounded text-xs transition">
+                              No
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="flex gap-2">
+                            <button onClick={() => handleEdit(s)}
+                              className="bg-yellow-400 hover:bg-yellow-500 text-white px-3 py-1 rounded-lg text-xs transition">
+                              Edit
+                            </button>
+                            <button onClick={() => setDeleteConfirmId(s.id)}
+                              className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded-lg text-xs transition">
+                              Delete
+                            </button>
+                          </div>
+                        )}
                       </td>
                     </tr>
                   ))}
