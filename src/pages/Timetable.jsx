@@ -6,13 +6,14 @@ import { getTimetableAPI, addTimetableAPI, deleteTimetableAPI } from "../api"
 const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
 
 export default function Timetable() {
-  const { user } = useAuth()
-  const isAdmin = user?.role === "admin"
+  const { user, isAdmin } = useAuth()
 
   const [timetable, setTimetable] = useState([])
   const [loading, setLoading] = useState(true)
+  const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState("")
   const [success, setSuccess] = useState("")
+  const [deleteConfirmId, setDeleteConfirmId] = useState(null)
 
   const [form, setForm] = useState({
     day: "Monday",
@@ -21,9 +22,15 @@ export default function Timetable() {
     time_slot: ""
   })
 
+  useEffect(() => { fetchTimetable() }, [])
+
+  // ✅ Auto clear success after 3 seconds
   useEffect(() => {
-    fetchTimetable()
-  }, [])
+    if (success) {
+      const timer = setTimeout(() => setSuccess(""), 3000)
+      return () => clearTimeout(timer)
+    }
+  }, [success])
 
   async function fetchTimetable() {
     try {
@@ -41,29 +48,38 @@ export default function Timetable() {
     setError("")
     setSuccess("")
 
-    if (!form.subject || !form.teacher || !form.time_slot) {
+    if (!form.subject.trim() || !form.teacher.trim() || !form.time_slot.trim()) {
       setError("All fields are required")
       return
     }
 
+    setSubmitting(true)
     try {
-      await addTimetableAPI(form)
-      setSuccess("Timetable entry added!")
+      await addTimetableAPI({
+        ...form,
+        subject: form.subject.trim(),
+        teacher: form.teacher.trim(),
+        time_slot: form.time_slot.trim()
+      })
+      setSuccess("✅ Timetable entry added!")
       setForm({ day: "Monday", subject: "", teacher: "", time_slot: "" })
       fetchTimetable()
     } catch (err) {
       setError(err.response?.data?.detail || "Failed to add entry")
+    } finally {
+      setSubmitting(false)
     }
   }
 
   async function handleDelete(id) {
-    if (!confirm("Delete this timetable entry?")) return
     try {
       await deleteTimetableAPI(id)
-      setSuccess("Entry deleted!")
+      setSuccess("✅ Entry deleted!")
+      setDeleteConfirmId(null)
       fetchTimetable()
     } catch (err) {
       setError("Delete failed")
+      setDeleteConfirmId(null)
     }
   }
 
@@ -73,12 +89,26 @@ export default function Timetable() {
     return acc
   }, {})
 
+  // ✅ For students — only show days that have classes
+  const daysToShow = isAdmin
+    ? DAYS
+    : DAYS.filter((day) => groupedByDay[day].length > 0)
+
+  const totalClasses = timetable.length
+
   return (
     <div className="flex">
       <Sidebar />
       <main className="flex-1 p-8 bg-gray-50 min-h-screen">
 
-        <h2 className="text-2xl font-bold text-gray-800 mb-6">🗓️ Timetable</h2>
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-2xl font-bold text-gray-800">🗓️ Timetable</h2>
+          {!loading && (
+            <span className="text-sm text-gray-400">
+              {totalClasses} class{totalClasses !== 1 ? "es" : ""} scheduled
+            </span>
+          )}
+        </div>
 
         {/* Admin: Add Entry */}
         {isAdmin && (
@@ -103,7 +133,7 @@ export default function Timetable() {
               />
               <input
                 type="text"
-                placeholder="Teacher"
+                placeholder="Teacher Name"
                 value={form.teacher}
                 onChange={(e) => setForm({ ...form, teacher: e.target.value })}
                 className="border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -115,46 +145,78 @@ export default function Timetable() {
                 onChange={(e) => setForm({ ...form, time_slot: e.target.value })}
                 className="border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
-              <button
-                type="submit"
-                className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition"
-              >
-                Add
+              <button type="submit" disabled={submitting}
+                className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition disabled:opacity-50">
+                {submitting ? "Adding..." : "Add"}
               </button>
             </form>
-            {error && <p className="text-red-500 text-sm mt-3">{error}</p>}
-            {success && <p className="text-green-500 text-sm mt-3">{success}</p>}
+            {error && (
+              <div className="mt-3 bg-red-50 border border-red-200 rounded-lg px-4 py-2">
+                <p className="text-red-600 text-sm">{error}</p>
+              </div>
+            )}
+            {success && (
+              <div className="mt-3 bg-green-50 border border-green-200 rounded-lg px-4 py-2">
+                <p className="text-green-600 text-sm">{success}</p>
+              </div>
+            )}
           </div>
         )}
 
-        {/* Timetable Grid by Day */}
+        {/* Timetable Grid */}
         {loading ? (
-          <p className="text-gray-500">Loading timetable...</p>
+          <div className="flex items-center gap-3 text-gray-500">
+            <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+            Loading timetable...
+          </div>
+        ) : daysToShow.length === 0 ? (
+          <div className="bg-white rounded-xl shadow p-12 text-center">
+            <p className="text-4xl mb-3">🗓️</p>
+            <p className="text-gray-400">No timetable entries yet.</p>
+            {isAdmin && <p className="text-gray-400 text-sm mt-1">Add entries using the form above.</p>}
+          </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-            {DAYS.map((day) => (
+            {daysToShow.map((day) => (
               <div key={day} className="bg-white rounded-xl shadow overflow-hidden">
-                <div className="bg-gray-800 text-white px-6 py-3">
+                {/* Day Header */}
+                <div className="bg-gray-800 text-white px-6 py-3 flex justify-between items-center">
                   <h3 className="font-semibold">{day}</h3>
+                  <span className="text-xs text-gray-400">
+                    {groupedByDay[day].length} class{groupedByDay[day].length !== 1 ? "es" : ""}
+                  </span>
                 </div>
+
                 {groupedByDay[day].length === 0 ? (
-                  <p className="px-6 py-4 text-gray-400 text-sm">No classes</p>
+                  <p className="px-6 py-4 text-gray-400 text-sm italic">No classes scheduled</p>
                 ) : (
                   <div className="divide-y">
                     {groupedByDay[day].map((entry) => (
-                      <div key={entry.id} className="px-6 py-4 flex justify-between items-start">
+                      <div key={entry.id} className="px-6 py-4 flex justify-between items-start hover:bg-gray-50 transition">
                         <div>
                           <p className="font-medium text-gray-800">{entry.subject}</p>
-                          <p className="text-sm text-gray-500">👨‍🏫 {entry.teacher}</p>
-                          <p className="text-sm text-blue-600">🕐 {entry.time_slot}</p>
+                          <p className="text-sm text-gray-500 mt-0.5">👨‍🏫 {entry.teacher}</p>
+                          <p className="text-sm text-blue-600 mt-0.5">🕐 {entry.time_slot}</p>
                         </div>
                         {isAdmin && (
-                          <button
-                            onClick={() => handleDelete(entry.id)}
-                            className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded-lg text-xs transition"
-                          >
-                            Delete
-                          </button>
+                          deleteConfirmId === entry.id ? (
+                            <div className="flex gap-2 items-center ml-2">
+                              <span className="text-xs text-red-600 font-medium">Sure?</span>
+                              <button onClick={() => handleDelete(entry.id)}
+                                className="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded text-xs transition">
+                                Yes
+                              </button>
+                              <button onClick={() => setDeleteConfirmId(null)}
+                                className="bg-gray-300 hover:bg-gray-400 text-gray-700 px-2 py-1 rounded text-xs transition">
+                                No
+                              </button>
+                            </div>
+                          ) : (
+                            <button onClick={() => setDeleteConfirmId(entry.id)}
+                              className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded-lg text-xs transition ml-2 flex-shrink-0">
+                              Delete
+                            </button>
+                          )
                         )}
                       </div>
                     ))}
