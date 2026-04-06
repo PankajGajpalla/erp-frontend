@@ -33,12 +33,13 @@ export function AuthProvider({ children }) {
   }, []);
 
   const login = useCallback((token) => {
-    const payload = decodeToken(token);
+    const payload = decodeToken(token)
     if (!payload) {
-      throw new Error("Invalid token received from server");
+      throw new Error("Invalid token received from server")
     }
-    localStorage.setItem("token", token);
-    setUser(payload);
+    localStorage.setItem("token", token)
+    setUser(payload)
+    return payload  // ✅ return payload so Login.jsx can redirect based on role
   }, []);
 
   const logout = useCallback(() => {
