@@ -15,15 +15,25 @@ function gradeColor(grade) {
   }
 }
 
+function getOverallGrade(pct) {
+  if (pct >= 90) return { grade: "A+", color: "text-green-600" }
+  if (pct >= 80) return { grade: "A", color: "text-green-500" }
+  if (pct >= 70) return { grade: "B", color: "text-blue-600" }
+  if (pct >= 60) return { grade: "C", color: "text-yellow-600" }
+  if (pct >= 50) return { grade: "D", color: "text-orange-600" }
+  return { grade: "F", color: "text-red-600" }
+}
+
 export default function Grades() {
-  const { user } = useAuth()
-  const isAdmin = user?.role === "admin"
+  const { user, isAdmin } = useAuth()
 
   const [grades, setGrades] = useState([])
   const [filtered, setFiltered] = useState([])
   const [loading, setLoading] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState("")
   const [success, setSuccess] = useState("")
+  const [deleteConfirmId, setDeleteConfirmId] = useState(null)
 
   // Filters
   const [subjectFilter, setSubjectFilter] = useState("all")
@@ -34,27 +44,29 @@ export default function Grades() {
 
   // Add grade form
   const [form, setForm] = useState({
-    student_id: "",
-    subject: "",
-    marks: "",
-    total_marks: ""
+    student_id: "", subject: "", marks: "", total_marks: ""
   })
 
   useEffect(() => {
-    if (!isAdmin) {
+    // ✅ Guard against null student_id
+    if (!isAdmin && user?.student_id) {
       fetchGrades(user.student_id)
     }
   }, [])
 
-  // Apply filters whenever grades, subjectFilter or gradeFilter changes
+  // ✅ Auto clear success after 3 seconds
+  useEffect(() => {
+    if (success) {
+      const timer = setTimeout(() => setSuccess(""), 3000)
+      return () => clearTimeout(timer)
+    }
+  }, [success])
+
+  // Apply filters
   useEffect(() => {
     let result = [...grades]
-    if (subjectFilter !== "all") {
-      result = result.filter((g) => g.subject === subjectFilter)
-    }
-    if (gradeFilter !== "all") {
-      result = result.filter((g) => g.grade === gradeFilter)
-    }
+    if (subjectFilter !== "all") result = result.filter((g) => g.subject === subjectFilter)
+    if (gradeFilter !== "all") result = result.filter((g) => g.grade === gradeFilter)
     setFiltered(result)
   }, [grades, subjectFilter, gradeFilter])
 
@@ -82,35 +94,49 @@ export default function Grades() {
       return
     }
 
+    if (parseFloat(form.total_marks) <= 0) {
+      setError("Total marks must be greater than 0")
+      return
+    }
+
+    if (parseFloat(form.marks) < 0) {
+      setError("Marks cannot be negative")
+      return
+    }
+
     if (parseFloat(form.marks) > parseFloat(form.total_marks)) {
       setError("Marks cannot exceed total marks")
       return
     }
 
+    setSubmitting(true)
     try {
       await addGradeAPI({
         student_id: parseInt(form.student_id),
-        subject: form.subject,
+        subject: form.subject.trim(),
         marks: parseFloat(form.marks),
         total_marks: parseFloat(form.total_marks)
       })
-      setSuccess("Grade added!")
+      setSuccess("✅ Grade added successfully!")
       setForm({ student_id: "", subject: "", marks: "", total_marks: "" })
       if (searchId) fetchGrades(searchId)
     } catch (err) {
       setError(err.response?.data?.detail || "Failed to add grade")
+    } finally {
+      setSubmitting(false)
     }
   }
 
   async function handleDelete(id) {
-    if (!confirm("Delete this grade?")) return
     try {
       await deleteGradeAPI(id)
-      setSuccess("Grade deleted!")
+      setSuccess("✅ Grade deleted!")
+      setDeleteConfirmId(null)
       if (searchId) fetchGrades(searchId)
-      else fetchGrades(user.student_id)
+      else if (user?.student_id) fetchGrades(user.student_id)
     } catch (err) {
       setError("Delete failed")
+      setDeleteConfirmId(null)
     }
   }
 
@@ -128,15 +154,15 @@ export default function Grades() {
     setGradeFilter("all")
   }
 
-  // Unique subjects and grades for dropdowns
   const uniqueSubjects = [...new Set(grades.map((g) => g.subject))]
   const uniqueGrades = ["A+", "A", "B", "C", "D", "F"]
 
-  // Summary
-  const totalSubjects = grades.length
+  // ✅ Summary based on filtered data
+  const totalSubjects = filtered.length
   const avgPercentage = totalSubjects > 0
-    ? (grades.reduce((sum, g) => sum + (g.marks / g.total_marks) * 100, 0) / totalSubjects).toFixed(1)
+    ? (filtered.reduce((sum, g) => sum + (g.marks / g.total_marks) * 100, 0) / totalSubjects).toFixed(1)
     : 0
+  const overall = getOverallGrade(parseFloat(avgPercentage))
 
   return (
     <div className="flex">
@@ -150,43 +176,33 @@ export default function Grades() {
           <div className="bg-white rounded-xl shadow p-6 mb-6">
             <h3 className="text-lg font-semibold text-gray-700 mb-4">Add Grade</h3>
             <form onSubmit={handleAdd} className="flex flex-wrap gap-3">
-              <input
-                type="number"
-                placeholder="Student ID"
-                value={form.student_id}
-                onChange={(e) => setForm({ ...form, student_id: e.target.value })}
-                className="border border-gray-300 rounded-lg px-4 py-2 w-32 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-              <input
-                type="text"
-                placeholder="Subject"
-                value={form.subject}
+              <input type="number" placeholder="Student ID" value={form.student_id}
+                onChange={(e) => setForm({ ...form, student_id: e.target.value })} min="1"
+                className="border border-gray-300 rounded-lg px-4 py-2 w-32 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              <input type="text" placeholder="Subject" value={form.subject}
                 onChange={(e) => setForm({ ...form, subject: e.target.value })}
-                className="border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-              <input
-                type="number"
-                placeholder="Marks"
-                value={form.marks}
-                onChange={(e) => setForm({ ...form, marks: e.target.value })}
-                className="border border-gray-300 rounded-lg px-4 py-2 w-28 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-              <input
-                type="number"
-                placeholder="Total Marks"
-                value={form.total_marks}
-                onChange={(e) => setForm({ ...form, total_marks: e.target.value })}
-                className="border border-gray-300 rounded-lg px-4 py-2 w-32 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-              <button
-                type="submit"
-                className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition"
-              >
-                Add Grade
+                className="border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              <input type="number" placeholder="Marks" value={form.marks}
+                onChange={(e) => setForm({ ...form, marks: e.target.value })} min="0"
+                className="border border-gray-300 rounded-lg px-4 py-2 w-28 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              <input type="number" placeholder="Total Marks" value={form.total_marks}
+                onChange={(e) => setForm({ ...form, total_marks: e.target.value })} min="1"
+                className="border border-gray-300 rounded-lg px-4 py-2 w-32 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              <button type="submit" disabled={submitting}
+                className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition disabled:opacity-50">
+                {submitting ? "Adding..." : "Add Grade"}
               </button>
             </form>
-            {error && <p className="text-red-500 text-sm mt-3">{error}</p>}
-            {success && <p className="text-green-500 text-sm mt-3">{success}</p>}
+            {error && (
+              <div className="mt-3 bg-red-50 border border-red-200 rounded-lg px-4 py-2">
+                <p className="text-red-600 text-sm">{error}</p>
+              </div>
+            )}
+            {success && (
+              <div className="mt-3 bg-green-50 border border-green-200 rounded-lg px-4 py-2">
+                <p className="text-green-600 text-sm">{success}</p>
+              </div>
+            )}
           </div>
         )}
 
@@ -195,18 +211,12 @@ export default function Grades() {
           <div className="bg-white rounded-xl shadow p-6 mb-6">
             <h3 className="text-lg font-semibold text-gray-700 mb-4">View Student Grades</h3>
             <form onSubmit={handleSearch} className="flex gap-3">
-              <input
-                type="number"
-                placeholder="Student ID"
-                value={searchId}
-                onChange={(e) => setSearchId(e.target.value)}
-                className="border border-gray-300 rounded-lg px-4 py-2 w-32 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-              <button
-                type="submit"
-                className="bg-gray-700 text-white px-6 py-2 rounded-lg hover:bg-gray-800 transition"
-              >
-                Load Grades
+              <input type="number" placeholder="Student ID" value={searchId}
+                onChange={(e) => setSearchId(e.target.value)} min="1"
+                className="border border-gray-300 rounded-lg px-4 py-2 w-32 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              <button type="submit" disabled={loading}
+                className="bg-gray-700 text-white px-6 py-2 rounded-lg hover:bg-gray-800 transition disabled:opacity-50">
+                {loading ? "Loading..." : "Load Grades"}
               </button>
             </form>
           </div>
@@ -217,30 +227,22 @@ export default function Grades() {
           <div className="bg-white rounded-xl shadow p-4 mb-6">
             <div className="flex flex-wrap gap-3 items-center">
               <span className="text-sm font-medium text-gray-600">Filter:</span>
-              <select
-                value={subjectFilter}
-                onChange={(e) => setSubjectFilter(e.target.value)}
-                className="border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
+              <select value={subjectFilter} onChange={(e) => setSubjectFilter(e.target.value)}
+                className="border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
                 <option value="all">All Subjects</option>
                 {uniqueSubjects.map((s) => (
                   <option key={s} value={s}>{s}</option>
                 ))}
               </select>
-              <select
-                value={gradeFilter}
-                onChange={(e) => setGradeFilter(e.target.value)}
-                className="border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
+              <select value={gradeFilter} onChange={(e) => setGradeFilter(e.target.value)}
+                className="border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
                 <option value="all">All Grades</option>
                 {uniqueGrades.map((g) => (
                   <option key={g} value={g}>{g}</option>
                 ))}
               </select>
-              <button
-                onClick={clearFilters}
-                className="bg-gray-200 text-gray-600 px-4 py-2 rounded-lg text-sm hover:bg-gray-300 transition"
-              >
+              <button onClick={clearFilters}
+                className="bg-gray-200 text-gray-600 px-4 py-2 rounded-lg text-sm hover:bg-gray-300 transition">
                 Clear
               </button>
               <p className="text-sm text-gray-400 ml-auto">
@@ -250,16 +252,20 @@ export default function Grades() {
           </div>
         )}
 
-        {/* Summary */}
-        {grades.length > 0 && (
-          <div className="grid grid-cols-2 gap-6 mb-6">
+        {/* Summary — based on filtered data */}
+        {filtered.length > 0 && (
+          <div className="grid grid-cols-3 gap-6 mb-6">
             <div className="bg-white rounded-xl shadow p-6 border-l-4 border-blue-500">
-              <p className="text-sm text-gray-500">Total Subjects</p>
+              <p className="text-sm text-gray-500">Subjects</p>
               <p className="text-3xl font-bold text-gray-800">{totalSubjects}</p>
             </div>
             <div className="bg-white rounded-xl shadow p-6 border-l-4 border-green-500">
-              <p className="text-sm text-gray-500">Average Percentage</p>
+              <p className="text-sm text-gray-500">Average %</p>
               <p className="text-3xl font-bold text-gray-800">{avgPercentage}%</p>
+            </div>
+            <div className="bg-white rounded-xl shadow p-6 border-l-4 border-purple-500">
+              <p className="text-sm text-gray-500">Overall Grade</p>
+              <p className={`text-3xl font-bold ${overall.color}`}>{overall.grade}</p>
             </div>
           </div>
         )}
@@ -267,9 +273,17 @@ export default function Grades() {
         {/* Grades Table */}
         <div className="bg-white rounded-xl shadow overflow-hidden">
           {loading ? (
-            <p className="p-6 text-gray-500">Loading grades...</p>
+            <div className="p-6 flex items-center gap-3 text-gray-500">
+              <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+              Loading grades...
+            </div>
           ) : filtered.length === 0 ? (
-            <p className="p-6 text-gray-400">No grades found.</p>
+            <div className="p-12 text-center">
+              <p className="text-4xl mb-3">📝</p>
+              <p className="text-gray-400">
+                {grades.length === 0 ? "No grades found." : "No grades match the filter."}
+              </p>
+            </div>
           ) : (
             <table className="w-full text-sm">
               <thead>
@@ -283,31 +297,48 @@ export default function Grades() {
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((g) => (
-                  <tr key={g.id} className="border-t hover:bg-gray-50 transition">
-                    <td className="px-6 py-3 font-medium">{g.subject}</td>
-                    <td className="px-6 py-3">{g.marks}</td>
-                    <td className="px-6 py-3">{g.total_marks}</td>
-                    <td className="px-6 py-3">
-                      {((g.marks / g.total_marks) * 100).toFixed(1)}%
-                    </td>
-                    <td className="px-6 py-3">
-                      <span className={`px-2 py-1 rounded-full text-xs font-bold ${gradeColor(g.grade)}`}>
-                        {g.grade}
-                      </span>
-                    </td>
-                    {isAdmin && (
+                {filtered.map((g) => {
+                  const pct = ((g.marks / g.total_marks) * 100).toFixed(1)
+                  return (
+                    <tr key={g.id} className="border-t hover:bg-gray-50 transition">
+                      <td className="px-6 py-3 font-medium">{g.subject}</td>
+                      <td className="px-6 py-3">{g.marks}</td>
+                      <td className="px-6 py-3">{g.total_marks}</td>
                       <td className="px-6 py-3">
-                        <button
-                          onClick={() => handleDelete(g.id)}
-                          className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded-lg text-xs transition"
-                        >
-                          Delete
-                        </button>
+                        <span className={`font-medium ${parseFloat(pct) >= 50 ? "text-green-600" : "text-red-600"}`}>
+                          {pct}%
+                        </span>
                       </td>
-                    )}
-                  </tr>
-                ))}
+                      <td className="px-6 py-3">
+                        <span className={`px-2 py-1 rounded-full text-xs font-bold ${gradeColor(g.grade)}`}>
+                          {g.grade}
+                        </span>
+                      </td>
+                      {isAdmin && (
+                        <td className="px-6 py-3">
+                          {deleteConfirmId === g.id ? (
+                            <div className="flex gap-2 items-center">
+                              <span className="text-xs text-red-600 font-medium">Sure?</span>
+                              <button onClick={() => handleDelete(g.id)}
+                                className="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded text-xs transition">
+                                Yes
+                              </button>
+                              <button onClick={() => setDeleteConfirmId(null)}
+                                className="bg-gray-300 hover:bg-gray-400 text-gray-700 px-2 py-1 rounded text-xs transition">
+                                No
+                              </button>
+                            </div>
+                          ) : (
+                            <button onClick={() => setDeleteConfirmId(g.id)}
+                              className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded-lg text-xs transition">
+                              Delete
+                            </button>
+                          )}
+                        </td>
+                      )}
+                    </tr>
+                  )
+                })}
               </tbody>
             </table>
           )}
