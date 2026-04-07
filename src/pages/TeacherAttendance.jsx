@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import Sidebar from "../components/Sidebar"
 import { getStudentsByCourseAPI, markAttendanceBulkAPI, getStudentAttendanceAPI } from "../api"
 
@@ -11,7 +11,6 @@ export default function TeacherAttendance() {
       <main className="flex-1 p-8 bg-gray-50 min-h-screen">
         <h2 className="text-2xl font-bold text-gray-800 mb-6">📋 Attendance</h2>
 
-        {/* Tabs */}
         <div className="bg-white rounded-xl shadow mb-6">
           <div className="flex border-b">
             {[
@@ -43,20 +42,31 @@ function MarkAttendance() {
   const [students, setStudents] = useState([])
   const [attendance, setAttendance] = useState({})
   const [loading, setLoading] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState("")
   const [success, setSuccess] = useState("")
+
+  // ✅ Auto clear success after 4 seconds
+  useEffect(() => {
+    if (success) {
+      const timer = setTimeout(() => setSuccess(""), 4000)
+      return () => clearTimeout(timer)
+    }
+  }, [success])
 
   async function loadStudents(e) {
     e.preventDefault()
     setError("")
     setSuccess("")
-    if (!course || !date) {
+
+    if (!course.trim() || !date) {
       setError("Please select date and enter course")
       return
     }
+
     setLoading(true)
     try {
-      const res = await getStudentsByCourseAPI(course)
+      const res = await getStudentsByCourseAPI(course.trim())
       const studentList = res.data.students
       if (studentList.length === 0) {
         setError(`No students found in course "${course}"`)
@@ -90,18 +100,21 @@ function MarkAttendance() {
   async function handleSubmit() {
     setError("")
     setSuccess("")
-    const records = students.map((s) => ({
-      student_id: s.id,
-      date: date,
-      status: attendance[s.id] || "absent"
-    }))
+    setSubmitting(true)
     try {
+      const records = students.map((s) => ({
+        student_id: s.id,
+        date: date,
+        status: attendance[s.id] || "absent"
+      }))
       const res = await markAttendanceBulkAPI(records)
       setSuccess(`✅ Attendance saved! ${res.data.marked} marked, ${res.data.updated} updated`)
       setStudents([])
       setCourse("")
     } catch (err) {
       setError(err.response?.data?.detail || "Failed to save attendance")
+    } finally {
+      setSubmitting(false)
     }
   }
 
@@ -110,35 +123,37 @@ function MarkAttendance() {
 
   return (
     <div className="space-y-6">
-      {/* Select Date & Course */}
       <div className="bg-white rounded-xl shadow p-6">
-        <h3 className="text-lg font-semibold text-gray-700 mb-4">
-          Select Date & Course
-        </h3>
+        <h3 className="text-lg font-semibold text-gray-700 mb-4">Select Date & Course</h3>
         <form onSubmit={loadStudents} className="flex flex-wrap gap-3">
-          <input
-            type="date"
-            value={date}
+          <input type="date" value={date}
             onChange={(e) => setDate(e.target.value)}
-            className="border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-          <input
-            type="text"
-            placeholder="Course name (e.g. BCA)"
-            value={course}
+            className="border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+          <input type="text" placeholder="Course name (e.g. BCA)" value={course}
             onChange={(e) => setCourse(e.target.value)}
-            className="border border-gray-300 rounded-lg px-4 py-2 flex-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
+            className="border border-gray-300 rounded-lg px-4 py-2 flex-1 focus:outline-none focus:ring-2 focus:ring-blue-500" />
           <button type="submit" disabled={loading}
             className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition disabled:opacity-50">
-            {loading ? "Loading..." : "Load Students"}
+            {loading ? (
+              <span className="flex items-center gap-2">
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                Loading...
+              </span>
+            ) : "Load Students"}
           </button>
         </form>
-        {error && <p className="text-red-500 text-sm mt-3">{error}</p>}
-        {success && <p className="text-green-500 text-sm mt-3">{success}</p>}
+        {error && (
+          <div className="mt-3 bg-red-50 border border-red-200 rounded-lg px-4 py-2">
+            <p className="text-red-600 text-sm">{error}</p>
+          </div>
+        )}
+        {success && (
+          <div className="mt-3 bg-green-50 border border-green-200 rounded-lg px-4 py-2">
+            <p className="text-green-600 text-sm">{success}</p>
+          </div>
+        )}
       </div>
 
-      {/* Students Table */}
       {students.length > 0 && (
         <div className="bg-white rounded-xl shadow overflow-hidden">
           <div className="p-6 border-b flex justify-between items-center flex-wrap gap-3">
@@ -176,16 +191,13 @@ function MarkAttendance() {
               {students.map((s) => {
                 const isPresent = attendance[s.id] === "present"
                 return (
-                  <tr key={s.id} className={`border-t transition
-                    ${isPresent ? "bg-green-50" : "bg-red-50"}`}>
-                    <td className="px-6 py-3">{s.id}</td>
+                  <tr key={s.id} className={`border-t transition ${isPresent ? "bg-green-50" : "bg-red-50"}`}>
+                    <td className="px-6 py-3 text-gray-400">{s.id}</td>
                     <td className="px-6 py-3 font-medium">{s.name}</td>
                     <td className="px-6 py-3">{s.email}</td>
                     <td className="px-6 py-3">
                       <span className={`px-2 py-1 rounded-full text-xs font-medium
-                        ${isPresent
-                          ? "bg-green-100 text-green-700"
-                          : "bg-red-100 text-red-700"}`}>
+                        ${isPresent ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
                         {isPresent ? "✅ Present" : "❌ Absent"}
                       </span>
                     </td>
@@ -205,9 +217,15 @@ function MarkAttendance() {
           </table>
 
           <div className="p-6 border-t flex justify-end">
-            <button onClick={handleSubmit}
-              className="bg-blue-600 text-white px-8 py-3 rounded-lg hover:bg-blue-700 transition font-medium">
-              Submit Attendance
+            {/* ✅ Loading state on submit */}
+            <button onClick={handleSubmit} disabled={submitting}
+              className="bg-blue-600 text-white px-8 py-3 rounded-lg hover:bg-blue-700 transition font-medium disabled:opacity-50">
+              {submitting ? (
+                <span className="flex items-center gap-2">
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  Saving...
+                </span>
+              ) : "Submit Attendance"}
             </button>
           </div>
         </div>
@@ -251,28 +269,30 @@ function ViewAttendance() {
   return (
     <div className="space-y-6">
       <div className="bg-white rounded-xl shadow p-6">
-        <h3 className="text-lg font-semibold text-gray-700 mb-4">
-          View Student Attendance
-        </h3>
+        <h3 className="text-lg font-semibold text-gray-700 mb-4">View Student Attendance</h3>
         <form onSubmit={handleSearch} className="flex gap-3">
-          <input
-            type="number"
-            placeholder="Student ID"
-            value={studentId}
-            onChange={(e) => setStudentId(e.target.value)}
-            className="border border-gray-300 rounded-lg px-4 py-2 w-40 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
+          <input type="number" placeholder="Student ID" value={studentId} min="1"
+            onChange={(e) => { setStudentId(e.target.value); setError("") }}
+            className="border border-gray-300 rounded-lg px-4 py-2 w-40 focus:outline-none focus:ring-2 focus:ring-blue-500" />
           <button type="submit" disabled={loading}
-            className="bg-gray-700 text-white px-6 py-2 rounded-lg hover:bg-gray-800 transition">
-            {loading ? "Loading..." : "Search"}
+            className="bg-gray-700 text-white px-6 py-2 rounded-lg hover:bg-gray-800 transition disabled:opacity-50">
+            {loading ? (
+              <span className="flex items-center gap-2">
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                Searching...
+              </span>
+            ) : "Search"}
           </button>
         </form>
-        {error && <p className="text-red-500 text-sm mt-3">{error}</p>}
+        {error && (
+          <div className="mt-3 bg-red-50 border border-red-200 rounded-lg px-4 py-2">
+            <p className="text-red-600 text-sm">{error}</p>
+          </div>
+        )}
       </div>
 
       {records.length > 0 && (
         <>
-          {/* Summary */}
           <div className="grid grid-cols-3 gap-6">
             <div className="bg-white rounded-xl shadow p-6 border-l-4 border-blue-500">
               <p className="text-sm text-gray-500">Total Classes</p>
@@ -288,7 +308,28 @@ function ViewAttendance() {
             </div>
           </div>
 
-          {/* Records Table */}
+          {/* ✅ Progress bar */}
+          <div className="bg-white rounded-xl shadow p-6">
+            <div className="flex justify-between text-sm text-gray-500 mb-2">
+              <span>Attendance Progress</span>
+              <span>{percentage}%</span>
+            </div>
+            <div className="w-full bg-gray-100 rounded-full h-3">
+              <div
+                className={`h-3 rounded-full transition-all duration-500
+                  ${parseFloat(percentage) >= 75 ? "bg-green-500"
+                  : parseFloat(percentage) >= 50 ? "bg-yellow-500"
+                  : "bg-red-500"}`}
+                style={{ width: `${percentage}%` }}
+              />
+            </div>
+            <p className="text-xs text-gray-400 mt-1">
+              {parseFloat(percentage) >= 75 ? "✅ Good attendance"
+                : parseFloat(percentage) >= 50 ? "⚠️ Below 75%"
+                : "❌ Critical attendance"}
+            </p>
+          </div>
+
           <div className="bg-white rounded-xl shadow overflow-hidden">
             <table className="w-full text-sm">
               <thead>
@@ -298,15 +339,16 @@ function ViewAttendance() {
                 </tr>
               </thead>
               <tbody>
-                {records.map((r, i) => (
-                  <tr key={i} className="border-t hover:bg-gray-50 transition">
+                {records.map((r) => (
+                  // ✅ Use r.id as key instead of index
+                  <tr key={r.id} className="border-t hover:bg-gray-50 transition">
                     <td className="px-6 py-3">{r.date}</td>
                     <td className="px-6 py-3">
                       <span className={`px-2 py-1 rounded-full text-xs font-medium
                         ${r.status === "present"
                           ? "bg-green-100 text-green-700"
                           : "bg-red-100 text-red-700"}`}>
-                        {r.status}
+                        {r.status === "present" ? "✅ Present" : "❌ Absent"}
                       </span>
                     </td>
                   </tr>
