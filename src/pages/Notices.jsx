@@ -4,16 +4,16 @@ import { useAuth } from "../context/AuthContext"
 import { getNoticesAPI, addNoticeAPI, deleteNoticeAPI } from "../api"
 
 export default function Notices() {
-  const { user } = useAuth()
-  const isAdmin = user?.role === "admin"
+  const { isAdmin } = useAuth()
 
   const [notices, setNotices] = useState([])
   const [filtered, setFiltered] = useState([])
   const [loading, setLoading] = useState(true)
+  const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState("")
   const [success, setSuccess] = useState("")
+  const [deleteConfirmId, setDeleteConfirmId] = useState(null)
 
-  // Filters
   const [search, setSearch] = useState("")
   const [dateFilter, setDateFilter] = useState("")
 
@@ -23,11 +23,16 @@ export default function Notices() {
     date: new Date().toISOString().split("T")[0]
   })
 
-  useEffect(() => {
-    fetchNotices()
-  }, [])
+  useEffect(() => { fetchNotices() }, [])
 
-  // Apply filters whenever notices, search or dateFilter changes
+  // ✅ Auto clear success after 3 seconds
+  useEffect(() => {
+    if (success) {
+      const timer = setTimeout(() => setSuccess(""), 3000)
+      return () => clearTimeout(timer)
+    }
+  }, [success])
+
   useEffect(() => {
     const q = search.toLowerCase()
     let result = notices.filter((n) =>
@@ -56,14 +61,19 @@ export default function Notices() {
     setError("")
     setSuccess("")
 
-    if (!form.title || !form.content || !form.date) {
+    if (!form.title.trim() || !form.content.trim() || !form.date) {
       setError("All fields are required")
       return
     }
 
+    setSubmitting(true)
     try {
-      await addNoticeAPI(form)
-      setSuccess("Notice posted!")
+      await addNoticeAPI({
+        ...form,
+        title: form.title.trim(),
+        content: form.content.trim()
+      })
+      setSuccess("✅ Notice posted!")
       setForm({
         title: "",
         content: "",
@@ -72,23 +82,21 @@ export default function Notices() {
       fetchNotices()
     } catch (err) {
       setError(err.response?.data?.detail || "Failed to add notice")
+    } finally {
+      setSubmitting(false)
     }
   }
 
   async function handleDelete(id) {
-    if (!confirm("Delete this notice?")) return
     try {
       await deleteNoticeAPI(id)
-      setSuccess("Notice deleted!")
+      setSuccess("✅ Notice deleted!")
+      setDeleteConfirmId(null)
       fetchNotices()
     } catch (err) {
       setError("Delete failed")
+      setDeleteConfirmId(null)
     }
-  }
-
-  function clearFilters() {
-    setSearch("")
-    setDateFilter("")
   }
 
   return (
@@ -104,59 +112,46 @@ export default function Notices() {
             <h3 className="text-lg font-semibold text-gray-700 mb-4">Post a Notice</h3>
             <form onSubmit={handleAdd} className="space-y-3">
               <div className="flex flex-wrap gap-3">
-                <input
-                  type="text"
-                  placeholder="Notice Title"
-                  value={form.title}
+                <input type="text" placeholder="Notice Title *" value={form.title}
                   onChange={(e) => setForm({ ...form, title: e.target.value })}
-                  className="flex-1 border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-                <input
-                  type="date"
-                  value={form.date}
+                  className="flex-1 border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                <input type="date" value={form.date}
                   onChange={(e) => setForm({ ...form, date: e.target.value })}
-                  className="border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
+                  className="border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
-              <textarea
-                placeholder="Notice content..."
-                value={form.content}
+              <textarea placeholder="Notice content..." value={form.content}
                 onChange={(e) => setForm({ ...form, content: e.target.value })}
                 rows={4}
-                className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-              />
-              <button
-                type="submit"
-                className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition"
-              >
-                Post Notice
+                className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
+              <button type="submit" disabled={submitting}
+                className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition disabled:opacity-50">
+                {submitting ? "Posting..." : "Post Notice"}
               </button>
             </form>
-            {error && <p className="text-red-500 text-sm mt-3">{error}</p>}
-            {success && <p className="text-green-500 text-sm mt-3">{success}</p>}
+            {error && (
+              <div className="mt-3 bg-red-50 border border-red-200 rounded-lg px-4 py-2">
+                <p className="text-red-600 text-sm">{error}</p>
+              </div>
+            )}
+            {success && (
+              <div className="mt-3 bg-green-50 border border-green-200 rounded-lg px-4 py-2">
+                <p className="text-green-600 text-sm">{success}</p>
+              </div>
+            )}
           </div>
         )}
 
         {/* Search & Filter */}
         <div className="bg-white rounded-xl shadow p-4 mb-6">
           <div className="flex flex-wrap gap-3 items-center">
-            <input
-              type="text"
-              placeholder="🔍 Search by title or content..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="flex-1 border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-            <input
-              type="date"
-              value={dateFilter}
+            <input type="text" placeholder="🔍 Search by title or content..."
+              value={search} onChange={(e) => setSearch(e.target.value)}
+              className="flex-1 border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            <input type="date" value={dateFilter}
               onChange={(e) => setDateFilter(e.target.value)}
-              className="border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-            <button
-              onClick={clearFilters}
-              className="bg-gray-200 text-gray-600 px-4 py-2 rounded-lg text-sm hover:bg-gray-300 transition"
-            >
+              className="border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            <button onClick={() => { setSearch(""); setDateFilter("") }}
+              className="bg-gray-200 text-gray-600 px-4 py-2 rounded-lg text-sm hover:bg-gray-300 transition">
               Clear
             </button>
             <p className="text-sm text-gray-400">
@@ -167,21 +162,24 @@ export default function Notices() {
 
         {/* Notices List */}
         {loading ? (
-          <p className="text-gray-500">Loading notices...</p>
+          <div className="flex items-center gap-3 text-gray-500">
+            <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+            Loading notices...
+          </div>
         ) : filtered.length === 0 ? (
-          <div className="bg-white rounded-xl shadow p-8 text-center text-gray-400">
-            No notices found.
+          <div className="bg-white rounded-xl shadow p-12 text-center">
+            <p className="text-4xl mb-3">📢</p>
+            <p className="text-gray-400">
+              {notices.length === 0 ? "No notices posted yet." : "No notices match the search."}
+            </p>
           </div>
         ) : (
           <div className="space-y-4">
             {filtered.map((n) => (
-              <div
-                key={n.id}
-                className="bg-white rounded-xl shadow p-6 border-l-4 border-blue-500"
-              >
+              <div key={n.id} className="bg-white rounded-xl shadow p-6 border-l-4 border-blue-500">
                 <div className="flex justify-between items-start">
                   <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-2">
+                    <div className="flex items-center gap-3 mb-2 flex-wrap">
                       <h3 className="text-lg font-bold text-gray-800">{n.title}</h3>
                       <span className="text-xs text-gray-400 bg-gray-100 px-2 py-1 rounded-full">
                         📅 {n.date}
@@ -190,12 +188,26 @@ export default function Notices() {
                     <p className="text-gray-600 text-sm leading-relaxed">{n.content}</p>
                   </div>
                   {isAdmin && (
-                    <button
-                      onClick={() => handleDelete(n.id)}
-                      className="ml-4 bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded-lg text-xs transition"
-                    >
-                      Delete
-                    </button>
+                    <div className="ml-4 flex-shrink-0">
+                      {deleteConfirmId === n.id ? (
+                        <div className="flex gap-2 items-center">
+                          <span className="text-xs text-red-600 font-medium">Sure?</span>
+                          <button onClick={() => handleDelete(n.id)}
+                            className="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded text-xs transition">
+                            Yes
+                          </button>
+                          <button onClick={() => setDeleteConfirmId(null)}
+                            className="bg-gray-300 hover:bg-gray-400 text-gray-700 px-2 py-1 rounded text-xs transition">
+                            No
+                          </button>
+                        </div>
+                      ) : (
+                        <button onClick={() => setDeleteConfirmId(n.id)}
+                          className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded-lg text-xs transition">
+                          Delete
+                        </button>
+                      )}
+                    </div>
                   )}
                 </div>
               </div>
