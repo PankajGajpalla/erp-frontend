@@ -4,7 +4,7 @@ import Sidebar from "../components/Sidebar"
 import { importStudentsAPI } from "../api"
 
 const REQUIRED_COLS = ["name", "age", "email"]
-const OPTIONAL_COLS = ["phone", "address", "course", "fees"]
+const OPTIONAL_COLS = ["phone", "address", "course", "fees", "parent_phone"]
 const ALL_COLS = [...REQUIRED_COLS, ...OPTIONAL_COLS]
 const MAX_FILE_SIZE_MB = 5
 
@@ -137,7 +137,8 @@ export default function ImportStudents() {
         phone: row.phone ? String(row.phone).trim() : null,
         address: row.address ? String(row.address).trim() : null,
         course: row.course ? String(row.course).trim() : null,
-        fees: row.fees ? parseFloat(row.fees) : null
+        fees: row.fees ? parseFloat(row.fees) : null,
+        parent_phone: row.parent_phone ? String(row.parent_phone).trim() : null
       }))
 
       const res = await importStudentsAPI({ students })

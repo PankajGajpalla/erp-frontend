@@ -108,7 +108,11 @@ function MarkAttendance() {
         status: attendance[s.id] || "absent"
       }))
       const res = await markAttendanceBulkAPI(records)
-      setSuccess(`✅ Attendance saved! ${res.data.marked} marked, ${res.data.updated} updated`)
+      setSuccess(
+        `✅ Attendance saved! ${res.data.marked} marked, ${res.data.updated} updated` +
+        (res.data.sms_sent > 0 ? ` · 📱 ${res.data.sms_sent} SMS sent to parents` : "") +
+        (res.data.sms_failed > 0 ? ` · ⚠️ ${res.data.sms_failed} SMS failed` : "")
+      )
       setStudents([])
       setCourse("")
     } catch (err) {

@@ -7,7 +7,7 @@ import {
   deleteStudentAPI
 } from "../api"
 
-const EMPTY_FORM = { name: "", age: "", email: "", phone: "", address: "", course: "", fees: "" }
+const EMPTY_FORM = { name: "", age: "", email: "", phone: "", address: "", course: "", fees: "", parent_phone: "" }
 
 export default function Students() {
   const [students, setStudents] = useState([])
@@ -126,7 +126,8 @@ export default function Students() {
       phone: student.phone || "",
       address: student.address || "",
       course: student.course || "",
-      fees: student.fees || ""
+      fees: student.fees || "",
+      parent_phone: student.parent_phone || "" 
     })
     setError("")
     setSuccess("")
@@ -189,6 +190,10 @@ export default function Students() {
             <input type="number" name="fees" placeholder="Fees" value={form.fees}
               onChange={handleChange} min="0"
               className="border border-gray-300 rounded-lg px-4 py-2 w-32 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            <input type="text" name="parent_phone" placeholder="Parent Phone (for SMS)"
+              value={form.parent_phone || ""}
+              onChange={handleChange}
+              className="border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
             <button type="submit" disabled={submitting}
               className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition disabled:opacity-50">
               {submitting ? "Saving..." : editId ? "Update" : "Add"}
