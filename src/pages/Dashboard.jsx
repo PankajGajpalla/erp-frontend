@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
 import { useAuth } from "../context/AuthContext"
-import { Navigate } from "react-router-dom"
+
 import Sidebar from "../components/Sidebar"
 import { getDashboardSummaryAPI, getStudentAPI } from "../api"
 
@@ -170,9 +170,6 @@ function StudentDashboard({ studentId }) {
 // ─── Main Dashboard Page ──────────────────────────────────────
 export default function Dashboard() {
   const { user, isAdmin, isStudent } = useAuth()
-
-  // ✅ Role based redirect
-  if (isStudent) return <Navigate to="/student/dashboard" replace />
 
   return (
     <div className="flex">
