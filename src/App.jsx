@@ -43,7 +43,9 @@ function AdminRoute({ children }) {
   const { user, loading } = useAuth()
   if (loading) return <LoadingScreen />
   if (!user) return <Navigate to="/login" replace />
-  if (user.role !== "admin") return <Navigate to="/dashboard" replace />
+  if (user.role === "student") return <Navigate to="/student/dashboard" replace />
+  if (user.role === "teacher") return <Navigate to="/teacher" replace />
+  if (user.role !== "admin") return <Navigate to="/login" replace />
   return children
 }
 
@@ -61,8 +63,8 @@ function PublicRoute({ children }) {
   const { user, loading } = useAuth()
   if (loading) return <LoadingScreen />
   if (user) {
-    // Redirect based on role
     if (user.role === "teacher") return <Navigate to="/teacher" replace />
+    if (user.role === "student") return <Navigate to="/student/dashboard" replace />
     return <Navigate to="/dashboard" replace />
   }
   return children
