@@ -90,7 +90,8 @@ export default function Students() {
       phone: form.phone ? form.phone.trim() : null,
       address: form.address ? form.address.trim() : null,
       course: form.course ? form.course.trim() : null,
-      fees: form.fees ? parseFloat(form.fees) : null
+      fees: form.fees ? parseFloat(form.fees) : null,
+      parent_phone: form.parent_phone ? form.parent_phone.trim() : null
     }
 
     setSubmitting(true)
