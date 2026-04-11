@@ -52,6 +52,7 @@ export const getFeesAPI = (id) => API.get(`/fees/${id}`);
 export const addFeesAPI = (data) => API.post("/add_fees", data);
 export const payFeesAPI = (id, data) => API.put(`/pay_fees/${id}`, data);
 export const feesSummaryAPI = (id) => API.get(`/fees/summary/${id}`);
+export const getFeePaymentsAPI = (feeId) => API.get(`/fee_payments/${feeId}`);
 
 // ─── Teachers ────────────────────────────────────────────────
 export const getTeachersAPI = () => API.get("/teachers");
