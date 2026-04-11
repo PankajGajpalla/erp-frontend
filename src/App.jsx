@@ -12,6 +12,7 @@ import Grades from "./pages/Grades"
 import Timetable from "./pages/Timetable"
 import Notices from "./pages/Notices"
 import ImportStudents from "./pages/ImportStudents"
+import Courses from "./pages/Courses"
 import TeacherDashboard from "./pages/TeacherDashboard"
 import TeacherAttendance from "./pages/TeacherAttendance"
 import TeacherStudents from "./pages/TeacherStudents"
@@ -117,6 +118,7 @@ export default function App() {
         <Route path="/timetable" element={<AdminRoute><Timetable /></AdminRoute>} />
         <Route path="/notices" element={<AdminRoute><Notices /></AdminRoute>} />
         <Route path="/import" element={<AdminRoute><ImportStudents /></AdminRoute>} />
+        <Route path="/courses" element={<AdminRoute><Courses /></AdminRoute>} />
 
         {/* Teacher routes */}
         <Route path="/teacher" element={<TeacherRoute><TeacherDashboard /></TeacherRoute>} />

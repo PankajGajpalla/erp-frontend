@@ -76,3 +76,9 @@ export const deleteTimetableAPI = (id) => API.delete(`/delete_timetable/${id}`);
 export const getNoticesAPI = () => API.get("/notices");
 export const addNoticeAPI = (data) => API.post("/add_notice", data);
 export const deleteNoticeAPI = (id) => API.delete(`/delete_notice/${id}`);
+
+// ─── Courses ─────────────────────────────────────────────────
+export const getCoursesAPI = () => API.get("/courses");
+export const addCourseAPI = (data) => API.post("/add_course", data);
+export const updateCourseAPI = (id, data) => API.put(`/update_course/${id}`, data);
+export const deleteCourseAPI = (id) => API.delete(`/delete_course/${id}`);

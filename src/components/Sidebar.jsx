@@ -10,6 +10,7 @@ export default function Sidebar() {
   const adminLinks = [
     { to: "/dashboard", label: "🏠 Dashboard" },
     { to: "/students", label: "🎓 Students" },
+    { to: "/courses", label: "📚 Courses" },
     { to: "/attendance", label: "📋 Attendance" },
     { to: "/fees", label: "💰 Fees" },
     { to: "/teachers", label: "👨‍🏫 Teachers" },

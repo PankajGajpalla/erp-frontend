@@ -4,7 +4,8 @@ import {
   getStudentsAPI,
   addStudentAPI,
   updateStudentAPI,
-  deleteStudentAPI
+  deleteStudentAPI,
+  getCoursesAPI
 } from "../api"
 
 const EMPTY_FORM = {
@@ -25,6 +26,7 @@ const EMPTY_FORM = {
 }
 
 export default function Students() {
+  const [courses, setCourses] = useState([])
   const [students, setStudents] = useState([])
   const [filtered, setFiltered] = useState([])
   const [search, setSearch] = useState("")
@@ -41,7 +43,7 @@ export default function Students() {
   const formRef = useRef(null)
   const fileInputRef = useRef(null)
 
-  useEffect(() => { fetchStudents() }, [])
+  useEffect(() => { fetchStudents(); fetchCourses() }, [])
 
   useEffect(() => {
     if (success) {
@@ -73,6 +75,15 @@ export default function Students() {
       setError("Failed to load students")
     } finally {
       setLoading(false)
+    }
+  }
+
+  async function fetchCourses() {
+    try {
+      const res = await getCoursesAPI()
+      setCourses(res.data.courses)
+    } catch {
+      // non-fatal
     }
   }
 
@@ -309,7 +320,23 @@ export default function Students() {
             <SectionTitle>Academic Details</SectionTitle>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 mb-5">
               <Field label="School / College Name *" name="school_college_name" value={form.school_college_name} onChange={handleChange} placeholder="Name of school or college" />
-              <Field label="Course *" name="course" value={form.course} onChange={handleChange} placeholder="e.g. Class 10, B.Com, ITI" />
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Course *</label>
+                <select
+                  name="course"
+                  value={form.course}
+                  onChange={handleChange}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                >
+                  <option value="">Select a course</option>
+                  {courses.map((c) => (
+                    <option key={c.id} value={c.name}>{c.name}{c.duration ? ` (${c.duration})` : ""}</option>
+                  ))}
+                </select>
+                {courses.length === 0 && (
+                  <p className="text-xs text-orange-500 mt-1">No courses added yet. <a href="/courses" className="underline">Add courses first.</a></p>
+                )}
+              </div>
               <Field label="Fees (₹) *" name="fees" value={form.fees} onChange={handleChange} type="number" min="0" placeholder="Total fees amount" />
               <Field label="Admission Date *" name="admission_date" value={form.admission_date} onChange={handleChange} type="date" />
               <div>
