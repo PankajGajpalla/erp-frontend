@@ -83,3 +83,11 @@ export const getCoursesAPI = () => API.get("/courses");
 export const addCourseAPI = (data) => API.post("/add_course", data);
 export const updateCourseAPI = (id, data) => API.put(`/update_course/${id}`, data);
 export const deleteCourseAPI = (id) => API.delete(`/delete_course/${id}`);
+
+// ─── Subjects ────────────────────────────────────────────────
+export const getSubjectsAPI = () => API.get("/subjects");
+export const getSubjectsByCourseAPI = (courseId) => API.get(`/subjects/course/${courseId}`);
+export const addSubjectAPI = (data) => API.post("/add_subject", data);
+export const updateSubjectAPI = (id, data) => API.put(`/update_subject/${id}`, data);
+export const deleteSubjectAPI = (id) => API.delete(`/delete_subject/${id}`);
+export const subjectWiseAttendanceAPI = (studentId) => API.get(`/attendance/subject-wise/${studentId}`);

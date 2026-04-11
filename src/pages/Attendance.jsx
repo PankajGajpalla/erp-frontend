@@ -5,7 +5,8 @@ import {
   getAttendanceAPI,
   getStudentAttendanceAPI,
   markAttendanceAPI,
-  attendanceSummaryAPI
+  attendanceSummaryAPI,
+  subjectWiseAttendanceAPI
 } from "../api"
 
 export default function Attendance() {
@@ -14,6 +15,7 @@ export default function Attendance() {
   const [attendance, setAttendance] = useState([])
   const [filtered, setFiltered] = useState([])
   const [summary, setSummary] = useState(null)
+  const [subjectSummary, setSubjectSummary] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
   const [success, setSuccess] = useState("")
@@ -70,12 +72,14 @@ export default function Attendance() {
           setError("Student ID not found. Please login again.")
           return
         }
-        const [attRes, summaryRes] = await Promise.all([
+        const [attRes, summaryRes, subjRes] = await Promise.all([
           getStudentAttendanceAPI(user.student_id),
-          attendanceSummaryAPI(user.student_id)
+          attendanceSummaryAPI(user.student_id),
+          subjectWiseAttendanceAPI(user.student_id)
         ])
         setAttendance(attRes.data.attendance)
         setSummary(summaryRes.data)
+        setSubjectSummary(subjRes.data.subjects)
       }
     } catch (err) {
       setError("Failed to load attendance")
@@ -323,6 +327,28 @@ export default function Attendance() {
           </div>
         )}
 
+        {/* Student: Subject-wise Attendance Breakdown */}
+        {!isAdmin && subjectSummary.length > 0 && (
+          <div className="bg-white rounded-xl shadow p-6 mb-6">
+            <h3 className="text-base font-semibold text-gray-700 mb-4">Subject-wise Attendance</h3>
+            <div className="space-y-3">
+              {subjectSummary.map((s) => (
+                <div key={s.subject_id ?? "general"} className="flex items-center gap-4">
+                  <div className="w-36 text-sm font-medium text-gray-700 truncate">{s.subject_name}</div>
+                  <div className="flex-1 bg-gray-100 rounded-full h-3">
+                    <div
+                      className={`h-3 rounded-full transition-all duration-500 ${s.percentage >= 75 ? "bg-green-500" : s.percentage >= 50 ? "bg-yellow-500" : "bg-red-500"}`}
+                      style={{ width: `${s.percentage}%` }}
+                    />
+                  </div>
+                  <div className="text-sm font-semibold w-16 text-right">{s.percentage}%</div>
+                  <div className="text-xs text-gray-400 w-24">{s.present}/{s.total} classes</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Attendance Table */}
         <div className="bg-white rounded-xl shadow overflow-hidden">
           {loading ? (
@@ -341,6 +367,7 @@ export default function Attendance() {
                 <tr className="bg-gray-800 text-white">
                   {isAdmin && <th className="text-left px-6 py-3">Student ID</th>}
                   <th className="text-left px-6 py-3">Date</th>
+                  {!isAdmin && <th className="text-left px-6 py-3">Subject ID</th>}
                   <th className="text-left px-6 py-3">Status</th>
                 </tr>
               </thead>
@@ -350,6 +377,7 @@ export default function Attendance() {
                   <tr key={a.id} className="border-t hover:bg-gray-50 transition">
                     {isAdmin && <td className="px-6 py-3">{a.student_id}</td>}
                     <td className="px-6 py-3">{a.date}</td>
+                    {!isAdmin && <td className="px-6 py-3 text-gray-500">{a.subject_id || "—"}</td>}
                     <td className="px-6 py-3">
                       <span className={`px-2 py-1 rounded-full text-xs font-medium
                         ${a.status === "present"
