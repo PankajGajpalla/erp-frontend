@@ -3,27 +3,90 @@ import * as XLSX from "xlsx"
 import Sidebar from "../components/Sidebar"
 import { importStudentsAPI } from "../api"
 
-const REQUIRED_COLS = ["name", "age", "email"]
-const OPTIONAL_COLS = ["phone", "address", "course", "fees", "parent_phone"]
+const REQUIRED_COLS = [
+  "name", "father_name", "dob", "email", "phone", "parent_phone",
+  "permanent_address", "local_address", "course", "fees",
+  "school_college_name", "medium", "admission_date"
+]
+const OPTIONAL_COLS = ["photo"]
 const ALL_COLS = [...REQUIRED_COLS, ...OPTIONAL_COLS]
+const VALID_MEDIUMS = ["hindi", "english"]
 const MAX_FILE_SIZE_MB = 5
 
 function isValidEmail(email) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email))
 }
 
+function isValidDate(val) {
+  if (!val) return false
+  // Accept YYYY-MM-DD string or Excel serial number
+  if (typeof val === "number") return true // Excel date serial
+  const d = new Date(val)
+  return !isNaN(d.getTime())
+}
+
+function toDateString(val) {
+  if (!val) return null
+  if (typeof val === "number") {
+    // Excel date serial to JS date
+    const date = new Date(Math.round((val - 25569) * 864e5))
+    return date.toISOString().split("T")[0]
+  }
+  const d = new Date(val)
+  if (isNaN(d.getTime())) return null
+  return d.toISOString().split("T")[0]
+}
+
 function validateRow(row) {
   const errors = []
-  if (!row.name) errors.push("name missing")
-  if (!row.age || isNaN(parseInt(row.age))) errors.push("age invalid")
+  if (!row.name?.toString().trim()) errors.push("name missing")
+  if (!row.father_name?.toString().trim()) errors.push("father_name missing")
+  if (!row.dob) errors.push("dob missing")
+  else if (!isValidDate(row.dob)) errors.push("dob invalid (use YYYY-MM-DD)")
   if (!row.email) errors.push("email missing")
   else if (!isValidEmail(row.email)) errors.push("email invalid")
+  if (!row.phone?.toString().trim()) errors.push("phone missing")
+  if (!row.parent_phone?.toString().trim()) errors.push("parent_phone missing")
+  if (!row.permanent_address?.toString().trim()) errors.push("permanent_address missing")
+  if (!row.local_address?.toString().trim()) errors.push("local_address missing")
+  if (!row.course?.toString().trim()) errors.push("course missing")
+  if (row.fees === undefined || row.fees === null || row.fees === "") errors.push("fees missing")
+  else if (isNaN(parseFloat(row.fees))) errors.push("fees invalid (must be a number)")
+  if (!row.school_college_name?.toString().trim()) errors.push("school_college_name missing")
+  if (!row.medium?.toString().trim()) errors.push("medium missing")
+  else if (!VALID_MEDIUMS.includes(row.medium.toString().toLowerCase().trim())) errors.push("medium must be 'hindi' or 'english'")
+  if (!row.admission_date) errors.push("admission_date missing")
+  else if (!isValidDate(row.admission_date)) errors.push("admission_date invalid (use YYYY-MM-DD)")
   return errors
+}
+
+function downloadTemplate() {
+  const headers = ALL_COLS
+  const sample = [{
+    name: "Ram Kumar",
+    father_name: "Shyam Kumar",
+    dob: "2005-06-15",
+    email: "ram@example.com",
+    phone: "9876543210",
+    parent_phone: "9876543211",
+    permanent_address: "Village Rampur, Dist. Lucknow, UP - 226001",
+    local_address: "123 Main St, Lucknow",
+    course: "Class 10",
+    fees: "12000",
+    school_college_name: "ABC High School",
+    medium: "hindi",
+    admission_date: "2024-04-01",
+    photo: ""
+  }]
+  const ws = XLSX.utils.json_to_sheet(sample, { header: headers })
+  const wb = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(wb, ws, "Students")
+  XLSX.writeFile(wb, "student_import_template.xlsx")
 }
 
 export default function ImportStudents() {
   const [preview, setPreview] = useState([])
-  const [rowErrors, setRowErrors] = useState({}) // { index: ["error1", "error2"] }
+  const [rowErrors, setRowErrors] = useState({})
   const [fileName, setFileName] = useState("")
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
@@ -35,18 +98,15 @@ export default function ImportStudents() {
   function processFile(file) {
     if (!file) return
 
-    // ✅ File size validation
     const sizeMB = file.size / (1024 * 1024)
     if (sizeMB > MAX_FILE_SIZE_MB) {
-      setError(`File too large! Max size is ${MAX_FILE_SIZE_MB}MB. Your file is ${sizeMB.toFixed(1)}MB.`)
+      setError(`File too large! Max ${MAX_FILE_SIZE_MB}MB. Your file is ${sizeMB.toFixed(1)}MB.`)
       return
     }
 
-    // ✅ File type validation
-    const validTypes = [".xlsx", ".xls", ".csv"]
     const ext = "." + file.name.split(".").pop().toLowerCase()
-    if (!validTypes.includes(ext)) {
-      setError("Invalid file type. Please upload .xlsx, .xls or .csv file.")
+    if (![".xlsx", ".xls", ".csv"].includes(ext)) {
+      setError("Invalid file type. Please upload .xlsx, .xls or .csv")
       return
     }
 
@@ -60,68 +120,44 @@ export default function ImportStudents() {
       try {
         const workbook = XLSX.read(evt.target.result, { type: "binary" })
         const sheet = workbook.Sheets[workbook.SheetNames[0]]
-        const rows = XLSX.utils.sheet_to_json(sheet)
+        const rows = XLSX.utils.sheet_to_json(sheet, { raw: true })
 
-        if (rows.length === 0) {
-          setError("Excel file is empty!")
-          return
-        }
+        if (rows.length === 0) { setError("File is empty!"); return }
+        if (rows.length > 1000) { setError("Max 1000 rows per import."); return }
 
-        if (rows.length > 1000) {
-          setError("Too many rows! Max 1000 students per import.")
-          return
-        }
-
-        // Normalize column names to lowercase
+        // Normalize keys to lowercase
         const normalized = rows.map((row) => {
           const obj = {}
           Object.keys(row).forEach((key) => {
-            obj[key.toLowerCase().trim()] = row[key]
+            obj[key.toLowerCase().trim().replace(/\s+/g, "_")] = row[key]
           })
           return obj
         })
 
-        // ✅ Validate each row
         const errors = {}
         normalized.forEach((row, i) => {
-          const rowErrs = validateRow(row)
-          if (rowErrs.length > 0) errors[i] = rowErrs
+          const errs = validateRow(row)
+          if (errs.length > 0) errors[i] = errs
         })
 
         setPreview(normalized)
         setRowErrors(errors)
-      } catch (err) {
+      } catch {
         setError("Failed to read file. Make sure it's a valid Excel or CSV file.")
       }
     }
     reader.readAsBinaryString(file)
   }
 
-  function handleFile(e) {
-    processFile(e.target.files[0])
-  }
+  function handleFile(e) { processFile(e.target.files[0]) }
 
-  // ✅ Drag and drop handlers
-  function handleDragOver(e) {
-    e.preventDefault()
-    setIsDragging(true)
-  }
-
-  function handleDragLeave() {
-    setIsDragging(false)
-  }
-
-  function handleDrop(e) {
-    e.preventDefault()
-    setIsDragging(false)
-    processFile(e.dataTransfer.files[0])
-  }
+  function handleDragOver(e) { e.preventDefault(); setIsDragging(true) }
+  function handleDragLeave() { setIsDragging(false) }
+  function handleDrop(e) { e.preventDefault(); setIsDragging(false); processFile(e.dataTransfer.files[0]) }
 
   async function handleImport() {
     setError("")
     setSuccess("")
-
-    // ✅ Block import if there are row errors
     const errorCount = Object.keys(rowErrors).length
     if (errorCount > 0) {
       setError(`Fix ${errorCount} invalid row${errorCount > 1 ? "s" : ""} before importing (highlighted in red)`)
@@ -132,22 +168,27 @@ export default function ImportStudents() {
     try {
       const students = preview.map((row) => ({
         name: String(row.name).trim(),
-        age: parseInt(row.age),
+        father_name: String(row.father_name).trim(),
+        dob: toDateString(row.dob),
         email: String(row.email).trim().toLowerCase(),
-        phone: row.phone ? String(row.phone).trim() : null,
-        address: row.address ? String(row.address).trim() : null,
-        course: row.course ? String(row.course).trim() : null,
-        fees: row.fees ? parseFloat(row.fees) : null,
-        parent_phone: row.parent_phone ? String(row.parent_phone).trim() : null
+        phone: String(row.phone).trim(),
+        parent_phone: String(row.parent_phone).trim(),
+        permanent_address: String(row.permanent_address).trim(),
+        local_address: String(row.local_address).trim(),
+        course: String(row.course).trim(),
+        fees: parseFloat(row.fees),
+        school_college_name: String(row.school_college_name).trim(),
+        medium: String(row.medium).toLowerCase().trim(),
+        admission_date: toDateString(row.admission_date),
+        photo: row.photo ? String(row.photo).trim() : null,
       }))
 
       const res = await importStudentsAPI({ students })
       setResult(res.data)
-      setSuccess(`✅ ${res.data.imported} students imported, ${res.data.skipped} skipped (duplicates)`)
+      setSuccess(`${res.data.imported} students imported, ${res.data.skipped} skipped (duplicates)`)
       setPreview([])
       setRowErrors({})
       setFileName("")
-      // ✅ Reset file input so same file can be re-uploaded
       if (fileInputRef.current) fileInputRef.current.value = ""
     } catch (err) {
       setError(err.response?.data?.detail || "Import failed")
@@ -172,35 +213,48 @@ export default function ImportStudents() {
   return (
     <div className="flex">
       <Sidebar />
-      <main className="flex-1 p-8 bg-gray-50 min-h-screen">
+      <main className="flex-1 p-6 bg-gray-50 min-h-screen">
 
-        <h2 className="text-2xl font-bold text-gray-800 mb-6">📥 Import Students</h2>
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-2xl font-bold text-gray-800">Import Students</h2>
+          <button
+            onClick={downloadTemplate}
+            className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition text-sm font-medium"
+          >
+            Download Template
+          </button>
+        </div>
 
-        {/* Upload Box */}
-        <div className="bg-white rounded-xl shadow p-6 mb-6">
-          <h3 className="text-lg font-semibold text-gray-700 mb-4">Upload Excel File</h3>
-
-          {/* Required columns info */}
-          <div className="flex flex-wrap gap-2 mb-4">
-            {ALL_COLS.map((col) => (
-              <span key={col} className={`px-3 py-1 rounded-full text-xs font-medium
-                ${REQUIRED_COLS.includes(col)
-                  ? "bg-blue-100 text-blue-700"
-                  : "bg-gray-100 text-gray-500"}`}>
-                {col} {REQUIRED_COLS.includes(col) ? "✱" : "(optional)"}
+        {/* Column info */}
+        <div className="bg-white rounded-xl shadow p-5 mb-5">
+          <p className="text-sm font-semibold text-gray-700 mb-3">Required columns in your Excel file:</p>
+          <div className="flex flex-wrap gap-2 mb-3">
+            {REQUIRED_COLS.map((col) => (
+              <span key={col} className="px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
+                {col} *
+              </span>
+            ))}
+            {OPTIONAL_COLS.map((col) => (
+              <span key={col} className="px-3 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-500">
+                {col} (optional)
               </span>
             ))}
           </div>
+          <p className="text-xs text-gray-400">
+            Dates format: <strong>YYYY-MM-DD</strong> &nbsp;|&nbsp;
+            Medium values: <strong>hindi</strong> or <strong>english</strong> &nbsp;|&nbsp;
+            Click <strong>Download Template</strong> for a sample file.
+          </p>
+        </div>
 
-          {/* ✅ Drag and drop zone */}
+        {/* Upload Box */}
+        <div className="bg-white rounded-xl shadow p-6 mb-5">
           <div
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
             className={`border-2 border-dashed rounded-xl p-8 text-center transition
-              ${isDragging
-                ? "border-blue-500 bg-blue-50"
-                : "border-gray-300 hover:border-blue-400"}`}
+              ${isDragging ? "border-blue-500 bg-blue-50" : "border-gray-300 hover:border-blue-400"}`}
           >
             <p className="text-4xl mb-3">📊</p>
             <p className="text-gray-500 mb-1">Drag & drop your Excel file here</p>
@@ -219,11 +273,9 @@ export default function ImportStudents() {
             >
               Choose File
             </label>
-            {fileName && (
-              <p className="text-sm text-gray-500 mt-3">📄 {fileName}</p>
-            )}
+            {fileName && <p className="text-sm text-gray-500 mt-3">📄 {fileName}</p>}
             <p className="text-xs text-gray-400 mt-2">
-              Supports .xlsx, .xls, .csv · Max {MAX_FILE_SIZE_MB}MB · Max 1000 rows
+              .xlsx, .xls, .csv · Max {MAX_FILE_SIZE_MB}MB · Max 1000 rows
             </p>
           </div>
 
@@ -239,14 +291,14 @@ export default function ImportStudents() {
           )}
         </div>
 
-        {/* Result */}
+        {/* Import result */}
         {result && (
-          <div className="grid grid-cols-2 gap-6 mb-6">
-            <div className="bg-white rounded-xl shadow p-6 border-l-4 border-green-500">
+          <div className="grid grid-cols-2 gap-4 mb-5">
+            <div className="bg-white rounded-xl shadow p-5 border-l-4 border-green-500">
               <p className="text-sm text-gray-500">Successfully Imported</p>
               <p className="text-3xl font-bold text-green-600">{result.imported}</p>
             </div>
-            <div className="bg-white rounded-xl shadow p-6 border-l-4 border-yellow-500">
+            <div className="bg-white rounded-xl shadow p-5 border-l-4 border-yellow-500">
               <p className="text-sm text-gray-500">Skipped (duplicates)</p>
               <p className="text-3xl font-bold text-yellow-600">{result.skipped}</p>
             </div>
@@ -256,27 +308,25 @@ export default function ImportStudents() {
         {/* Preview Table */}
         {preview.length > 0 && (
           <div className="bg-white rounded-xl shadow overflow-hidden">
-            <div className="p-6 flex justify-between items-center border-b flex-wrap gap-3">
+            <div className="p-5 flex justify-between items-center border-b flex-wrap gap-3">
               <div>
                 <h3 className="text-lg font-semibold text-gray-700">
-                  Preview — {preview.length} students found
+                  Preview — {preview.length} rows found
                 </h3>
                 <div className="flex gap-3 mt-1 text-sm">
-                  <span className="text-green-600">✅ {validCount} valid</span>
-                  {errorCount > 0 && (
-                    <span className="text-red-600">❌ {errorCount} with errors</span>
-                  )}
+                  <span className="text-green-600">{validCount} valid</span>
+                  {errorCount > 0 && <span className="text-red-600">{errorCount} with errors</span>}
                 </div>
               </div>
               <div className="flex gap-3">
                 <button onClick={handleClear}
-                  className="bg-gray-300 text-gray-700 px-4 py-2 rounded-lg text-sm hover:bg-gray-400 transition">
+                  className="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm hover:bg-gray-300 transition">
                   Clear
                 </button>
                 <button
                   onClick={handleImport}
                   disabled={loading || errorCount > 0}
-                  className="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition disabled:opacity-50"
+                  className="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition disabled:opacity-50 text-sm font-medium"
                 >
                   {loading ? "Importing..." : `Import ${validCount} Students`}
                 </button>
@@ -284,53 +334,55 @@ export default function ImportStudents() {
             </div>
 
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+              <table className="w-full text-xs">
                 <thead>
                   <tr className="bg-gray-800 text-white">
-                    <th className="text-left px-6 py-3">#</th>
-                    <th className="text-left px-6 py-3">Name</th>
-                    <th className="text-left px-6 py-3">Age</th>
-                    <th className="text-left px-6 py-3">Email</th>
-                    <th className="text-left px-6 py-3">Phone</th>
-                    <th className="text-left px-6 py-3">Address</th>
-                    <th className="text-left px-6 py-3">Course</th>
-                    <th className="text-left px-6 py-3">Fees</th>
-                    <th className="text-left px-6 py-3">Status</th>
+                    <th className="px-4 py-3 text-left">#</th>
+                    <th className="px-4 py-3 text-left">Name</th>
+                    <th className="px-4 py-3 text-left">Father Name</th>
+                    <th className="px-4 py-3 text-left">DOB</th>
+                    <th className="px-4 py-3 text-left">Email</th>
+                    <th className="px-4 py-3 text-left">Phone</th>
+                    <th className="px-4 py-3 text-left">Parent Phone</th>
+                    <th className="px-4 py-3 text-left">Course</th>
+                    <th className="px-4 py-3 text-left">Fees</th>
+                    <th className="px-4 py-3 text-left">Medium</th>
+                    <th className="px-4 py-3 text-left">Admission</th>
+                    <th className="px-4 py-3 text-left">School/College</th>
+                    <th className="px-4 py-3 text-left">Status</th>
                   </tr>
                 </thead>
                 <tbody>
                   {preview.map((row, i) => {
-                    const hasError = rowErrors[i]
+                    const hasError = !!rowErrors[i]
                     return (
-                      <tr key={`${row.email}-${i}`}
-                        className={`border-t transition
-                          ${hasError ? "bg-red-50" : "hover:bg-gray-50"}`}>
-                        <td className="px-6 py-3 text-gray-400">{i + 1}</td>
-                        <td className="px-6 py-3 font-medium">
-                          {row.name || <span className="text-red-500 text-xs">Missing!</span>}
-                        </td>
-                        <td className="px-6 py-3">
-                          {row.age || <span className="text-red-500 text-xs">Missing!</span>}
-                        </td>
-                        <td className="px-6 py-3">
+                      <tr key={i} className={`border-t transition ${hasError ? "bg-red-50" : "hover:bg-gray-50"}`}>
+                        <td className="px-4 py-2 text-gray-400">{i + 1}</td>
+                        <td className="px-4 py-2 font-medium">{row.name || <Err />}</td>
+                        <td className="px-4 py-2">{row.father_name || <Err />}</td>
+                        <td className="px-4 py-2">{toDateString(row.dob) || <Err label="invalid date" />}</td>
+                        <td className="px-4 py-2">
                           {row.email
-                            ? isValidEmail(row.email)
-                              ? row.email
-                              : <span className="text-red-500 text-xs">Invalid email!</span>
-                            : <span className="text-red-500 text-xs">Missing!</span>}
+                            ? isValidEmail(row.email) ? row.email : <Err label="invalid email" />
+                            : <Err />}
                         </td>
-                        <td className="px-6 py-3">{row.phone || "—"}</td>
-                        <td className="px-6 py-3">{row.address || "—"}</td>
-                        <td className="px-6 py-3">{row.course || "—"}</td>
-                        <td className="px-6 py-3">{row.fees ? `₹${row.fees}` : "—"}</td>
-                        <td className="px-6 py-3">
-                          {hasError ? (
-                            <span className="text-red-600 text-xs font-medium">
-                              ❌ {rowErrors[i].join(", ")}
-                            </span>
-                          ) : (
-                            <span className="text-green-600 text-xs font-medium">✅ Valid</span>
-                          )}
+                        <td className="px-4 py-2">{row.phone || <Err />}</td>
+                        <td className="px-4 py-2">{row.parent_phone || <Err />}</td>
+                        <td className="px-4 py-2">{row.course || <Err />}</td>
+                        <td className="px-4 py-2">{row.fees != null ? `₹${row.fees}` : <Err />}</td>
+                        <td className="px-4 py-2">
+                          {row.medium
+                            ? VALID_MEDIUMS.includes(row.medium.toString().toLowerCase().trim())
+                              ? row.medium
+                              : <Err label="must be hindi/english" />
+                            : <Err />}
+                        </td>
+                        <td className="px-4 py-2">{toDateString(row.admission_date) || <Err label="invalid date" />}</td>
+                        <td className="px-4 py-2">{row.school_college_name || <Err />}</td>
+                        <td className="px-4 py-2">
+                          {hasError
+                            ? <span className="text-red-600 font-medium">❌ {rowErrors[i].join(", ")}</span>
+                            : <span className="text-green-600 font-medium">✅ OK</span>}
                         </td>
                       </tr>
                     )
@@ -344,4 +396,8 @@ export default function ImportStudents() {
       </main>
     </div>
   )
+}
+
+function Err({ label = "missing" }) {
+  return <span className="text-red-500 font-medium">{label}!</span>
 }

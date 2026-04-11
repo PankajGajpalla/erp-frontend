@@ -128,7 +128,6 @@ export default function Students() {
     }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) return "Invalid email format"
     if (parseFloat(form.fees) < 0) return "Fees cannot be negative"
-    if (!editId && !form.photo) return "Student photo is required"
     return null
   }
 
@@ -270,7 +269,7 @@ export default function Students() {
                   onChange={handlePhotoChange}
                   className="hidden"
                 />
-                <span className="text-xs text-gray-400">Max 2MB *</span>
+                <span className="text-xs text-gray-400">Max 2MB (optional)</span>
               </div>
 
               {/* Personal Info */}
