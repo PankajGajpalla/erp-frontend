@@ -59,7 +59,8 @@ export default function Students() {
         s.name?.toLowerCase().includes(q) ||
         s.email?.toLowerCase().includes(q) ||
         s.course?.toLowerCase().includes(q) ||
-        s.school_college_name?.toLowerCase().includes(q)
+        s.school_college_name?.toLowerCase().includes(q) ||
+        s.student_code?.toLowerCase().includes(q)
     )
     if (courseFilter !== "all") {
       result = result.filter((s) => s.course === courseFilter)
@@ -434,6 +435,7 @@ export default function Students() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="bg-gray-800 text-white text-xs uppercase tracking-wide">
+                    <th className="px-4 py-3 text-left">ID</th>
                     <th className="px-4 py-3 text-left">Photo</th>
                     <th className="px-4 py-3 text-left">Name</th>
                     <th className="px-4 py-3 text-left">Father Name</th>
@@ -448,6 +450,11 @@ export default function Students() {
                 <tbody>
                   {filtered.map((s) => (
                     <tr key={s.id} className="border-t hover:bg-gray-50 transition">
+                      <td className="px-4 py-3">
+                        <span className="bg-gray-100 text-gray-600 px-2 py-1 rounded text-xs font-mono font-semibold">
+                          {s.student_code || `#${s.id}`}
+                        </span>
+                      </td>
                       <td className="px-4 py-3">
                         {s.photo ? (
                           <img
@@ -541,6 +548,11 @@ export default function Students() {
                   <div className="w-24 h-28 rounded-lg bg-gray-100 flex items-center justify-center text-gray-400 border">No Photo</div>
                 )}
                 <div>
+                  {viewStudent.student_code && (
+                    <span className="inline-block bg-gray-100 text-gray-600 px-2 py-0.5 rounded text-xs font-mono font-semibold mb-1">
+                      {viewStudent.student_code}
+                    </span>
+                  )}
                   <p className="text-lg font-bold text-gray-800">{viewStudent.name}</p>
                   <p className="text-sm text-gray-500">S/o {viewStudent.father_name || "—"}</p>
                   <p className="text-sm text-gray-500 mt-1">{viewStudent.email}</p>
