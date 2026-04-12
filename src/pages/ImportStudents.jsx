@@ -37,24 +37,28 @@ function toDateString(val) {
   return d.toISOString().split("T")[0]
 }
 
+function safeStr(val) {
+  return val != null ? String(val).trim() : ""
+}
+
 function validateRow(row) {
   const errors = []
-  if (!row.name?.toString().trim()) errors.push("name missing")
-  if (!row.father_name?.toString().trim()) errors.push("father_name missing")
+  if (!safeStr(row.name)) errors.push("name missing")
+  if (!safeStr(row.father_name)) errors.push("father_name missing")
   if (!row.dob) errors.push("dob missing")
   else if (!isValidDate(row.dob)) errors.push("dob invalid (use YYYY-MM-DD)")
   if (!row.email) errors.push("email missing")
   else if (!isValidEmail(row.email)) errors.push("email invalid")
-  if (!row.phone?.toString().trim()) errors.push("phone missing")
-  if (!row.parent_phone?.toString().trim()) errors.push("parent_phone missing")
-  if (!row.permanent_address?.toString().trim()) errors.push("permanent_address missing")
-  if (!row.local_address?.toString().trim()) errors.push("local_address missing")
-  if (!row.course?.toString().trim()) errors.push("course missing")
+  if (!safeStr(row.phone)) errors.push("phone missing")
+  if (!safeStr(row.parent_phone)) errors.push("parent_phone missing")
+  if (!safeStr(row.permanent_address)) errors.push("permanent_address missing")
+  if (!safeStr(row.local_address)) errors.push("local_address missing")
+  if (!safeStr(row.course)) errors.push("course missing")
   if (row.fees === undefined || row.fees === null || row.fees === "") errors.push("fees missing")
   else if (isNaN(parseFloat(row.fees))) errors.push("fees invalid (must be a number)")
-  if (!row.school_college_name?.toString().trim()) errors.push("school_college_name missing")
-  if (!row.medium?.toString().trim()) errors.push("medium missing")
-  else if (!VALID_MEDIUMS.includes(row.medium.toString().toLowerCase().trim())) errors.push("medium must be 'hindi' or 'english'")
+  if (!safeStr(row.school_college_name)) errors.push("school_college_name missing")
+  if (!safeStr(row.medium)) errors.push("medium missing")
+  else if (!VALID_MEDIUMS.includes(String(row.medium).toLowerCase().trim())) errors.push("medium must be 'hindi' or 'english'")
   if (!row.admission_date) errors.push("admission_date missing")
   else if (!isValidDate(row.admission_date)) errors.push("admission_date invalid (use YYYY-MM-DD)")
   return errors
@@ -167,20 +171,20 @@ export default function ImportStudents() {
     setLoading(true)
     try {
       const students = preview.map((row) => ({
-        name: String(row.name).trim(),
-        father_name: String(row.father_name).trim(),
+        name: safeStr(row.name),
+        father_name: safeStr(row.father_name) || null,
         dob: toDateString(row.dob),
-        email: String(row.email).trim().toLowerCase(),
-        phone: String(row.phone).trim(),
-        parent_phone: String(row.parent_phone).trim(),
-        permanent_address: String(row.permanent_address).trim(),
-        local_address: String(row.local_address).trim(),
-        course: String(row.course).trim(),
-        fees: parseFloat(row.fees),
-        school_college_name: String(row.school_college_name).trim(),
-        medium: String(row.medium).toLowerCase().trim(),
+        email: safeStr(row.email).toLowerCase(),
+        phone: safeStr(row.phone) || null,
+        parent_phone: safeStr(row.parent_phone) || null,
+        permanent_address: safeStr(row.permanent_address) || null,
+        local_address: safeStr(row.local_address) || null,
+        course: safeStr(row.course) || null,
+        fees: row.fees != null && row.fees !== "" ? parseFloat(row.fees) : null,
+        school_college_name: safeStr(row.school_college_name) || null,
+        medium: safeStr(row.medium).toLowerCase() || null,
         admission_date: toDateString(row.admission_date),
-        photo: row.photo ? String(row.photo).trim() : null,
+        photo: row.photo ? safeStr(row.photo) : null,
       }))
 
       const res = await importStudentsAPI({ students })
@@ -191,7 +195,17 @@ export default function ImportStudents() {
       setFileName("")
       if (fileInputRef.current) fileInputRef.current.value = ""
     } catch (err) {
-      setError(err.response?.data?.detail || "Import failed")
+      const detail = err.response?.data?.detail
+      if (Array.isArray(detail)) {
+        // Pydantic 422 validation errors
+        const msgs = detail.map((d) => {
+          const field = Array.isArray(d.loc) ? d.loc.slice(1).join(" → ") : ""
+          return field ? `${field}: ${d.msg}` : (d.msg || JSON.stringify(d))
+        }).join("; ")
+        setError("Validation error — " + msgs)
+      } else {
+        setError(detail || err.message || "Import failed. Please check your data and try again.")
+      }
     } finally {
       setLoading(false)
     }
