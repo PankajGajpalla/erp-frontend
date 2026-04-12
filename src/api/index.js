@@ -70,6 +70,7 @@ export const deleteGradeAPI = (id) => API.delete(`/delete_grade/${id}`);
 
 // ─── Timetable ───────────────────────────────────────────────
 export const getTimetableAPI = () => API.get("/timetable");
+export const getTimetableByCourseAPI = (courseId) => API.get(`/timetable/course/${courseId}`);
 export const addTimetableAPI = (data) => API.post("/add_timetable", data);
 export const deleteTimetableAPI = (id) => API.delete(`/delete_timetable/${id}`);
 
