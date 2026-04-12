@@ -84,6 +84,16 @@ function AdminDashboard() {
   )
 }
 
+// ─── Info Row ─────────────────────────────────────────────────
+function InfoRow({ label, value }) {
+  return (
+    <div className="flex flex-col">
+      <span className="text-xs text-gray-400 font-medium uppercase tracking-wide">{label}</span>
+      <span className="text-sm text-gray-800 mt-0.5 font-medium">{value || "—"}</span>
+    </div>
+  )
+}
+
 // ─── Student Dashboard ────────────────────────────────────────
 function StudentDashboard({ studentId }) {
   const [profile, setProfile] = useState(null)
@@ -98,7 +108,6 @@ function StudentDashboard({ studentId }) {
         return
       }
       try {
-        // ✅ Only fetch profile — attendance and fees are on separate pages
         const res = await getStudentAPI(studentId)
         setProfile(res.data)
       } catch (err) {
@@ -112,57 +121,89 @@ function StudentDashboard({ studentId }) {
   }, [studentId])
 
   if (loading) return (
-    <div className="flex items-center gap-3 text-gray-500">
+    <div className="flex items-center gap-3 text-gray-500 p-8">
       <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
       Loading your dashboard...
     </div>
   )
 
   if (error) return (
-    <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-red-600">
-      {error}
-    </div>
+    <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-red-600">{error}</div>
   )
+
+  const p = profile || {}
+  const mediumLabel = p.medium ? p.medium.charAt(0).toUpperCase() + p.medium.slice(1) : null
 
   return (
     <div className="space-y-6">
-      {/* Welcome Banner */}
-      <div className="bg-gradient-to-r from-blue-600 to-blue-700 rounded-2xl p-6 text-white">
-        <h2 className="text-2xl font-bold">Welcome back, {profile?.name}! 👋</h2>
-        <p className="text-blue-100 mt-1">
-          {profile?.course ? `Course: ${profile.course}` : "No course assigned"}
-        </p>
+
+      {/* ── Welcome Banner ── */}
+      <div className="bg-gradient-to-r from-blue-600 to-indigo-700 rounded-2xl p-6 text-white flex items-center gap-5">
+        {p.photo ? (
+          <img src={p.photo} alt={p.name} className="w-20 h-24 rounded-xl object-cover border-2 border-white/40 flex-shrink-0" />
+        ) : (
+          <div className="w-20 h-24 rounded-xl bg-white/20 flex items-center justify-center text-white text-3xl flex-shrink-0">🎓</div>
+        )}
+        <div>
+          {p.student_code && (
+            <span className="inline-block bg-white/20 text-white text-xs font-mono px-2 py-0.5 rounded mb-1">{p.student_code}</span>
+          )}
+          <h2 className="text-2xl font-bold">{p.name}</h2>
+          {p.father_name && <p className="text-blue-100 text-sm">S/o {p.father_name}</p>}
+          {p.course && (
+            <span className="mt-2 inline-block bg-white/20 text-white text-xs px-3 py-1 rounded-full">{p.course}</span>
+          )}
+        </div>
       </div>
 
-      {/* Profile Cards */}
-      {profile && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <StatCard label="Full Name" value={profile.name} color="border-blue-500" />
-          <StatCard label="Age" value={profile.age} color="border-purple-500" />
-          <StatCard label="Course" value={profile.course || "—"} color="border-yellow-500" />
-          <StatCard label="Email" value={profile.email} color="border-pink-500" />
-          <StatCard label="Phone" value={profile.phone || "—"} color="border-green-500" />
-          <StatCard label="Address" value={profile.address || "—"} color="border-orange-500" />
-        </div>
-      )}
-
-      {/* Quick Links */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      {/* ── Quick Links ── */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {[
-          { label: "📋 Attendance", to: "/student/attendance", color: "bg-green-50 hover:bg-green-100 border-green-200" },
-          { label: "💰 My Fees", to: "/student/fees", color: "bg-yellow-50 hover:bg-yellow-100 border-yellow-200" },
-          { label: "📝 Grades", to: "/student/grades", color: "bg-blue-50 hover:bg-blue-100 border-blue-200" },
-          { label: "📢 Notices", to: "/student/notices", color: "bg-purple-50 hover:bg-purple-100 border-purple-200" },
+          { label: "📋 Attendance", to: "/student/attendance", color: "bg-green-50 hover:bg-green-100 border-green-200 text-green-700" },
+          { label: "💰 My Fees",    to: "/student/fees",       color: "bg-yellow-50 hover:bg-yellow-100 border-yellow-200 text-yellow-700" },
+          { label: "📝 Grades",     to: "/student/grades",     color: "bg-blue-50 hover:bg-blue-100 border-blue-200 text-blue-700" },
+          { label: "📢 Notices",    to: "/student/notices",    color: "bg-purple-50 hover:bg-purple-100 border-purple-200 text-purple-700" },
         ].map((item) => (
-          <a
-            key={item.to}
-            href={item.to}
-            className={`border rounded-xl p-4 text-center font-medium text-gray-700 transition ${item.color}`}
-          >
+          <a key={item.to} href={item.to}
+            className={`border rounded-xl p-4 text-center font-medium transition text-sm ${item.color}`}>
             {item.label}
           </a>
         ))}
       </div>
+
+      {/* ── Profile Details ── */}
+      <div className="bg-white rounded-2xl shadow-md p-6">
+        <h3 className="text-base font-semibold text-gray-700 mb-4 pb-2 border-b">My Profile</h3>
+
+        {/* Personal */}
+        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Personal Information</p>
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6">
+          <InfoRow label="Full Name"    value={p.name} />
+          <InfoRow label="Father Name"  value={p.father_name} />
+          <InfoRow label="Date of Birth" value={p.dob} />
+          <InfoRow label="Email"        value={p.email} />
+          <InfoRow label="Mobile No."   value={p.phone} />
+          <InfoRow label="Parent Mobile" value={p.parent_phone} />
+        </div>
+
+        {/* Address */}
+        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Address</p>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+          <InfoRow label="Permanent Address" value={p.permanent_address} />
+          <InfoRow label="Local Address"     value={p.local_address} />
+        </div>
+
+        {/* Academic */}
+        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Academic Details</p>
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+          <InfoRow label="School / College" value={p.school_college_name} />
+          <InfoRow label="Course"           value={p.course} />
+          <InfoRow label="Medium"           value={mediumLabel} />
+          <InfoRow label="Admission Date"   value={p.admission_date} />
+          <InfoRow label="Total Fees"       value={p.fees ? `₹${Number(p.fees).toLocaleString()}` : null} />
+        </div>
+      </div>
+
     </div>
   )
 }
