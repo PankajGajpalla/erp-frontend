@@ -1,8 +1,12 @@
 import { useEffect, useState } from "react"
 import { useAuth } from "../context/AuthContext"
+import {
+  PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer,
+  BarChart, Bar, XAxis, YAxis, CartesianGrid
+} from "recharts"
 
 import Sidebar from "../components/Sidebar"
-import { getDashboardSummaryAPI, getStudentAPI } from "../api"
+import { getDashboardSummaryAPI, getStudentAPI, getOverdueFeesAPI } from "../api"
 
 // ─── Stats Card ──────────────────────────────────────────────
 function StatCard({ label, value, color }) {
@@ -14,17 +18,37 @@ function StatCard({ label, value, color }) {
   )
 }
 
+const PIE_COLORS = ["#22c55e", "#ef4444", "#3b82f6"]
+
+function formatCurrency(n) {
+  return `₹${parseFloat(n).toLocaleString("en-IN", { maximumFractionDigits: 0 })}`
+}
+function formatDate(d) {
+  if (!d) return "—"
+  return new Date(d).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })
+}
+function daysOverdue(dueDateStr) {
+  if (!dueDateStr) return 0
+  return Math.max(0, Math.floor((Date.now() - new Date(dueDateStr)) / 86400000))
+}
+
 // ─── Admin Dashboard ──────────────────────────────────────────
 function AdminDashboard() {
-  const [stats, setStats] = useState(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState("")
+  const [stats, setStats]         = useState(null)
+  const [overdue, setOverdue]     = useState([])
+  const [loading, setLoading]     = useState(true)
+  const [error, setError]         = useState("")
+  const [showAllOverdue, setShowAllOverdue] = useState(false)
 
   useEffect(() => {
     async function load() {
       try {
-        const res = await getDashboardSummaryAPI()
-        setStats(res.data)
+        const [sRes, oRes] = await Promise.all([
+          getDashboardSummaryAPI(),
+          getOverdueFeesAPI().catch(() => ({ data: [] })),
+        ])
+        setStats(sRes.data)
+        setOverdue(Array.isArray(oRes.data) ? oRes.data : [])
       } catch (err) {
         setError("Failed to load dashboard")
         console.error(err)
@@ -37,49 +61,136 @@ function AdminDashboard() {
 
   if (loading) return (
     <div className="flex items-center gap-3 text-gray-500">
-      <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+      <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
       Loading dashboard...
     </div>
   )
 
   if (error) return (
-    <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-red-600">
-      {error}
-    </div>
+    <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-red-600">{error}</div>
   )
 
-  return (
-    <div>
-      <h2 className="text-2xl font-bold text-gray-800 mb-2">Admin Dashboard</h2>
-      <p className="text-gray-400 text-sm mb-6">Overview of your ERP system</p>
+  // Chart data
+  const feePieData = [
+    { name: "Collected", value: parseFloat(stats.total_paid?.toFixed(2) || 0) },
+    { name: "Pending",   value: parseFloat(stats.total_pending?.toFixed(2) || 0) },
+  ]
+  const courseBarData = (stats.course_stats || []).map((c) => ({
+    name: c.name.length > 12 ? c.name.slice(0, 12) + "…" : c.name,
+    Students: c.students,
+  }))
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <StatCard
-          label="Total Students"
-          value={stats.total_students}
-          color="border-blue-500"
-        />
-        <StatCard
-          label="Attendance Records"
-          value={stats.total_attendance}
-          color="border-green-500"
-        />
-        <StatCard
-          label="Total Fees"
-          value={`₹${stats.total_fees.toFixed(2)}`}
-          color="border-yellow-500"
-        />
-        <StatCard
-          label="Fees Collected"
-          value={`₹${stats.total_paid.toFixed(2)}`}
-          color="border-green-500"
-        />
-        <StatCard
-          label="Fees Pending"
-          value={`₹${stats.total_pending.toFixed(2)}`}
-          color="border-red-500"
-        />
+  const visibleOverdue = showAllOverdue ? overdue : overdue.slice(0, 5)
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-2xl font-bold text-gray-800 mb-1">Admin Dashboard</h2>
+        <p className="text-gray-400 text-sm">Overview of your ERP system</p>
       </div>
+
+      {/* Stats Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+        <StatCard label="Total Students"      value={stats.total_students}              color="border-blue-500" />
+        <StatCard label="Attendance Records"  value={stats.total_attendance}            color="border-green-500" />
+        <StatCard label="Total Fees"          value={formatCurrency(stats.total_fees)}  color="border-yellow-500" />
+        <StatCard label="Fees Collected"      value={formatCurrency(stats.total_paid)}  color="border-green-500" />
+        <StatCard label="Fees Pending"        value={formatCurrency(stats.total_pending)} color="border-red-500" />
+      </div>
+
+      {/* Charts Row */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+        {/* Fee Collection Pie Chart */}
+        <div className="bg-white rounded-xl shadow p-5">
+          <h3 className="text-sm font-semibold text-gray-700 mb-4">Fee Collection Status</h3>
+          {stats.total_fees > 0 ? (
+            <ResponsiveContainer width="100%" height={220}>
+              <PieChart>
+                <Pie data={feePieData} cx="50%" cy="50%" outerRadius={80}
+                  dataKey="value" label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                  labelLine={false}>
+                  {feePieData.map((_, i) => (
+                    <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
+                  ))}
+                </Pie>
+                <Tooltip formatter={(v) => formatCurrency(v)} />
+                <Legend />
+              </PieChart>
+            </ResponsiveContainer>
+          ) : (
+            <p className="text-gray-400 text-center py-10">No fee data yet</p>
+          )}
+        </div>
+
+        {/* Course-wise Students Bar Chart */}
+        <div className="bg-white rounded-xl shadow p-5">
+          <h3 className="text-sm font-semibold text-gray-700 mb-4">Students by Course</h3>
+          {courseBarData.length > 0 ? (
+            <ResponsiveContainer width="100%" height={220}>
+              <BarChart data={courseBarData} margin={{ top: 5, right: 10, left: -10, bottom: 5 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                <XAxis dataKey="name" tick={{ fontSize: 11 }} />
+                <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
+                <Tooltip />
+                <Bar dataKey="Students" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          ) : (
+            <p className="text-gray-400 text-center py-10">No course data yet</p>
+          )}
+        </div>
+      </div>
+
+      {/* Feature 5: Overdue Fee Reminders */}
+      {overdue.length > 0 && (
+        <div className="bg-white rounded-xl shadow overflow-hidden">
+          <div className="flex items-center justify-between px-5 py-4 border-b bg-red-50">
+            <div className="flex items-center gap-2">
+              <span className="text-lg">⚠️</span>
+              <h3 className="font-semibold text-red-700">Overdue Fee Reminders</h3>
+              <span className="bg-red-600 text-white text-xs font-bold px-2 py-0.5 rounded-full ml-1">{overdue.length}</span>
+            </div>
+            {overdue.length > 5 && (
+              <button onClick={() => setShowAllOverdue(v => !v)}
+                className="text-sm text-red-600 underline hover:text-red-800">
+                {showAllOverdue ? "Show less" : `View all ${overdue.length}`}
+              </button>
+            )}
+          </div>
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="bg-gray-50 text-xs text-gray-500 border-b">
+                <th className="text-left px-5 py-2 font-medium">Student</th>
+                <th className="text-left px-5 py-2 font-medium">ID</th>
+                <th className="text-left px-5 py-2 font-medium">Description</th>
+                <th className="text-left px-5 py-2 font-medium">Due Date</th>
+                <th className="text-left px-5 py-2 font-medium">Pending</th>
+                <th className="text-left px-5 py-2 font-medium">Days Late</th>
+              </tr>
+            </thead>
+            <tbody>
+              {visibleOverdue.map((f, i) => {
+                const days = daysOverdue(f.due_date)
+                return (
+                  <tr key={f.fee_id ?? i} className="border-t hover:bg-red-50 transition">
+                    <td className="px-5 py-2.5 font-medium text-gray-800">{f.student_name || "—"}</td>
+                    <td className="px-5 py-2.5 text-gray-500 font-mono text-xs">{f.student_code || f.student_id}</td>
+                    <td className="px-5 py-2.5 text-gray-600">{f.description || "—"}</td>
+                    <td className="px-5 py-2.5 text-red-600 font-medium">{formatDate(f.due_date)}</td>
+                    <td className="px-5 py-2.5 font-semibold text-red-700">{formatCurrency(f.pending)}</td>
+                    <td className="px-5 py-2.5">
+                      <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${days > 30 ? "bg-red-100 text-red-700" : "bg-orange-100 text-orange-700"}`}>
+                        {days}d
+                      </span>
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   )
 }

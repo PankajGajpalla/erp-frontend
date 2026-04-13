@@ -1,7 +1,87 @@
 import { useEffect, useState } from "react"
 import Sidebar from "../components/Sidebar"
 import { useAuth } from "../context/AuthContext"
-import { getFeesAPI, addFeesAPI, payFeesAPI, feesSummaryAPI, getFeePaymentsAPI } from "../api"
+import { getFeesAPI, addFeesAPI, payFeesAPI, feesSummaryAPI, getFeePaymentsAPI, getStudentAPI, getOverdueFeesAPI } from "../api"
+import jsPDF from "jspdf"
+
+function generateReceipt(payment, fee, studentName, studentCode) {
+  const doc = new jsPDF()
+  const pageW = doc.internal.pageSize.getWidth()
+
+  // Header
+  doc.setFillColor(37, 99, 235)
+  doc.rect(0, 0, pageW, 35, "F")
+  doc.setTextColor(255, 255, 255)
+  doc.setFontSize(20)
+  doc.setFont("helvetica", "bold")
+  doc.text("PAYMENT RECEIPT", pageW / 2, 18, { align: "center" })
+  doc.setFontSize(10)
+  doc.setFont("helvetica", "normal")
+  doc.text("ERP System", pageW / 2, 28, { align: "center" })
+
+  // Reset color
+  doc.setTextColor(30, 30, 30)
+  doc.setFontSize(11)
+
+  const left = 20
+  let y = 50
+
+  // Receipt info
+  doc.setFont("helvetica", "bold")
+  doc.text(`Receipt No: RCP-${String(payment.id).padStart(5, "0")}`, left, y)
+  doc.setFont("helvetica", "normal")
+  doc.text(`Date: ${new Date(payment.paid_date).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}`, pageW - left, y, { align: "right" })
+  y += 15
+
+  // Divider
+  doc.setDrawColor(200, 200, 200)
+  doc.line(left, y, pageW - left, y)
+  y += 10
+
+  // Student info
+  doc.setFont("helvetica", "bold")
+  doc.text("Student Details", left, y); y += 8
+  doc.setFont("helvetica", "normal")
+  doc.text(`Name: ${studentName || "—"}`, left, y); y += 7
+  if (studentCode) { doc.text(`Student ID: ${studentCode}`, left, y); y += 7 }
+  y += 5
+
+  // Fee info
+  doc.setFont("helvetica", "bold")
+  doc.text("Payment Details", left, y); y += 8
+  doc.setFont("helvetica", "normal")
+  doc.text(`Description: ${fee.description || "Fee Payment"}`, left, y); y += 7
+  if (fee.due_date) { doc.text(`Due Date: ${new Date(fee.due_date).toLocaleDateString("en-IN")}`, left, y); y += 7 }
+  y += 5
+
+  // Amount box
+  doc.setFillColor(240, 249, 255)
+  doc.setDrawColor(37, 99, 235)
+  doc.roundedRect(left, y, pageW - left * 2, 30, 3, 3, "FD")
+  doc.setFont("helvetica", "bold")
+  doc.setFontSize(13)
+  doc.setTextColor(37, 99, 235)
+  doc.text("Amount Paid", left + 8, y + 11)
+  doc.setFontSize(18)
+  doc.text(`₹${parseFloat(payment.amount).toLocaleString("en-IN", { minimumFractionDigits: 2 })}`, pageW - left - 8, y + 14, { align: "right" })
+  if (payment.note) {
+    doc.setFontSize(9)
+    doc.setTextColor(100, 100, 100)
+    doc.text(`Note: ${payment.note}`, left + 8, y + 23)
+  }
+  y += 40
+
+  // Footer
+  doc.setDrawColor(200, 200, 200)
+  doc.line(left, y, pageW - left, y)
+  y += 8
+  doc.setFont("helvetica", "italic")
+  doc.setFontSize(9)
+  doc.setTextColor(150, 150, 150)
+  doc.text("This is a computer-generated receipt. No signature required.", pageW / 2, y, { align: "center" })
+
+  doc.save(`Receipt_RCP${String(payment.id).padStart(5,"0")}.pdf`)
+}
 
 function formatCurrency(amount) {
   return `₹${parseFloat(amount).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
@@ -18,7 +98,7 @@ function isOverdue(dueDateStr) {
 }
 
 // ── Payment history row (shared by admin & student) ──────────
-function PaymentHistory({ feeId }) {
+function PaymentHistory({ feeId, fee, studentName, studentCode }) {
   const [payments, setPayments] = useState(null)
   const [loading, setLoading] = useState(true)
 
@@ -41,6 +121,7 @@ function PaymentHistory({ feeId }) {
           <th className="text-left px-4 py-1 font-medium">Amount Paid</th>
           <th className="text-left px-4 py-1 font-medium">Date</th>
           <th className="text-left px-4 py-1 font-medium">Note</th>
+          <th className="px-4 py-1"></th>
         </tr>
       </thead>
       <tbody>
@@ -50,6 +131,12 @@ function PaymentHistory({ feeId }) {
             <td className="px-4 py-1 font-semibold text-green-700">{formatCurrency(p.amount)}</td>
             <td className="px-4 py-1 text-gray-600">{formatDate(p.paid_date)}</td>
             <td className="px-4 py-1 text-gray-500">{p.note || "—"}</td>
+            <td className="px-4 py-1">
+              <button onClick={() => generateReceipt(p, fee, studentName, studentCode)}
+                className="bg-blue-100 hover:bg-blue-200 text-blue-700 px-2 py-0.5 rounded text-xs font-medium transition">
+                🧾 Receipt
+              </button>
+            </td>
           </tr>
         ))}
       </tbody>
@@ -58,7 +145,7 @@ function PaymentHistory({ feeId }) {
 }
 
 // ── Student View ─────────────────────────────────────────────
-function StudentFees({ studentId }) {
+function StudentFees({ studentId, studentName, studentCode }) {
   const [fees, setFees] = useState([])
   const [summary, setSummary] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -200,7 +287,7 @@ function StudentFees({ studentId }) {
                         <tr key={`hist-${f.id}`} className="bg-blue-50 border-t">
                           <td colSpan={7} className="px-2 py-2">
                             <p className="text-xs font-semibold text-gray-500 px-4 pb-1">Payment History</p>
-                            <PaymentHistory feeId={f.id} />
+                            <PaymentHistory feeId={f.id} fee={f} studentName={studentName} studentCode={studentCode} />
                           </td>
                         </tr>
                       )}
@@ -230,6 +317,7 @@ function AdminFees() {
   const [payForms, setPayForms] = useState({})   // { feeId: { amount, paid_date, note } }
   const [payingId, setPayingId] = useState(null)
   const [viewId, setViewId] = useState("")
+  const [viewStudent, setViewStudent] = useState(null) // name + code for receipt
   const [expandedId, setExpandedId] = useState(null)
   const [historyKey, setHistoryKey] = useState(0) // force re-fetch history after payment
 
@@ -247,9 +335,14 @@ function AdminFees() {
     if (!id) return
     setLoading(true); setError("")
     try {
-      const [feesRes, summaryRes] = await Promise.all([getFeesAPI(id), feesSummaryAPI(id)])
+      const [feesRes, summaryRes, studentRes] = await Promise.all([
+        getFeesAPI(id),
+        feesSummaryAPI(id),
+        getStudentAPI(id).catch(() => null),
+      ])
       setFees(feesRes.data.fees)
       setSummary(summaryRes.data)
+      setViewStudent(studentRes ? { name: studentRes.data.name, student_code: studentRes.data.student_code } : null)
       setExpandedId(null)
     } catch { setError("Failed to load fees — check the student ID") }
     finally { setLoading(false) }
@@ -472,7 +565,8 @@ function AdminFees() {
                       <tr key={`hist-${f.id}`} className="bg-blue-50 border-t">
                         <td colSpan={8} className="px-2 py-2">
                           <p className="text-xs font-semibold text-gray-500 px-4 pb-1">Payment History</p>
-                          <PaymentHistory key={historyKey} feeId={f.id} />
+                          <PaymentHistory key={historyKey} feeId={f.id} fee={f}
+                            studentName={viewStudent?.name} studentCode={viewStudent?.student_code} />
                         </td>
                       </tr>
                     )}
@@ -510,7 +604,7 @@ export default function Fees() {
     <div className="flex">
       <Sidebar />
       <main className="flex-1 p-6 bg-gray-50 min-h-screen">
-        {isAdmin ? <AdminFees /> : <StudentFees studentId={user?.student_id} />}
+        {isAdmin ? <AdminFees /> : <StudentFees studentId={user?.student_id} studentName={user?.name} studentCode={user?.student_code} />}
       </main>
     </div>
   )

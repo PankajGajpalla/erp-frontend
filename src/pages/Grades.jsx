@@ -2,6 +2,7 @@ import { useEffect, useState } from "react"
 import Sidebar from "../components/Sidebar"
 import { useAuth } from "../context/AuthContext"
 import { getGradesAPI, deleteGradeAPI } from "../api"
+import ReportCardModal from "../components/ReportCardModal"
 
 function gradeColor(grade) {
   switch (grade) {
@@ -55,6 +56,7 @@ export default function Grades() {
   const [success, setSuccess]             = useState("")
   const [deleteConfirmId, setDeleteConfirmId] = useState(null)
   const [searchId, setSearchId]           = useState("")
+  const [showReportCard, setShowReportCard] = useState(false)
 
   useEffect(() => {
     if (!isAdmin && user?.student_id) fetchGrades(user.student_id)
@@ -103,7 +105,18 @@ export default function Grades() {
     <div className="flex">
       <Sidebar />
       <main className="flex-1 p-6 bg-gray-50 min-h-screen">
-        <h2 className="text-2xl font-bold text-gray-800 mb-6">My Grades</h2>
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-2xl font-bold text-gray-800">My Grades</h2>
+          {!isAdmin && grades.length > 0 && (
+            <button onClick={() => setShowReportCard(true)}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition">
+              📄 Download Report Card
+            </button>
+          )}
+        </div>
+        {showReportCard && (
+          <ReportCardModal studentId={user.student_id} onClose={() => setShowReportCard(false)} />
+        )}
 
         {/* Admin: search */}
         {isAdmin && (

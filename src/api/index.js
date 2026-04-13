@@ -42,7 +42,7 @@ export const importStudentsAPI = (data) => API.post("/import_students", data);
 
 // ─── Attendance ──────────────────────────────────────────────
 export const getAttendanceAPI = () => API.get("/attendance");
-export const getStudentAttendanceAPI = (id) => API.get(`/attendance/${id}`);
+export const getStudentAttendanceAPI = (id, params = {}) => API.get(`/attendance/${id}`, { params });
 export const markAttendanceAPI = (data) => API.post("/mark_attendance", data);
 export const attendanceSummaryAPI = (id) => API.get(`/attendance/summary/${id}`);
 export const markAttendanceBulkAPI = (data) => API.post("/mark_attendance_bulk", data);
@@ -53,6 +53,7 @@ export const addFeesAPI = (data) => API.post("/add_fees", data);
 export const payFeesAPI = (id, data) => API.put(`/pay_fees/${id}`, data);
 export const feesSummaryAPI = (id) => API.get(`/fees/summary/${id}`);
 export const getFeePaymentsAPI = (feeId) => API.get(`/fee_payments/${feeId}`);
+export const getOverdueFeesAPI = () => API.get("/fees/overdue");
 
 // ─── Teachers ────────────────────────────────────────────────
 export const getTeachersAPI = () => API.get("/teachers");
@@ -84,6 +85,9 @@ export const getCoursesAPI = () => API.get("/courses");
 export const addCourseAPI = (data) => API.post("/add_course", data);
 export const updateCourseAPI = (id, data) => API.put(`/update_course/${id}`, data);
 export const deleteCourseAPI = (id) => API.delete(`/delete_course/${id}`);
+
+// ─── Bulk Operations ─────────────────────────────────────────
+export const bulkUpdateCourseAPI = (data) => API.put("/students/bulk-update-course", data);
 
 // ─── Subjects ────────────────────────────────────────────────
 export const getSubjectsAPI = () => API.get("/subjects");

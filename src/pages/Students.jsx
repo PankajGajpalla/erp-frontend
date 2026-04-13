@@ -1,11 +1,13 @@
 import { useEffect, useState, useRef } from "react"
 import Sidebar from "../components/Sidebar"
+import ReportCardModal from "../components/ReportCardModal"
 import {
   getStudentsAPI,
   addStudentAPI,
   updateStudentAPI,
   deleteStudentAPI,
-  getCoursesAPI
+  getCoursesAPI,
+  bulkUpdateCourseAPI
 } from "../api"
 
 const EMPTY_FORM = {
@@ -40,6 +42,11 @@ export default function Students() {
   const [deleteConfirmId, setDeleteConfirmId] = useState(null)
   const [photoPreview, setPhotoPreview] = useState(null)
   const [viewStudent, setViewStudent] = useState(null)
+  const [reportCardId, setReportCardId] = useState(null)
+  // Bulk promote
+  const [selectedIds, setSelectedIds] = useState(new Set())
+  const [bulkCourse, setBulkCourse] = useState("")
+  const [bulkSubmitting, setBulkSubmitting] = useState(false)
   const formRef = useRef(null)
   const fileInputRef = useRef(null)
 
@@ -213,6 +220,58 @@ export default function Students() {
     }
   }
 
+  function toggleSelect(id) {
+    setSelectedIds(prev => {
+      const next = new Set(prev)
+      next.has(id) ? next.delete(id) : next.add(id)
+      return next
+    })
+  }
+
+  function toggleSelectAll() {
+    if (selectedIds.size === filtered.length) setSelectedIds(new Set())
+    else setSelectedIds(new Set(filtered.map(s => s.id)))
+  }
+
+  async function handleBulkPromote() {
+    if (!bulkCourse) { setError("Select a course to assign"); return }
+    if (selectedIds.size === 0) return
+    setBulkSubmitting(true)
+    try {
+      await bulkUpdateCourseAPI({ student_ids: [...selectedIds], course: bulkCourse })
+      setSuccess(`${selectedIds.size} student(s) moved to "${bulkCourse}"`)
+      setSelectedIds(new Set())
+      setBulkCourse("")
+      fetchStudents()
+    } catch { setError("Bulk update failed") }
+    finally { setBulkSubmitting(false) }
+  }
+
+  function exportToExcel() {
+    import("xlsx").then(XLSX => {
+      const rows = students.map(s => ({
+        "Student ID": s.student_code || s.id,
+        "Name": s.name,
+        "Father Name": s.father_name || "",
+        "DOB": s.dob || "",
+        "Email": s.email || "",
+        "Phone": s.phone || "",
+        "Parent Phone": s.parent_phone || "",
+        "Course": s.course || "",
+        "Medium": s.medium || "",
+        "School/College": s.school_college_name || "",
+        "Admission Date": s.admission_date || "",
+        "Fees": s.fees || "",
+        "Permanent Address": s.permanent_address || "",
+        "Local Address": s.local_address || "",
+      }))
+      const ws = XLSX.utils.json_to_sheet(rows)
+      const wb = XLSX.utils.book_new()
+      XLSX.utils.book_append_sheet(wb, ws, "Students")
+      XLSX.writeFile(wb, "students_export.xlsx")
+    })
+  }
+
   const uniqueCourses = [...new Set(students.map((s) => s.course).filter(Boolean))]
 
   return (
@@ -220,7 +279,13 @@ export default function Students() {
       <Sidebar />
       <main className="flex-1 p-6 bg-gray-50 min-h-screen">
 
-        <h2 className="text-2xl font-bold text-gray-800 mb-6">Students</h2>
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-2xl font-bold text-gray-800">Students</h2>
+          <button onClick={exportToExcel}
+            className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition">
+            ⬇ Export Excel
+          </button>
+        </div>
 
         {/* ── ADD / EDIT FORM ── */}
         <div ref={formRef} className="bg-white rounded-xl shadow-md p-6 mb-6">
@@ -420,6 +485,11 @@ export default function Students() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="bg-gray-800 text-white text-xs uppercase tracking-wide">
+                    <th className="px-4 py-3">
+                      <input type="checkbox" onChange={toggleSelectAll}
+                        checked={selectedIds.size === filtered.length && filtered.length > 0}
+                        className="cursor-pointer" />
+                    </th>
                     <th className="px-4 py-3 text-left">ID</th>
                     <th className="px-4 py-3 text-left">Photo</th>
                     <th className="px-4 py-3 text-left">Name</th>
@@ -434,7 +504,11 @@ export default function Students() {
                 </thead>
                 <tbody>
                   {filtered.map((s) => (
-                    <tr key={s.id} className="border-t hover:bg-gray-50 transition">
+                    <tr key={s.id} className={`border-t hover:bg-gray-50 transition ${selectedIds.has(s.id) ? "bg-blue-50" : ""}`}>
+                      <td className="px-4 py-3 text-center">
+                        <input type="checkbox" checked={selectedIds.has(s.id)}
+                          onChange={() => toggleSelect(s.id)} className="cursor-pointer" />
+                      </td>
                       <td className="px-4 py-3">
                         <span className="bg-gray-100 text-gray-600 px-2 py-1 rounded text-xs font-mono font-semibold">
                           {s.student_code || `#${s.id}`}
@@ -511,6 +585,23 @@ export default function Students() {
           )}
         </div>
 
+        {/* ── BULK PROMOTE BAR ── */}
+        {selectedIds.size > 0 && (
+          <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-gray-900 text-white rounded-2xl shadow-2xl px-6 py-4 flex items-center gap-4 z-40">
+            <span className="text-sm font-medium">{selectedIds.size} student{selectedIds.size > 1 ? "s" : ""} selected</span>
+            <select value={bulkCourse} onChange={e => setBulkCourse(e.target.value)}
+              className="bg-gray-700 text-white border border-gray-600 rounded-lg px-3 py-1.5 text-sm focus:outline-none">
+              <option value="">Select new course…</option>
+              {uniqueCourses.map(c => <option key={c} value={c}>{c}</option>)}
+            </select>
+            <button onClick={handleBulkPromote} disabled={bulkSubmitting || !bulkCourse}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-1.5 rounded-lg text-sm font-medium disabled:opacity-50">
+              {bulkSubmitting ? "Updating…" : "Move to Course"}
+            </button>
+            <button onClick={() => setSelectedIds(new Set())} className="text-gray-400 hover:text-white text-lg leading-none">&times;</button>
+          </div>
+        )}
+
         {/* ── STUDENT DETAIL MODAL ── */}
         {viewStudent && (
           <div
@@ -565,7 +656,11 @@ export default function Students() {
                 </div>
               </div>
 
-              <div className="mt-5 flex gap-2">
+              <div className="mt-5 flex gap-2 flex-wrap">
+                <button onClick={() => setReportCardId(viewStudent.id)}
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm">
+                  📄 Report Card
+                </button>
                 <button
                   onClick={() => { setViewStudent(null); handleEdit(viewStudent) }}
                   className="bg-yellow-400 hover:bg-yellow-500 text-white px-4 py-2 rounded-lg text-sm"
@@ -577,6 +672,11 @@ export default function Students() {
               </div>
             </div>
           </div>
+        )}
+
+        {/* ── REPORT CARD MODAL ── */}
+        {reportCardId && (
+          <ReportCardModal studentId={reportCardId} onClose={() => setReportCardId(null)} />
         )}
 
       </main>
