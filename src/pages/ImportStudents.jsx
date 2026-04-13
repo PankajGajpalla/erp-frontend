@@ -3,12 +3,12 @@ import * as XLSX from "xlsx"
 import Sidebar from "../components/Sidebar"
 import { importStudentsAPI } from "../api"
 
-const REQUIRED_COLS = [
-  "name", "father_name", "dob", "email", "phone", "parent_phone",
+const REQUIRED_COLS = ["name", "phone"]
+const OPTIONAL_COLS = [
+  "father_name", "dob", "email", "parent_phone",
   "permanent_address", "local_address", "course", "fees",
-  "school_college_name", "medium", "admission_date"
+  "school_college_name", "medium", "admission_date", "photo"
 ]
-const OPTIONAL_COLS = ["photo"]
 const ALL_COLS = [...REQUIRED_COLS, ...OPTIONAL_COLS]
 const VALID_MEDIUMS = ["hindi", "english"]
 const MAX_FILE_SIZE_MB = 5
@@ -43,24 +43,15 @@ function safeStr(val) {
 
 function validateRow(row) {
   const errors = []
-  if (!safeStr(row.name)) errors.push("name missing")
-  if (!safeStr(row.father_name)) errors.push("father_name missing")
-  if (!row.dob) errors.push("dob missing")
-  else if (!isValidDate(row.dob)) errors.push("dob invalid (use YYYY-MM-DD)")
-  if (!row.email) errors.push("email missing")
-  else if (!isValidEmail(row.email)) errors.push("email invalid")
+  // Required
+  if (!safeStr(row.name))  errors.push("name missing")
   if (!safeStr(row.phone)) errors.push("phone missing")
-  if (!safeStr(row.parent_phone)) errors.push("parent_phone missing")
-  if (!safeStr(row.permanent_address)) errors.push("permanent_address missing")
-  if (!safeStr(row.local_address)) errors.push("local_address missing")
-  if (!safeStr(row.course)) errors.push("course missing")
-  if (row.fees === undefined || row.fees === null || row.fees === "") errors.push("fees missing")
-  else if (isNaN(parseFloat(row.fees))) errors.push("fees invalid (must be a number)")
-  if (!safeStr(row.school_college_name)) errors.push("school_college_name missing")
-  if (!safeStr(row.medium)) errors.push("medium missing")
-  else if (!VALID_MEDIUMS.includes(String(row.medium).toLowerCase().trim())) errors.push("medium must be 'hindi' or 'english'")
-  if (!row.admission_date) errors.push("admission_date missing")
-  else if (!isValidDate(row.admission_date)) errors.push("admission_date invalid (use YYYY-MM-DD)")
+  // Optional but validated when present
+  if (row.dob && !isValidDate(row.dob)) errors.push("dob invalid (use YYYY-MM-DD)")
+  if (row.email && !isValidEmail(row.email)) errors.push("email invalid")
+  if (row.fees !== undefined && row.fees !== null && row.fees !== "" && isNaN(parseFloat(row.fees))) errors.push("fees must be a number")
+  if (row.medium && !VALID_MEDIUMS.includes(String(row.medium).toLowerCase().trim())) errors.push("medium must be 'hindi' or 'english'")
+  if (row.admission_date && !isValidDate(row.admission_date)) errors.push("admission_date invalid (use YYYY-MM-DD)")
   return errors
 }
 

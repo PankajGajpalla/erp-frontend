@@ -109,26 +109,11 @@ export default function Students() {
   }
 
   function validateForm() {
-    const required = [
-      ["name", "Student Name"],
-      ["father_name", "Father Name"],
-      ["dob", "Date of Birth"],
-      ["email", "Email"],
-      ["phone", "Student Mobile"],
-      ["parent_phone", "Parent Mobile"],
-      ["permanent_address", "Permanent Address"],
-      ["local_address", "Local Address"],
-      ["course", "Course"],
-      ["fees", "Fees"],
-      ["school_college_name", "School/College Name"],
-      ["medium", "Medium"],
-      ["admission_date", "Admission Date"],
-    ]
-    for (const [key, label] of required) {
-      if (!form[key] || form[key].toString().trim() === "") return `${label} is required`
-    }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) return "Invalid email format"
-    if (parseFloat(form.fees) < 0) return "Fees cannot be negative"
+    if (!form.name?.trim()) return "Student Name is required"
+    if (!form.phone?.trim()) return "Student Mobile is required"
+    if (form.email?.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) return "Invalid email format"
+    if (form.fees !== "" && form.fees !== null && isNaN(parseFloat(form.fees))) return "Fees must be a number"
+    if (form.fees !== "" && form.fees !== null && parseFloat(form.fees) < 0) return "Fees cannot be negative"
     return null
   }
 
@@ -142,18 +127,18 @@ export default function Students() {
 
     const payload = {
       name: form.name.trim(),
-      father_name: form.father_name.trim(),
-      dob: form.dob,
-      email: form.email.trim().toLowerCase(),
       phone: form.phone.trim(),
-      parent_phone: form.parent_phone.trim(),
-      permanent_address: form.permanent_address.trim(),
-      local_address: form.local_address.trim(),
-      course: form.course.trim(),
-      fees: parseFloat(form.fees),
-      school_college_name: form.school_college_name.trim(),
-      medium: form.medium,
-      admission_date: form.admission_date,
+      father_name: form.father_name?.trim() || null,
+      dob: form.dob || null,
+      email: form.email?.trim().toLowerCase() || null,
+      parent_phone: form.parent_phone?.trim() || null,
+      permanent_address: form.permanent_address?.trim() || null,
+      local_address: form.local_address?.trim() || null,
+      course: form.course?.trim() || null,
+      fees: form.fees !== "" && form.fees !== null ? parseFloat(form.fees) : null,
+      school_college_name: form.school_college_name?.trim() || null,
+      medium: form.medium || null,
+      admission_date: form.admission_date || null,
       photo: form.photo || null,
     }
 
@@ -276,9 +261,9 @@ export default function Students() {
               {/* Personal Info */}
               <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-3">
                 <Field label="Student Name *" name="name" value={form.name} onChange={handleChange} placeholder="Full name" />
-                <Field label="Father Name *" name="father_name" value={form.father_name} onChange={handleChange} placeholder="Father's full name" />
-                <Field label="Date of Birth *" name="dob" value={form.dob} onChange={handleChange} type="date" />
-                <Field label="Email *" name="email" value={form.email} onChange={handleChange} type="email" placeholder="student@email.com" />
+                <Field label="Father Name" name="father_name" value={form.father_name} onChange={handleChange} placeholder="Father's full name" />
+                <Field label="Date of Birth" name="dob" value={form.dob} onChange={handleChange} type="date" />
+                <Field label="Email" name="email" value={form.email} onChange={handleChange} type="email" placeholder="student@email.com" />
               </div>
             </div>
 
@@ -286,14 +271,14 @@ export default function Students() {
             <SectionTitle>Contact Details</SectionTitle>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-5">
               <Field label="Student Mobile No. *" name="phone" value={form.phone} onChange={handleChange} placeholder="10-digit mobile number" />
-              <Field label="Parent Mobile No. *" name="parent_phone" value={form.parent_phone} onChange={handleChange} placeholder="10-digit mobile number" />
+              <Field label="Parent Mobile No." name="parent_phone" value={form.parent_phone} onChange={handleChange} placeholder="10-digit mobile number" />
             </div>
 
             {/* Address */}
             <SectionTitle>Address</SectionTitle>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-5">
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">Permanent Address *</label>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Permanent Address</label>
                 <textarea
                   name="permanent_address"
                   value={form.permanent_address}
@@ -304,7 +289,7 @@ export default function Students() {
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">Local Address *</label>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Local Address</label>
                 <textarea
                   name="local_address"
                   value={form.local_address}
@@ -319,7 +304,7 @@ export default function Students() {
             {/* Academic Info */}
             <SectionTitle>Academic Details</SectionTitle>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 mb-5">
-              <Field label="School / College Name *" name="school_college_name" value={form.school_college_name} onChange={handleChange} placeholder="Name of school or college" />
+              <Field label="School / College Name" name="school_college_name" value={form.school_college_name} onChange={handleChange} placeholder="Name of school or college" />
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">Course *</label>
                 <select
@@ -337,8 +322,8 @@ export default function Students() {
                   <p className="text-xs text-orange-500 mt-1">No courses added yet. <a href="/courses" className="underline">Add courses first.</a></p>
                 )}
               </div>
-              <Field label="Fees (₹) *" name="fees" value={form.fees} onChange={handleChange} type="number" min="0" placeholder="Total fees amount" />
-              <Field label="Admission Date *" name="admission_date" value={form.admission_date} onChange={handleChange} type="date" />
+              <Field label="Fees (₹)" name="fees" value={form.fees} onChange={handleChange} type="number" min="0" placeholder="Total fees amount" />
+              <Field label="Admission Date" name="admission_date" value={form.admission_date} onChange={handleChange} type="date" />
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">Medium *</label>
                 <select
