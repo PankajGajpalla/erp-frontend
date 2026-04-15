@@ -47,6 +47,9 @@ export default function Students() {
   const [selectedIds, setSelectedIds] = useState(new Set())
   const [bulkCourse, setBulkCourse] = useState("")
   const [bulkSubmitting, setBulkSubmitting] = useState(false)
+  // Pagination
+  const [page, setPage] = useState(1)
+  const PAGE_SIZE = 20
   const formRef = useRef(null)
   const fileInputRef = useRef(null)
 
@@ -73,6 +76,7 @@ export default function Students() {
       result = result.filter((s) => s.course === courseFilter)
     }
     setFiltered(result)
+    setPage(1) // reset to first page on filter change
   }, [search, students, courseFilter])
 
   async function fetchStudents() {
@@ -273,6 +277,8 @@ export default function Students() {
   }
 
   const uniqueCourses = [...new Set(students.map((s) => s.course).filter(Boolean))]
+  const totalPages    = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
+  const paginated     = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
 
   return (
     <div className="flex">
@@ -503,7 +509,7 @@ export default function Students() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filtered.map((s) => (
+                  {paginated.map((s) => (
                     <tr key={s.id} className={`border-t hover:bg-gray-50 transition ${selectedIds.has(s.id) ? "bg-blue-50" : ""}`}>
                       <td className="px-4 py-3 text-center">
                         <input type="checkbox" checked={selectedIds.has(s.id)}
@@ -584,6 +590,39 @@ export default function Students() {
             </div>
           )}
         </div>
+
+        {/* ── PAGINATION ── */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between mt-4 bg-white rounded-xl shadow px-5 py-3">
+            <p className="text-sm text-gray-500">
+              Showing {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, filtered.length)} of {filtered.length} students
+            </p>
+            <div className="flex items-center gap-2">
+              <button onClick={() => setPage(1)} disabled={page === 1}
+                className="px-2 py-1 rounded text-sm text-gray-500 hover:bg-gray-100 disabled:opacity-30">«</button>
+              <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}
+                className="px-3 py-1 rounded text-sm text-gray-600 hover:bg-gray-100 disabled:opacity-30">‹ Prev</button>
+              {Array.from({ length: totalPages }, (_, i) => i + 1)
+                .filter(p => p === 1 || p === totalPages || Math.abs(p - page) <= 1)
+                .reduce((acc, p, idx, arr) => {
+                  if (idx > 0 && p - arr[idx - 1] > 1) acc.push("…")
+                  acc.push(p)
+                  return acc
+                }, [])
+                .map((p, i) => p === "…"
+                  ? <span key={`ellipsis-${i}`} className="px-2 text-gray-400 text-sm">…</span>
+                  : <button key={p} onClick={() => setPage(p)}
+                      className={`w-8 h-8 rounded text-sm font-medium transition ${page === p ? "bg-blue-600 text-white" : "text-gray-600 hover:bg-gray-100"}`}>
+                      {p}
+                    </button>
+                )}
+              <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}
+                className="px-3 py-1 rounded text-sm text-gray-600 hover:bg-gray-100 disabled:opacity-30">Next ›</button>
+              <button onClick={() => setPage(totalPages)} disabled={page === totalPages}
+                className="px-2 py-1 rounded text-sm text-gray-500 hover:bg-gray-100 disabled:opacity-30">»</button>
+            </div>
+          </div>
+        )}
 
         {/* ── BULK PROMOTE BAR ── */}
         {selectedIds.size > 0 && (

@@ -90,7 +90,7 @@ function AdminDashboard() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
         <StatCard label="Total Students"      value={stats.total_students}              color="border-blue-500" />
         <StatCard label="Attendance Records"  value={stats.total_attendance}            color="border-green-500" />
         <StatCard label="Total Fees"          value={formatCurrency(stats.total_fees)}  color="border-yellow-500" />
@@ -249,7 +249,7 @@ function StudentDashboard({ studentId }) {
     <div className="space-y-6">
 
       {/* ── Welcome Banner ── */}
-      <div className="bg-gradient-to-r from-blue-600 to-indigo-700 rounded-2xl p-6 text-white flex items-center gap-5">
+      <div className="bg-gradient-to-r from-blue-600 to-indigo-700 rounded-2xl p-4 sm:p-6 text-white flex items-center gap-4 sm:gap-5">
         {p.photo ? (
           <img src={p.photo} alt={p.name} className="w-20 h-24 rounded-xl object-cover border-2 border-white/40 flex-shrink-0" />
         ) : (
@@ -268,7 +268,7 @@ function StudentDashboard({ studentId }) {
       </div>
 
       {/* ── Quick Links ── */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
           { label: "📋 Attendance", to: "/student/attendance", color: "bg-green-50 hover:bg-green-100 border-green-200 text-green-700" },
           { label: "💰 My Fees",    to: "/student/fees",       color: "bg-yellow-50 hover:bg-yellow-100 border-yellow-200 text-yellow-700" },
@@ -326,7 +326,7 @@ export default function Dashboard() {
   return (
     <div className="flex">
       <Sidebar />
-      <main className="flex-1 p-8 bg-gray-50 min-h-screen">
+      <main className="flex-1 p-4 sm:p-8 bg-gray-50 min-h-screen">
         {isAdmin
           ? <AdminDashboard />
           : <StudentDashboard studentId={user?.student_id} />

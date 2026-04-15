@@ -7,7 +7,7 @@ export default function Sidebar() {
   const { user, logout, isAdmin, isTeacher } = useAuth()
   const location  = useLocation()
   const navigate  = useNavigate()
-  const [collapsed, setCollapsed]         = useState(false)
+  const [collapsed, setCollapsed]         = useState(window.innerWidth < 768)
   const [notices, setNotices]             = useState([])
   const [showNotifPanel, setShowNotifPanel] = useState(false)
   const [lastSeenCount, setLastSeenCount] = useState(() =>
@@ -100,7 +100,7 @@ export default function Sidebar() {
   }
 
   return (
-    <div className={`${collapsed ? "w-16" : "w-64"} min-h-screen bg-gray-900 text-white flex flex-col sticky top-0 h-screen transition-all duration-300`}>
+    <div className={`${collapsed ? "w-14" : "w-64"} flex-shrink-0 min-h-screen bg-gray-900 text-white flex flex-col sticky top-0 h-screen transition-all duration-300 z-30`}>
 
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-5 border-b border-gray-700 gap-2">

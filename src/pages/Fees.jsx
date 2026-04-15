@@ -180,7 +180,7 @@ function StudentFees({ studentId, studentName, studentCode }) {
 
       {/* Summary Cards */}
       {summary && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-3 gap-3 sm:gap-4">
           <SummaryCard label="Total Fees" value={formatCurrency(summary.total_fees)} color="blue" />
           <SummaryCard label="Paid" value={formatCurrency(summary.paid)} color="green" />
           <SummaryCard label="Pending" value={formatCurrency(summary.pending)} color="red" />
@@ -239,7 +239,7 @@ function StudentFees({ studentId, studentName, studentCode }) {
           {displayFees.length === 0 ? (
             <p className="p-6 text-gray-400">No records in this category.</p>
           ) : (
-            <table className="w-full text-sm">
+            <div className="overflow-x-auto"><table className="w-full text-sm min-w-[560px]">
               <thead>
                 <tr className="bg-gray-800 text-white text-xs uppercase">
                   <th className="text-left px-5 py-3">Description</th>
@@ -295,7 +295,7 @@ function StudentFees({ studentId, studentName, studentCode }) {
                   )
                 })}
               </tbody>
-            </table>
+            </table></div>
           )}
         </div>
       )}
