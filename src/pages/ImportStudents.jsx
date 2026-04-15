@@ -153,34 +153,43 @@ export default function ImportStudents() {
   async function handleImport() {
     setError("")
     setSuccess("")
-    const errorCount = Object.keys(rowErrors).length
-    if (errorCount > 0) {
-      setError(`Fix ${errorCount} invalid row${errorCount > 1 ? "s" : ""} before importing (highlighted in red)`)
+
+    if (validCount === 0) {
+      setError("No valid rows to import. Please fix the errors first.")
       return
     }
 
     setLoading(true)
     try {
-      const students = preview.map((row) => ({
-        name: safeStr(row.name),
-        father_name: safeStr(row.father_name) || null,
-        dob: toDateString(row.dob),
-        email: safeStr(row.email).toLowerCase(),
-        phone: safeStr(row.phone) || null,
-        parent_phone: safeStr(row.parent_phone) || null,
-        permanent_address: safeStr(row.permanent_address) || null,
-        local_address: safeStr(row.local_address) || null,
-        course: safeStr(row.course) || null,
-        fees: row.fees != null && row.fees !== "" ? parseFloat(row.fees) : null,
-        school_college_name: safeStr(row.school_college_name) || null,
-        medium: safeStr(row.medium).toLowerCase() || null,
-        admission_date: toDateString(row.admission_date),
-        photo: row.photo ? safeStr(row.photo) : null,
-      }))
+      // Only send valid rows — skip invalid ones entirely
+      const students = preview
+        .filter((_, i) => !rowErrors[i])
+        .map((row) => ({
+          name: safeStr(row.name),
+          father_name: safeStr(row.father_name) || null,
+          dob: toDateString(row.dob),
+          email: safeStr(row.email).toLowerCase() || null,
+          phone: safeStr(row.phone) || null,
+          parent_phone: safeStr(row.parent_phone) || null,
+          permanent_address: safeStr(row.permanent_address) || null,
+          local_address: safeStr(row.local_address) || null,
+          course: safeStr(row.course) || null,
+          fees: row.fees != null && row.fees !== "" ? parseFloat(row.fees) : null,
+          school_college_name: safeStr(row.school_college_name) || null,
+          medium: safeStr(row.medium).toLowerCase() || null,
+          admission_date: toDateString(row.admission_date),
+          photo: row.photo ? safeStr(row.photo) : null,
+        }))
 
       const res = await importStudentsAPI({ students })
-      setResult(res.data)
-      setSuccess(`${res.data.imported} students imported, ${res.data.skipped} skipped (duplicates)`)
+      const skippedErrors = errorCount
+      const skippedDupes = res.data.skipped
+
+      setResult({ ...res.data, skipped_errors: skippedErrors })
+      let msg = `✅ ${res.data.imported} student${res.data.imported !== 1 ? "s" : ""} imported`
+      if (skippedDupes > 0) msg += `, ${skippedDupes} skipped (duplicate)`
+      if (skippedErrors > 0) msg += `, ${skippedErrors} skipped (invalid data)`
+      setSuccess(msg)
       setPreview([])
       setRowErrors({})
       setFileName("")
@@ -188,7 +197,6 @@ export default function ImportStudents() {
     } catch (err) {
       const detail = err.response?.data?.detail
       if (Array.isArray(detail)) {
-        // Pydantic 422 validation errors
         const msgs = detail.map((d) => {
           const field = Array.isArray(d.loc) ? d.loc.slice(1).join(" → ") : ""
           return field ? `${field}: ${d.msg}` : (d.msg || JSON.stringify(d))
@@ -298,14 +306,18 @@ export default function ImportStudents() {
 
         {/* Import result */}
         {result && (
-          <div className="grid grid-cols-2 gap-4 mb-5">
+          <div className="grid grid-cols-3 gap-4 mb-5">
             <div className="bg-white rounded-xl shadow p-5 border-l-4 border-green-500">
-              <p className="text-sm text-gray-500">Successfully Imported</p>
+              <p className="text-sm text-gray-500">✅ Imported</p>
               <p className="text-3xl font-bold text-green-600">{result.imported}</p>
             </div>
             <div className="bg-white rounded-xl shadow p-5 border-l-4 border-yellow-500">
-              <p className="text-sm text-gray-500">Skipped (duplicates)</p>
+              <p className="text-sm text-gray-500">⚠️ Skipped (duplicate)</p>
               <p className="text-3xl font-bold text-yellow-600">{result.skipped}</p>
+            </div>
+            <div className="bg-white rounded-xl shadow p-5 border-l-4 border-red-400">
+              <p className="text-sm text-gray-500">❌ Skipped (invalid data)</p>
+              <p className="text-3xl font-bold text-red-500">{result.skipped_errors ?? 0}</p>
             </div>
           </div>
         )}
@@ -330,13 +342,32 @@ export default function ImportStudents() {
                 </button>
                 <button
                   onClick={handleImport}
-                  disabled={loading || errorCount > 0}
+                  disabled={loading || validCount === 0}
                   className="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition disabled:opacity-50 text-sm font-medium"
                 >
-                  {loading ? "Importing..." : `Import ${validCount} Students`}
+                  {loading
+                    ? "Importing..."
+                    : errorCount > 0
+                      ? `Import ${validCount} Valid (Skip ${errorCount} Invalid)`
+                      : `Import All ${validCount} Students`}
                 </button>
               </div>
             </div>
+
+            {errorCount > 0 && (
+              <div className="mx-5 mb-3 mt-1 bg-amber-50 border border-amber-300 rounded-lg px-4 py-3 flex items-start gap-3">
+                <span className="text-xl mt-0.5">⚠️</span>
+                <div>
+                  <p className="text-sm font-semibold text-amber-800">
+                    {errorCount} row{errorCount > 1 ? "s" : ""} will be skipped due to errors
+                  </p>
+                  <p className="text-xs text-amber-700 mt-0.5">
+                    Only the <strong>{validCount} valid rows</strong> (shown in white) will be imported.
+                    Rows highlighted in red will be ignored — fix them and re-upload to include them.
+                  </p>
+                </div>
+              </div>
+            )}
 
             <div className="overflow-x-auto">
               <table className="w-full text-xs">
