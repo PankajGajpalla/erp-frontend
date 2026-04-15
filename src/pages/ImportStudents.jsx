@@ -6,7 +6,7 @@ import { importStudentsAPI } from "../api"
 const REQUIRED_COLS = ["name", "phone"]
 const OPTIONAL_COLS = [
   "father_name", "dob", "email", "parent_phone",
-  "permanent_address", "local_address", "course", "fees",
+  "permanent_address", "local_address", "course", "fees", "fees_paid",
   "school_college_name", "medium", "admission_date", "photo"
 ]
 const ALL_COLS = [...REQUIRED_COLS, ...OPTIONAL_COLS]
@@ -50,6 +50,10 @@ function validateRow(row) {
   if (row.dob && !isValidDate(row.dob)) errors.push("dob invalid (use YYYY-MM-DD)")
   if (row.email && !isValidEmail(row.email)) errors.push("email invalid")
   if (row.fees !== undefined && row.fees !== null && row.fees !== "" && isNaN(parseFloat(row.fees))) errors.push("fees must be a number")
+  if (row.fees_paid !== undefined && row.fees_paid !== null && row.fees_paid !== "" && isNaN(parseFloat(row.fees_paid))) errors.push("fees_paid must be a number")
+  if (row.fees_paid != null && row.fees_paid !== "" && row.fees != null && row.fees !== "" &&
+      parseFloat(row.fees_paid) > parseFloat(row.fees)) errors.push("fees_paid cannot exceed fees")
+  if (row.fees_paid != null && row.fees_paid !== "" && parseFloat(row.fees_paid) < 0) errors.push("fees_paid cannot be negative")
   if (row.medium && !VALID_MEDIUMS.includes(String(row.medium).toLowerCase().trim())) errors.push("medium must be 'hindi' or 'english'")
   if (row.admission_date && !isValidDate(row.admission_date)) errors.push("admission_date invalid (use YYYY-MM-DD)")
   return errors
@@ -68,6 +72,7 @@ function downloadTemplate() {
     local_address: "123 Main St, Lucknow",
     course: "Class 10",
     fees: "12000",
+    fees_paid: "5000",
     school_college_name: "ABC High School",
     medium: "hindi",
     admission_date: "2024-04-01",
@@ -175,6 +180,7 @@ export default function ImportStudents() {
           local_address: safeStr(row.local_address) || null,
           course: safeStr(row.course) || null,
           fees: row.fees != null && row.fees !== "" ? parseFloat(row.fees) : null,
+          fees_paid: row.fees_paid != null && row.fees_paid !== "" ? parseFloat(row.fees_paid) : null,
           school_college_name: safeStr(row.school_college_name) || null,
           medium: safeStr(row.medium).toLowerCase() || null,
           admission_date: toDateString(row.admission_date),
@@ -388,7 +394,9 @@ export default function ImportStudents() {
                     <th className="px-4 py-3 text-left">Phone</th>
                     <th className="px-4 py-3 text-left">Parent Phone</th>
                     <th className="px-4 py-3 text-left">Course</th>
-                    <th className="px-4 py-3 text-left">Fees</th>
+                    <th className="px-4 py-3 text-left">Total Fees</th>
+                    <th className="px-4 py-3 text-left">Fees Paid</th>
+                    <th className="px-4 py-3 text-left">Pending</th>
                     <th className="px-4 py-3 text-left">Medium</th>
                     <th className="px-4 py-3 text-left">Admission</th>
                     <th className="px-4 py-3 text-left">School/College</th>
@@ -412,7 +420,24 @@ export default function ImportStudents() {
                         <td className="px-4 py-2">{row.phone || <Err />}</td>
                         <td className="px-4 py-2">{row.parent_phone || <Err />}</td>
                         <td className="px-4 py-2">{row.course || <Err />}</td>
-                        <td className="px-4 py-2">{row.fees != null ? `₹${row.fees}` : <Err />}</td>
+                        <td className="px-4 py-2">{row.fees != null && row.fees !== "" ? `₹${row.fees}` : <Err />}</td>
+                        <td className="px-4 py-2">
+                          {row.fees_paid != null && row.fees_paid !== ""
+                            ? <span className="text-green-600 font-medium">₹{row.fees_paid}</span>
+                            : <span className="text-gray-300">—</span>}
+                        </td>
+                        <td className="px-4 py-2">
+                          {row.fees != null && row.fees !== ""
+                            ? (() => {
+                                const paid    = parseFloat(row.fees_paid) || 0
+                                const total   = parseFloat(row.fees)
+                                const pending = total - paid
+                                return pending <= 0
+                                  ? <span className="text-green-600 font-medium">Paid ✅</span>
+                                  : <span className="text-red-500 font-medium">₹{pending.toLocaleString()}</span>
+                              })()
+                            : <span className="text-gray-300">—</span>}
+                        </td>
                         <td className="px-4 py-2">
                           {row.medium
                             ? VALID_MEDIUMS.includes(row.medium.toString().toLowerCase().trim())
