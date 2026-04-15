@@ -182,13 +182,20 @@ export default function ImportStudents() {
         }))
 
       const res = await importStudentsAPI({ students })
-      const skippedErrors = errorCount
-      const skippedDupes = res.data.skipped
+      const skippedFrontend = errorCount              // rows rejected by frontend validation
+      const skippedDupes   = res.data.skipped          // phone/email already in DB
+      const skippedBackend = res.data.skipped_errors ?? 0  // unexpected DB errors per row
 
-      setResult({ ...res.data, skipped_errors: skippedErrors })
+      setResult({
+        imported: res.data.imported,
+        skipped: skippedDupes,
+        skipped_errors: skippedFrontend + skippedBackend,
+      })
+
       let msg = `✅ ${res.data.imported} student${res.data.imported !== 1 ? "s" : ""} imported`
-      if (skippedDupes > 0) msg += `, ${skippedDupes} skipped (duplicate)`
-      if (skippedErrors > 0) msg += `, ${skippedErrors} skipped (invalid data)`
+      if (skippedDupes > 0)                      msg += `, ${skippedDupes} skipped (duplicate phone/email)`
+      if (skippedFrontend > 0)                   msg += `, ${skippedFrontend} skipped (invalid data)`
+      if (skippedBackend > 0)                    msg += `, ${skippedBackend} skipped (server error)`
       setSuccess(msg)
       setPreview([])
       setRowErrors({})
@@ -312,7 +319,7 @@ export default function ImportStudents() {
               <p className="text-3xl font-bold text-green-600">{result.imported}</p>
             </div>
             <div className="bg-white rounded-xl shadow p-5 border-l-4 border-yellow-500">
-              <p className="text-sm text-gray-500">⚠️ Skipped (duplicate)</p>
+              <p className="text-sm text-gray-500">⚠️ Skipped (duplicate phone/email)</p>
               <p className="text-3xl font-bold text-yellow-600">{result.skipped}</p>
             </div>
             <div className="bg-white rounded-xl shadow p-5 border-l-4 border-red-400">
