@@ -7,7 +7,8 @@ import {
   updateStudentAPI,
   deleteStudentAPI,
   getCoursesAPI,
-  bulkUpdateCourseAPI
+  bulkUpdateCourseAPI,
+  setStudentAdditionalCoursesAPI,
 } from "../api"
 
 const EMPTY_FORM = {
@@ -43,6 +44,8 @@ export default function Students() {
   const [photoPreview, setPhotoPreview] = useState(null)
   const [viewStudent, setViewStudent] = useState(null)
   const [reportCardId, setReportCardId] = useState(null)
+  // Additional courses for current edit/add
+  const [additionalCourseIds, setAdditionalCourseIds] = useState([])
   // Bulk promote
   const [selectedIds, setSelectedIds] = useState(new Set())
   const [bulkCourse, setBulkCourse] = useState("")
@@ -155,15 +158,22 @@ export default function Students() {
 
     setSubmitting(true)
     try {
+      let savedId = editId
       if (editId) {
         await updateStudentAPI(editId, payload)
         setSuccess("Student updated successfully!")
         setEditId(null)
       } else {
-        await addStudentAPI(payload)
+        const res = await addStudentAPI(payload)
+        savedId = res.data.student?.id
         setSuccess("Student added successfully!")
       }
+      // Save additional courses
+      if (savedId) {
+        await setStudentAdditionalCoursesAPI(savedId, { course_ids: additionalCourseIds })
+      }
       setForm(EMPTY_FORM)
+      setAdditionalCourseIds([])
       setPhotoPreview(null)
       if (fileInputRef.current) fileInputRef.current.value = ""
       fetchStudents()
@@ -197,6 +207,8 @@ export default function Students() {
       admission_date: student.admission_date || "",
       photo: student.photo || "",
     })
+    // Pre-populate additional courses from existing student data
+    setAdditionalCourseIds((student.additional_courses || []).map((c) => c.id))
     setPhotoPreview(student.photo || null)
     setError("")
     setSuccess("")
@@ -206,10 +218,17 @@ export default function Students() {
   function handleCancel() {
     setEditId(null)
     setForm(EMPTY_FORM)
+    setAdditionalCourseIds([])
     setPhotoPreview(null)
     if (fileInputRef.current) fileInputRef.current.value = ""
     setError("")
     setSuccess("")
+  }
+
+  function toggleAdditionalCourse(courseId) {
+    setAdditionalCourseIds((prev) =>
+      prev.includes(courseId) ? prev.filter((id) => id !== courseId) : [...prev, courseId]
+    )
   }
 
   async function handleDelete(id) {
@@ -410,6 +429,49 @@ export default function Students() {
               </div>
             </div>
 
+            {/* Additional Courses */}
+            {courses.length > 0 && (
+              <>
+                <SectionTitle>Additional Courses (Optional)</SectionTitle>
+                <div className="mb-5">
+                  <p className="text-xs text-gray-400 mb-2">
+                    Select extra courses this student is enrolled in alongside their primary course.
+                    {form.course && <span className="ml-1 text-blue-500">Primary: <strong>{form.course}</strong></span>}
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {courses
+                      .filter((c) => c.name !== form.course) // hide primary course
+                      .map((c) => {
+                        const checked = additionalCourseIds.includes(c.id)
+                        return (
+                          <label key={c.id}
+                            className={`flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-medium cursor-pointer transition select-none
+                              ${checked
+                                ? "bg-indigo-100 border-indigo-400 text-indigo-700"
+                                : "bg-gray-50 border-gray-300 text-gray-600 hover:border-indigo-300"}`}>
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              onChange={() => toggleAdditionalCourse(c.id)}
+                              className="w-3.5 h-3.5 accent-indigo-600"
+                            />
+                            {c.name}
+                          </label>
+                        )
+                      })}
+                    {courses.filter((c) => c.name !== form.course).length === 0 && (
+                      <p className="text-xs text-gray-400">No other courses available.</p>
+                    )}
+                  </div>
+                  {additionalCourseIds.length > 0 && (
+                    <p className="text-xs text-indigo-600 mt-2">
+                      ✓ {additionalCourseIds.length} additional course{additionalCourseIds.length > 1 ? "s" : ""} selected
+                    </p>
+                  )}
+                </div>
+              </>
+            )}
+
             {/* Error / Success */}
             {error && (
               <div className="mb-4 bg-red-50 border border-red-200 rounded-lg px-4 py-2">
@@ -539,9 +601,16 @@ export default function Students() {
                       </td>
                       <td className="px-4 py-3 text-gray-600">{s.father_name || "—"}</td>
                       <td className="px-4 py-3">
-                        {s.course
-                          ? <span className="bg-blue-100 text-blue-700 px-2 py-1 rounded-full text-xs font-medium">{s.course}</span>
-                          : "—"}
+                        <div className="flex flex-wrap gap-1">
+                          {s.course
+                            ? <span className="bg-blue-100 text-blue-700 px-2 py-1 rounded-full text-xs font-medium">{s.course}</span>
+                            : <span className="text-gray-400">—</span>}
+                          {(s.additional_courses || []).map((ac) => (
+                            <span key={ac.id} className="bg-indigo-100 text-indigo-600 px-2 py-0.5 rounded-full text-xs font-medium" title="Additional Course">
+                              +{ac.name}
+                            </span>
+                          ))}
+                        </div>
                       </td>
                       <td className="px-4 py-3">
                         {s.medium
@@ -671,9 +740,16 @@ export default function Students() {
                   <p className="text-lg font-bold text-gray-800">{viewStudent.name}</p>
                   <p className="text-sm text-gray-500">S/o {viewStudent.father_name || "—"}</p>
                   <p className="text-sm text-gray-500 mt-1">{viewStudent.email}</p>
-                  {viewStudent.course && (
-                    <span className="mt-2 inline-block bg-blue-100 text-blue-700 px-2 py-1 rounded-full text-xs font-medium">{viewStudent.course}</span>
-                  )}
+                  <div className="flex flex-wrap gap-1 mt-2">
+                    {viewStudent.course && (
+                      <span className="bg-blue-100 text-blue-700 px-2 py-1 rounded-full text-xs font-medium">{viewStudent.course}</span>
+                    )}
+                    {(viewStudent.additional_courses || []).map((ac) => (
+                      <span key={ac.id} className="bg-indigo-100 text-indigo-600 px-2 py-1 rounded-full text-xs font-medium" title="Additional Course">
+                        +{ac.name}
+                      </span>
+                    ))}
+                  </div>
                 </div>
               </div>
 
@@ -687,6 +763,18 @@ export default function Students() {
                 <div className="col-span-2">
                   <DetailRow label="School / College" value={viewStudent.school_college_name} />
                 </div>
+                {(viewStudent.additional_courses || []).length > 0 && (
+                  <div className="col-span-2">
+                    <p className="text-xs text-gray-400 font-medium mb-1">Additional Courses</p>
+                    <div className="flex flex-wrap gap-1">
+                      {(viewStudent.additional_courses || []).map((ac) => (
+                        <span key={ac.id} className="bg-indigo-100 text-indigo-700 px-2 py-1 rounded-full text-xs font-medium">
+                          {ac.name}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
                 <div className="col-span-2">
                   <DetailRow label="Permanent Address" value={viewStudent.permanent_address} />
                 </div>

@@ -261,9 +261,16 @@ function StudentDashboard({ studentId }) {
           )}
           <h2 className="text-2xl font-bold">{p.name}</h2>
           {p.father_name && <p className="text-blue-100 text-sm">S/o {p.father_name}</p>}
-          {p.course && (
-            <span className="mt-2 inline-block bg-white/20 text-white text-xs px-3 py-1 rounded-full">{p.course}</span>
-          )}
+          <div className="flex flex-wrap gap-1 mt-2">
+            {p.course && (
+              <span className="bg-white/20 text-white text-xs px-3 py-1 rounded-full">{p.course}</span>
+            )}
+            {(p.additional_courses || []).map((ac) => (
+              <span key={ac.id} className="bg-white/10 border border-white/30 text-white/90 text-xs px-2 py-0.5 rounded-full">
+                +{ac.name}
+              </span>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -312,6 +319,18 @@ function StudentDashboard({ studentId }) {
           <InfoRow label="Medium"           value={mediumLabel} />
           <InfoRow label="Admission Date"   value={p.admission_date} />
           <InfoRow label="Total Fees"       value={p.fees ? `₹${Number(p.fees).toLocaleString()}` : null} />
+          {(p.additional_courses || []).length > 0 && (
+            <div className="col-span-2 md:col-span-3">
+              <span className="text-xs text-gray-400 font-medium uppercase tracking-wide">Additional Courses</span>
+              <div className="flex flex-wrap gap-1 mt-1">
+                {(p.additional_courses || []).map((ac) => (
+                  <span key={ac.id} className="bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full text-xs font-medium">
+                    {ac.name}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
 

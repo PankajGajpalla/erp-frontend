@@ -177,7 +177,14 @@ function MarkAttendance() {
               <h3 className="text-base font-semibold text-gray-700">
                 {students.length} Students — {selectedCourse?.name} / {selectedSubject?.name} — {date}
               </h3>
-              <p className="text-sm text-gray-400 mt-1">Present: {presentCount} | Absent: {absentCount}</p>
+              <p className="text-sm text-gray-400 mt-1">
+                Present: {presentCount} | Absent: {absentCount}
+                {students.filter(s => s.is_additional).length > 0 && (
+                  <span className="ml-3 text-indigo-500">
+                    · {students.filter(s => !s.is_additional).length} primary + {students.filter(s => s.is_additional).length} additional course students
+                  </span>
+                )}
+              </p>
             </div>
             <div className="flex gap-2">
               <button onClick={() => markAll("present")} className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg text-sm transition">All Present</button>
@@ -190,7 +197,7 @@ function MarkAttendance() {
               <tr className="bg-gray-800 text-white">
                 <th className="text-left px-5 py-3">ID</th>
                 <th className="text-left px-5 py-3">Name</th>
-                <th className="text-left px-5 py-3">Email</th>
+                <th className="text-left px-5 py-3">Course</th>
                 <th className="text-left px-5 py-3">Status</th>
                 <th className="text-left px-5 py-3">Toggle</th>
               </tr>
@@ -200,9 +207,20 @@ function MarkAttendance() {
                 const isPresent = attendance[s.id] === "present"
                 return (
                   <tr key={s.id} className={`border-t transition ${isPresent ? "bg-green-50" : "bg-red-50"}`}>
-                    <td className="px-5 py-3 text-gray-400">{s.id}</td>
-                    <td className="px-5 py-3 font-medium">{s.name}</td>
-                    <td className="px-5 py-3 text-gray-500">{s.email}</td>
+                    <td className="px-5 py-3 text-gray-400 font-mono text-xs">{s.student_code || s.id}</td>
+                    <td className="px-5 py-3 font-medium">
+                      {s.name}
+                      {s.is_additional && (
+                        <span className="ml-2 bg-indigo-100 text-indigo-600 px-1.5 py-0.5 rounded text-xs font-medium" title="Enrolled in this as an additional course">
+                          +Add
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-5 py-3 text-gray-500 text-xs">
+                      <span className={`px-2 py-0.5 rounded-full font-medium ${s.is_additional ? "bg-indigo-100 text-indigo-600" : "bg-blue-100 text-blue-700"}`}>
+                        {s.is_additional ? `${selectedCourse?.name} (+)` : s.course || selectedCourse?.name}
+                      </span>
+                    </td>
                     <td className="px-5 py-3">
                       <span className={`px-2 py-1 rounded-full text-xs font-medium ${isPresent ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
                         {isPresent ? "Present" : "Absent"}

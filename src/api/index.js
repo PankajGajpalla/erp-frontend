@@ -34,7 +34,10 @@ export const getDashboardSummaryAPI = () => API.get("/dashboard/summary");
 
 // ─── Students ────────────────────────────────────────────────
 export const getStudentsAPI = () => API.get("/students");
+export const searchStudentsAPI = (q) => API.get("/students/search", { params: { q } });
 export const getStudentAPI = (id) => API.get(`/student/${id}`);
+export const getStudentAdditionalCoursesAPI = (id) => API.get(`/student/${id}/additional-courses`);
+export const setStudentAdditionalCoursesAPI = (id, data) => API.put(`/student/${id}/additional-courses`, data);
 export const addStudentAPI = (data) => API.post("/add_student", data);
 export const updateStudentAPI = (id, data) => API.put(`/update_student/${id}`, data);
 export const deleteStudentAPI = (id) => API.delete(`/delete_student/${id}`);
@@ -63,6 +66,8 @@ export const deleteTeacherAPI = (id) => API.delete(`/delete_teacher/${id}`);
 export const createTeacherLoginAPI = (data) => API.post("/create_teacher_login", data);
 export const getStudentsByCourseAPI = (course) => API.get(`/students/course/${course}`);
 export const getTeacherMeAPI = () => API.get("/teacher/me");
+export const getSubjectsByTeacherAPI = (teacherId) => API.get(`/subjects/teacher/${teacherId}`);
+export const assignSubjectsToTeacherAPI = (teacherId, data) => API.put(`/teachers/${teacherId}/subjects`, data);
 
 // ─── Grades ──────────────────────────────────────────────────
 export const getGradesAPI = (id) => API.get(`/grades/${id}`);

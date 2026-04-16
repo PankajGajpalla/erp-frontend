@@ -1,7 +1,7 @@
-import { useEffect, useState } from "react"
+import { useEffect, useState, useRef, useCallback } from "react"
 import Sidebar from "../components/Sidebar"
 import { useAuth } from "../context/AuthContext"
-import { getFeesAPI, addFeesAPI, payFeesAPI, feesSummaryAPI, getFeePaymentsAPI, getStudentAPI, getOverdueFeesAPI } from "../api"
+import { getFeesAPI, addFeesAPI, payFeesAPI, feesSummaryAPI, getFeePaymentsAPI, getStudentAPI, searchStudentsAPI } from "../api"
 import jsPDF from "jspdf"
 
 function generateReceipt(payment, fee, studentName, studentCode) {
@@ -303,6 +303,122 @@ function StudentFees({ studentId, studentName, studentCode }) {
   )
 }
 
+// ── Student Search Box (shared by Add Fees + View Fees) ──────
+function StudentSearchBox({ label, onSelect, selectedStudent, onClear }) {
+  const [query, setQuery] = useState("")
+  const [results, setResults] = useState([])
+  const [searching, setSearching] = useState(false)
+  const [showDrop, setShowDrop] = useState(false)
+  const dropRef = useRef(null)
+  const debounceRef = useRef(null)
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    function handler(e) {
+      if (dropRef.current && !dropRef.current.contains(e.target)) setShowDrop(false)
+    }
+    document.addEventListener("mousedown", handler)
+    return () => document.removeEventListener("mousedown", handler)
+  }, [])
+
+  function handleChange(e) {
+    const val = e.target.value
+    setQuery(val)
+    clearTimeout(debounceRef.current)
+    if (!val.trim()) { setResults([]); setShowDrop(false); return }
+    debounceRef.current = setTimeout(async () => {
+      setSearching(true)
+      try {
+        const res = await searchStudentsAPI(val.trim())
+        setResults(res.data.students || [])
+        setShowDrop(true)
+      } catch { setResults([]) }
+      finally { setSearching(false) }
+    }, 300)
+  }
+
+  function handleSelect(student) {
+    setQuery("")
+    setResults([])
+    setShowDrop(false)
+    onSelect(student)
+  }
+
+  function handleClear() {
+    setQuery("")
+    setResults([])
+    setShowDrop(false)
+    onClear()
+  }
+
+  return (
+    <div className="relative" ref={dropRef}>
+      {label && <label className="block text-xs font-medium text-gray-600 mb-1">{label}</label>}
+
+      {selectedStudent ? (
+        /* Selected student chip */
+        <div className="flex items-center gap-3 bg-blue-50 border border-blue-200 rounded-lg px-3 py-2">
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-blue-800 truncate">{selectedStudent.name}</p>
+            <p className="text-xs text-blue-500">
+              {selectedStudent.student_code && <span className="font-mono mr-2">{selectedStudent.student_code}</span>}
+              {selectedStudent.phone && <span>📞 {selectedStudent.phone}</span>}
+              {selectedStudent.course && <span className="ml-2">· {selectedStudent.course}</span>}
+            </p>
+          </div>
+          <button onClick={handleClear} title="Change student"
+            className="text-blue-400 hover:text-red-500 transition text-lg font-bold leading-none flex-shrink-0">×</button>
+        </div>
+      ) : (
+        /* Search input */
+        <div className="relative">
+          <input
+            type="text"
+            value={query}
+            onChange={handleChange}
+            onFocus={() => results.length > 0 && setShowDrop(true)}
+            placeholder="🔍 Search by name, phone or student ID..."
+            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 pr-8"
+          />
+          {searching && (
+            <div className="absolute right-2 top-2.5 w-4 h-4 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
+          )}
+        </div>
+      )}
+
+      {/* Dropdown results */}
+      {showDrop && results.length > 0 && !selectedStudent && (
+        <div className="absolute left-0 right-0 top-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg z-40 overflow-hidden max-h-64 overflow-y-auto">
+          {results.map((s) => (
+            <button key={s.id} onClick={() => handleSelect(s)}
+              className="w-full text-left px-4 py-2.5 hover:bg-blue-50 transition border-b border-gray-50 last:border-0">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-xs font-bold flex-shrink-0">
+                  {s.name.charAt(0).toUpperCase()}
+                </div>
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-gray-800 truncate">{s.name}</p>
+                  <p className="text-xs text-gray-400">
+                    {s.student_code && <span className="font-mono mr-2">{s.student_code}</span>}
+                    {s.phone && <span>📞 {s.phone}</span>}
+                    {s.course && <span className="ml-2">· {s.course}</span>}
+                  </p>
+                </div>
+              </div>
+            </button>
+          ))}
+        </div>
+      )}
+
+      {showDrop && results.length === 0 && query.trim() && !searching && (
+        <div className="absolute left-0 right-0 top-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg z-40 px-4 py-3 text-sm text-gray-400">
+          No students found for "{query}"
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ── Admin View ───────────────────────────────────────────────
 function AdminFees() {
   const [fees, setFees] = useState([])
@@ -313,16 +429,21 @@ function AdminFees() {
   const [error, setError] = useState("")
   const [success, setSuccess] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
-  const [form, setForm] = useState({ student_id: "", amount: "", description: "", due_date: "" })
-  const [payForms, setPayForms] = useState({})   // { feeId: { amount, paid_date, note } }
+
+  // Add Fees: selected student + form fields
+  const [addStudent, setAddStudent] = useState(null)   // selected student object
+  const [addForm, setAddForm] = useState({ amount: "", description: "", due_date: "" })
+
+  // View Fees: selected student
+  const [viewStudent, setViewStudent] = useState(null)  // { id, name, student_code, ... }
+
+  const [payForms, setPayForms] = useState({})
   const [payingId, setPayingId] = useState(null)
-  const [viewId, setViewId] = useState("")
-  const [viewStudent, setViewStudent] = useState(null) // name + code for receipt
   const [expandedId, setExpandedId] = useState(null)
-  const [historyKey, setHistoryKey] = useState(0) // force re-fetch history after payment
+  const [historyKey, setHistoryKey] = useState(0)
 
   useEffect(() => {
-    if (success) { const t = setTimeout(() => setSuccess(""), 3000); return () => clearTimeout(t) }
+    if (success) { const t = setTimeout(() => setSuccess(""), 4000); return () => clearTimeout(t) }
   }, [success])
 
   useEffect(() => {
@@ -331,38 +452,51 @@ function AdminFees() {
     else setFiltered(fees.filter((f) => f.paid < f.amount))
   }, [fees, statusFilter])
 
-  async function fetchFees(id) {
-    if (!id) return
+  async function fetchFees(studentId) {
+    if (!studentId) return
     setLoading(true); setError("")
     try {
-      const [feesRes, summaryRes, studentRes] = await Promise.all([
-        getFeesAPI(id),
-        feesSummaryAPI(id),
-        getStudentAPI(id).catch(() => null),
+      const [feesRes, summaryRes] = await Promise.all([
+        getFeesAPI(studentId),
+        feesSummaryAPI(studentId),
       ])
       setFees(feesRes.data.fees)
       setSummary(summaryRes.data)
-      setViewStudent(studentRes ? { name: studentRes.data.name, student_code: studentRes.data.student_code } : null)
       setExpandedId(null)
-    } catch { setError("Failed to load fees — check the student ID") }
+    } catch { setError("Failed to load fees for this student.") }
     finally { setLoading(false) }
+  }
+
+  // When a student is selected in the View section
+  function handleSelectViewStudent(student) {
+    setViewStudent(student)
+    fetchFees(student.id)
+  }
+
+  function handleClearView() {
+    setViewStudent(null)
+    setFees([])
+    setSummary(null)
+    setError("")
   }
 
   async function handleAddFees(e) {
     e.preventDefault(); setError(""); setSuccess("")
-    if (!form.student_id || !form.amount) { setError("Student ID and amount are required"); return }
-    if (parseFloat(form.amount) <= 0) { setError("Amount must be greater than 0"); return }
+    if (!addStudent) { setError("Please select a student first"); return }
+    if (!addForm.amount) { setError("Amount is required"); return }
+    if (parseFloat(addForm.amount) <= 0) { setError("Amount must be greater than 0"); return }
     setSubmitting(true)
     try {
       await addFeesAPI({
-        student_id: parseInt(form.student_id),
-        amount: parseFloat(form.amount),
-        description: form.description || null,
-        due_date: form.due_date || null,
+        student_id: addStudent.id,
+        amount: parseFloat(addForm.amount),
+        description: addForm.description || null,
+        due_date: addForm.due_date || null,
       })
-      setSuccess("Fees added successfully!")
-      setForm({ student_id: "", amount: "", description: "", due_date: "" })
-      if (viewId === form.student_id) fetchFees(viewId)
+      setSuccess(`✅ Fee record added for ${addStudent.name}!`)
+      setAddForm({ amount: "", description: "", due_date: "" })
+      // If viewing the same student, refresh
+      if (viewStudent?.id === addStudent.id) fetchFees(viewStudent.id)
     } catch (err) {
       setError(err.response?.data?.detail || "Failed to add fees")
     } finally { setSubmitting(false) }
@@ -371,7 +505,6 @@ function AdminFees() {
   function getPayForm(feeId) {
     return payForms[feeId] || { amount: "", paid_date: today(), note: "" }
   }
-
   function setPayForm(feeId, patch) {
     setPayForms((prev) => ({ ...prev, [feeId]: { ...getPayForm(feeId), ...patch } }))
   }
@@ -387,10 +520,10 @@ function AdminFees() {
         paid_date: pf.paid_date || today(),
         note: pf.note || null,
       })
-      setSuccess(`${formatCurrency(payAmount)} payment recorded!`)
+      setSuccess(`✅ ${formatCurrency(payAmount)} payment recorded!`)
       setPayForms((prev) => ({ ...prev, [feeId]: { amount: "", paid_date: today(), note: "" } }))
       setHistoryKey((k) => k + 1)
-      fetchFees(viewId)
+      if (viewStudent) fetchFees(viewStudent.id)
     } catch (err) {
       setError(err.response?.data?.detail || "Payment failed")
     } finally { setPayingId(null) }
@@ -398,39 +531,47 @@ function AdminFees() {
 
   return (
     <div className="space-y-5">
-      <h2 className="text-2xl font-bold text-gray-800">Fees</h2>
+      <h2 className="text-2xl font-bold text-gray-800">💰 Fees</h2>
 
-      {/* Add Fees */}
+      {/* ── Add Fees Record ─────────────────────────────────── */}
       <div className="bg-white rounded-xl shadow p-6">
-        <h3 className="text-base font-semibold text-gray-700 mb-4 pb-2 border-b">Add Fees Record</h3>
-        <form onSubmit={handleAddFees}>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
-            <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Student ID *</label>
-              <input type="number" value={form.student_id} onChange={(e) => setForm({ ...form, student_id: e.target.value })}
-                placeholder="e.g. 5" min="1"
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-            </div>
+        <h3 className="text-base font-semibold text-gray-700 mb-4 pb-2 border-b">➕ Add Fee Record</h3>
+        <form onSubmit={handleAddFees} className="space-y-4">
+
+          {/* Student search */}
+          <StudentSearchBox
+            label="Student * — search by name, phone or ID"
+            selectedStudent={addStudent}
+            onSelect={setAddStudent}
+            onClear={() => setAddStudent(null)}
+          />
+
+          {/* Fee fields */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">Total Amount (₹) *</label>
-              <input type="number" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })}
+              <input type="number" value={addForm.amount}
+                onChange={(e) => setAddForm({ ...addForm, amount: e.target.value })}
                 placeholder="e.g. 12000" min="1"
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">Due Date</label>
-              <input type="date" value={form.due_date} onChange={(e) => setForm({ ...form, due_date: e.target.value })}
+              <input type="date" value={addForm.due_date}
+                onChange={(e) => setAddForm({ ...addForm, due_date: e.target.value })}
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">Description</label>
-              <input type="text" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })}
+              <input type="text" value={addForm.description}
+                onChange={(e) => setAddForm({ ...addForm, description: e.target.value })}
                 placeholder="e.g. Term 1 Fees"
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
             </div>
           </div>
-          <button type="submit" disabled={submitting}
-            className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition disabled:opacity-50 font-medium">
+
+          <button type="submit" disabled={submitting || !addStudent}
+            className="bg-blue-600 text-white px-7 py-2 rounded-lg hover:bg-blue-700 transition disabled:opacity-50 font-medium text-sm">
             {submitting ? "Adding..." : "Add Fees"}
           </button>
         </form>
@@ -439,27 +580,40 @@ function AdminFees() {
         {success && <div className="mt-3 bg-green-50 border border-green-200 rounded-lg px-4 py-2"><p className="text-green-600 text-sm">{success}</p></div>}
       </div>
 
-      {/* Search student */}
+      {/* ── View Student Fees ───────────────────────────────── */}
       <div className="bg-white rounded-xl shadow p-5">
-        <h3 className="text-base font-semibold text-gray-700 mb-3">View Student Fees</h3>
-        <form onSubmit={(e) => { e.preventDefault(); fetchFees(viewId) }} className="flex gap-3">
-          <input type="number" placeholder="Student ID" value={viewId}
-            onChange={(e) => setViewId(e.target.value)} min="1"
-            className="border border-gray-300 rounded-lg px-4 py-2 w-36 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-          <button type="submit" disabled={loading}
-            className="bg-gray-700 text-white px-5 py-2 rounded-lg hover:bg-gray-800 transition disabled:opacity-50 text-sm">
-            {loading ? "Loading..." : "Load Fees"}
-          </button>
-        </form>
+        <h3 className="text-base font-semibold text-gray-700 mb-3">🔍 View Student Fees</h3>
+        <StudentSearchBox
+          selectedStudent={viewStudent}
+          onSelect={handleSelectViewStudent}
+          onClear={handleClearView}
+        />
       </div>
 
       {/* Summary */}
-      {summary && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <SummaryCard label="Total Fees" value={formatCurrency(summary.total_fees)} color="blue" />
-          <SummaryCard label="Paid" value={formatCurrency(summary.paid)} color="green" />
-          <SummaryCard label="Pending" value={formatCurrency(summary.pending)} color="red" />
-        </div>
+      {summary && viewStudent && (
+        <>
+          {/* Student banner */}
+          <div className="bg-gradient-to-r from-gray-700 to-gray-900 rounded-xl p-4 text-white flex items-center gap-4">
+            <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center text-lg font-bold flex-shrink-0">
+              {viewStudent.name.charAt(0).toUpperCase()}
+            </div>
+            <div>
+              <p className="font-bold text-lg">{viewStudent.name}</p>
+              <p className="text-sm text-gray-300">
+                {viewStudent.student_code && <span className="font-mono mr-3">{viewStudent.student_code}</span>}
+                {viewStudent.phone && <span>📞 {viewStudent.phone}</span>}
+                {viewStudent.course && <span className="ml-3">· {viewStudent.course}</span>}
+              </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <SummaryCard label="Total Fees" value={formatCurrency(summary.total_fees)} color="blue" />
+            <SummaryCard label="Paid" value={formatCurrency(summary.paid)} color="green" />
+            <SummaryCard label="Pending" value={formatCurrency(summary.pending)} color="red" />
+          </div>
+        </>
       )}
 
       {/* Filter */}
@@ -480,101 +634,109 @@ function AdminFees() {
       <div className="bg-white rounded-xl shadow overflow-hidden">
         {loading ? (
           <div className="p-6 flex items-center gap-3 text-gray-500">
-            <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />Loading...
+            <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+            Loading fees...
+          </div>
+        ) : !viewStudent ? (
+          <div className="p-12 text-center">
+            <p className="text-4xl mb-3">💰</p>
+            <p className="text-gray-400">Search and select a student above to view their fees.</p>
           </div>
         ) : fees.length === 0 ? (
           <div className="p-12 text-center">
-            <p className="text-4xl mb-3">💰</p>
-            <p className="text-gray-400">Enter a student ID above to load fees.</p>
+            <p className="text-3xl mb-3">📭</p>
+            <p className="text-gray-400">No fee records for this student yet.</p>
           </div>
         ) : filtered.length === 0 ? (
-          <p className="p-6 text-gray-400">No fee records match the filter.</p>
+          <p className="p-6 text-gray-400">No records match the filter.</p>
         ) : (
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="bg-gray-800 text-white text-xs uppercase">
-                <th className="text-left px-5 py-3">Description</th>
-                <th className="text-left px-5 py-3">Due Date</th>
-                <th className="text-left px-5 py-3">Total</th>
-                <th className="text-left px-5 py-3">Paid</th>
-                <th className="text-left px-5 py-3">Pending</th>
-                <th className="text-left px-5 py-3">Status</th>
-                <th className="text-left px-5 py-3">Record Payment</th>
-                <th className="text-left px-5 py-3">History</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((f) => {
-                const pending = f.amount - f.paid
-                const isFullyPaid = pending <= 0.001
-                const overdue = !isFullyPaid && isOverdue(f.due_date)
-                const expanded = expandedId === f.id
-                const pf = getPayForm(f.id)
-                return (
-                  <>
-                    <tr key={f.id} className={`border-t transition ${overdue ? "bg-red-50" : ""} hover:bg-gray-50`}>
-                      <td className="px-5 py-3 font-medium">{f.description || "—"}</td>
-                      <td className="px-5 py-3">
-                        {f.due_date ? (
-                          <span className={`text-xs font-medium ${overdue ? "text-red-600" : "text-gray-600"}`}>
-                            {overdue && "⚠️ "}{formatDate(f.due_date)}
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm min-w-[700px]">
+              <thead>
+                <tr className="bg-gray-800 text-white text-xs uppercase">
+                  <th className="text-left px-5 py-3">Description</th>
+                  <th className="text-left px-5 py-3">Due Date</th>
+                  <th className="text-left px-5 py-3">Total</th>
+                  <th className="text-left px-5 py-3">Paid</th>
+                  <th className="text-left px-5 py-3">Pending</th>
+                  <th className="text-left px-5 py-3">Status</th>
+                  <th className="text-left px-5 py-3">Record Payment</th>
+                  <th className="text-left px-5 py-3">History</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map((f) => {
+                  const pending = f.amount - f.paid
+                  const isFullyPaid = pending <= 0.001
+                  const overdue = !isFullyPaid && isOverdue(f.due_date)
+                  const expanded = expandedId === f.id
+                  const pf = getPayForm(f.id)
+                  return (
+                    <>
+                      <tr key={f.id} className={`border-t transition ${overdue ? "bg-red-50" : ""} hover:bg-gray-50`}>
+                        <td className="px-5 py-3 font-medium">{f.description || "—"}</td>
+                        <td className="px-5 py-3">
+                          {f.due_date ? (
+                            <span className={`text-xs font-medium ${overdue ? "text-red-600" : "text-gray-600"}`}>
+                              {overdue && "⚠️ "}{formatDate(f.due_date)}
+                            </span>
+                          ) : "—"}
+                        </td>
+                        <td className="px-5 py-3">{formatCurrency(f.amount)}</td>
+                        <td className="px-5 py-3 text-green-600 font-medium">{formatCurrency(f.paid)}</td>
+                        <td className="px-5 py-3 text-red-600 font-medium">{formatCurrency(pending)}</td>
+                        <td className="px-5 py-3">
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${isFullyPaid ? "bg-green-100 text-green-700" : overdue ? "bg-red-100 text-red-700" : "bg-yellow-100 text-yellow-700"}`}>
+                            {isFullyPaid ? "Paid" : overdue ? "Overdue" : "Pending"}
                           </span>
-                        ) : "—"}
-                      </td>
-                      <td className="px-5 py-3">{formatCurrency(f.amount)}</td>
-                      <td className="px-5 py-3 text-green-600 font-medium">{formatCurrency(f.paid)}</td>
-                      <td className="px-5 py-3 text-red-600 font-medium">{formatCurrency(pending)}</td>
-                      <td className="px-5 py-3">
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${isFullyPaid ? "bg-green-100 text-green-700" : overdue ? "bg-red-100 text-red-700" : "bg-yellow-100 text-yellow-700"}`}>
-                          {isFullyPaid ? "Paid" : overdue ? "Overdue" : "Pending"}
-                        </span>
-                      </td>
-                      <td className="px-5 py-3">
-                        {!isFullyPaid ? (
-                          <div className="flex flex-col gap-1 min-w-[220px]">
-                            <div className="flex gap-1">
-                              <input type="number" placeholder="₹ Amount" value={pf.amount}
-                                onChange={(e) => setPayForm(f.id, { amount: e.target.value })}
-                                min="1" className="border border-gray-300 rounded px-2 py-1 w-24 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500" />
-                              <input type="date" value={pf.paid_date}
-                                onChange={(e) => setPayForm(f.id, { paid_date: e.target.value })}
-                                className="border border-gray-300 rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                        </td>
+                        <td className="px-5 py-3">
+                          {!isFullyPaid ? (
+                            <div className="flex flex-col gap-1 min-w-[220px]">
+                              <div className="flex gap-1">
+                                <input type="number" placeholder="₹ Amount" value={pf.amount}
+                                  onChange={(e) => setPayForm(f.id, { amount: e.target.value })}
+                                  min="1" className="border border-gray-300 rounded px-2 py-1 w-24 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                                <input type="date" value={pf.paid_date}
+                                  onChange={(e) => setPayForm(f.id, { paid_date: e.target.value })}
+                                  className="border border-gray-300 rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                              </div>
+                              <div className="flex gap-1">
+                                <input type="text" placeholder="Note (optional)" value={pf.note}
+                                  onChange={(e) => setPayForm(f.id, { note: e.target.value })}
+                                  className="border border-gray-300 rounded px-2 py-1 flex-1 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                                <button onClick={() => handlePay(f.id)} disabled={payingId === f.id}
+                                  className="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded text-xs transition disabled:opacity-50">
+                                  {payingId === f.id ? "..." : "Pay"}
+                                </button>
+                              </div>
                             </div>
-                            <div className="flex gap-1">
-                              <input type="text" placeholder="Note (optional)" value={pf.note}
-                                onChange={(e) => setPayForm(f.id, { note: e.target.value })}
-                                className="border border-gray-300 rounded px-2 py-1 flex-1 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500" />
-                              <button onClick={() => handlePay(f.id)} disabled={payingId === f.id}
-                                className="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded text-xs transition disabled:opacity-50">
-                                {payingId === f.id ? "..." : "Pay"}
-                              </button>
-                            </div>
-                          </div>
-                        ) : (
-                          <span className="text-green-600 text-xs font-medium">Fully Paid</span>
-                        )}
-                      </td>
-                      <td className="px-5 py-3">
-                        <button onClick={() => setExpandedId(expanded ? null : f.id)}
-                          className="text-blue-600 text-xs underline hover:text-blue-800">
-                          {expanded ? "Hide" : "View"}
-                        </button>
-                      </td>
-                    </tr>
-                    {expanded && (
-                      <tr key={`hist-${f.id}`} className="bg-blue-50 border-t">
-                        <td colSpan={8} className="px-2 py-2">
-                          <p className="text-xs font-semibold text-gray-500 px-4 pb-1">Payment History</p>
-                          <PaymentHistory key={historyKey} feeId={f.id} fee={f}
-                            studentName={viewStudent?.name} studentCode={viewStudent?.student_code} />
+                          ) : (
+                            <span className="text-green-600 text-xs font-medium">✅ Fully Paid</span>
+                          )}
+                        </td>
+                        <td className="px-5 py-3">
+                          <button onClick={() => setExpandedId(expanded ? null : f.id)}
+                            className="text-blue-600 text-xs underline hover:text-blue-800">
+                            {expanded ? "Hide" : "View"}
+                          </button>
                         </td>
                       </tr>
-                    )}
-                  </>
-                )
-              })}
-            </tbody>
-          </table>
+                      {expanded && (
+                        <tr key={`hist-${f.id}`} className="bg-blue-50 border-t">
+                          <td colSpan={8} className="px-2 py-2">
+                            <p className="text-xs font-semibold text-gray-500 px-4 pb-1">Payment History</p>
+                            <PaymentHistory key={historyKey} feeId={f.id} fee={f}
+                              studentName={viewStudent?.name} studentCode={viewStudent?.student_code} />
+                          </td>
+                        </tr>
+                      )}
+                    </>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
     </div>
