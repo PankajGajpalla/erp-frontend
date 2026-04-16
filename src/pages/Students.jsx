@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react"
+import { useEffect, useMemo, useState, useRef } from "react"
 import Sidebar from "../components/Sidebar"
 import ReportCardModal from "../components/ReportCardModal"
 import {
@@ -31,7 +31,6 @@ const EMPTY_FORM = {
 export default function Students() {
   const [courses, setCourses] = useState([])
   const [students, setStudents] = useState([])
-  const [filtered, setFiltered] = useState([])
   const [search, setSearch] = useState("")
   const [courseFilter, setCourseFilter] = useState("all")
   const [loading, setLoading] = useState(true)
@@ -65,22 +64,22 @@ export default function Students() {
     }
   }, [success])
 
-  useEffect(() => {
+  const filtered = useMemo(() => {
     const q = search.toLowerCase()
-    let result = students.filter(
-      (s) =>
+    return students.filter((s) => {
+      const matchText =
         s.name?.toLowerCase().includes(q) ||
         s.email?.toLowerCase().includes(q) ||
         s.course?.toLowerCase().includes(q) ||
         s.school_college_name?.toLowerCase().includes(q) ||
         s.student_code?.toLowerCase().includes(q)
-    )
-    if (courseFilter !== "all") {
-      result = result.filter((s) => s.course === courseFilter)
-    }
-    setFiltered(result)
-    setPage(1) // reset to first page on filter change
+      const matchCourse = courseFilter === "all" || s.course === courseFilter
+      return matchText && matchCourse
+    })
   }, [search, students, courseFilter])
+
+  // Reset to page 1 whenever filters change
+  useEffect(() => { setPage(1) }, [search, courseFilter])
 
   async function fetchStudents() {
     try {

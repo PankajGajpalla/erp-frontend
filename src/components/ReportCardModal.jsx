@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import jsPDF from "jspdf"
 import html2canvas from "html2canvas"
 import { getStudentAPI, getGradesAPI, attendanceSummaryAPI, subjectWiseAttendanceAPI } from "../api"
@@ -79,13 +79,16 @@ export default function ReportCardModal({ studentId, onClose }) {
     finally { setDownloading(false) }
   }
 
-  const grouped     = groupBySubject(grades)
-  const subjects    = Object.keys(grouped)
-  const totalMarks  = grades.reduce((s, g) => s + g.marks, 0)
-  const totalMax    = grades.reduce((s, g) => s + g.total_marks, 0)
-  const avgPct      = totalMax > 0 ? ((totalMarks / totalMax) * 100).toFixed(1) : 0
-  const finalGrade  = overallGrade(parseFloat(avgPct))
-  const attPct      = attendance?.attendance_percentage ?? 0
+  const { grouped, subjects, avgPct, finalGrade } = useMemo(() => {
+    const grouped    = groupBySubject(grades)
+    const subjects   = Object.keys(grouped)
+    const totalMarks = grades.reduce((s, g) => s + g.marks, 0)
+    const totalMax   = grades.reduce((s, g) => s + g.total_marks, 0)
+    const avgPct     = totalMax > 0 ? ((totalMarks / totalMax) * 100).toFixed(1) : 0
+    const finalGrade = overallGrade(parseFloat(avgPct))
+    return { grouped, subjects, avgPct, finalGrade }
+  }, [grades])
+  const attPct = attendance?.attendance_percentage ?? 0
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-60 flex items-start justify-center z-50 p-4 overflow-y-auto"

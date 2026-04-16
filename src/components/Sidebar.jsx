@@ -15,10 +15,12 @@ export default function Sidebar() {
   )
   const notifRef = useRef(null)
 
-  // Fetch notices on mount, then every 60 s
+  // Fetch notices on mount, then every 60 s (paused while tab is hidden)
   useEffect(() => {
     fetchNotices()
-    const interval = setInterval(fetchNotices, 60_000)
+    const interval = setInterval(() => {
+      if (document.visibilityState !== "hidden") fetchNotices()
+    }, 60_000)
     return () => clearInterval(interval)
   }, [])
 

@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react"
+import { useEffect, useMemo, useState, useRef } from "react"
 import Sidebar from "../components/Sidebar"
 import { useAuth } from "../context/AuthContext"
 import {
@@ -173,7 +173,6 @@ export default function Teachers() {
   const { isAdmin } = useAuth()
 
   const [teachers, setTeachers] = useState([])
-  const [filtered, setFiltered] = useState([])
   const [allSubjects, setAllSubjects] = useState([])
   const [search, setSearch] = useState("")
   const [loading, setLoading] = useState(true)
@@ -203,19 +202,17 @@ export default function Teachers() {
     }
   }, [success])
 
-  useEffect(() => {
+  const filtered = useMemo(() => {
     const q = search.toLowerCase()
-    setFiltered(
-      teachers.filter((t) => {
-        const subjectNames = (t.subjects || []).map((s) => s.name.toLowerCase()).join(" ")
-        return (
-          t.name.toLowerCase().includes(q) ||
-          (t.subject || "").toLowerCase().includes(q) ||
-          t.email.toLowerCase().includes(q) ||
-          subjectNames.includes(q)
-        )
-      })
-    )
+    return teachers.filter((t) => {
+      const subjectNames = (t.subjects || []).map((s) => s.name.toLowerCase()).join(" ")
+      return (
+        t.name.toLowerCase().includes(q) ||
+        (t.subject || "").toLowerCase().includes(q) ||
+        t.email.toLowerCase().includes(q) ||
+        subjectNames.includes(q)
+      )
+    })
   }, [teachers, search])
 
   async function fetchTeachers() {

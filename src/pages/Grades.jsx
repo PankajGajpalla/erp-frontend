@@ -1,7 +1,7 @@
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import Sidebar from "../components/Sidebar"
 import { useAuth } from "../context/AuthContext"
-import { getGradesAPI, addGradeAPI, deleteGradeAPI, getStudentAPI, getSubjectsByCourseAPI } from "../api"
+import { getGradesAPI, addGradeAPI, deleteGradeAPI, getStudentAPI, getCoursesAPI, getSubjectsByCourseAPI } from "../api"
 import ReportCardModal from "../components/ReportCardModal"
 
 function gradeColor(grade) {
@@ -103,15 +103,10 @@ export default function Grades() {
       setStudentProfile(profile)
       if (profile.course) {
         setLoadingSubjects(true)
-        // We need course_id — find by name from subjects endpoint
-        // Use getSubjectsByCourseAPI via course name isn't possible without course_id
-        // So we'll search all courses to find the id
-        const { getCoursesAPI } = await import("../api")
         const coursesRes = await getCoursesAPI()
         const match = coursesRes.data.courses.find(c => c.name === profile.course)
         if (match) {
-          const { getSubjectsByCourseAPI: getSubs } = await import("../api")
-          const subjRes = await getSubs(match.id)
+          const subjRes = await getSubjectsByCourseAPI(match.id)
           setSubjects(subjRes.data.subjects || [])
         }
         setLoadingSubjects(false)
@@ -146,12 +141,15 @@ export default function Grades() {
     } finally { setAdding(false) }
   }
 
-  const grouped  = groupBySubject(grades)
-  const subjects_ = Object.keys(grouped)
-  const totalMarks = grades.reduce((s, g) => s + g.marks, 0)
-  const totalMax   = grades.reduce((s, g) => s + g.total_marks, 0)
-  const avgPct     = totalMax > 0 ? ((totalMarks / totalMax) * 100).toFixed(1) : 0
-  const overall    = overallGrade(parseFloat(avgPct))
+  const { grouped, subjects_, avgPct, overall } = useMemo(() => {
+    const grouped    = groupBySubject(grades)
+    const subjects_  = Object.keys(grouped)
+    const totalMarks = grades.reduce((s, g) => s + g.marks, 0)
+    const totalMax   = grades.reduce((s, g) => s + g.total_marks, 0)
+    const avgPct     = totalMax > 0 ? ((totalMarks / totalMax) * 100).toFixed(1) : 0
+    const overall    = overallGrade(parseFloat(avgPct))
+    return { grouped, subjects_, avgPct, overall }
+  }, [grades])
 
   return (
     <div className="flex">

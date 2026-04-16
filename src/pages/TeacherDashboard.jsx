@@ -75,8 +75,8 @@ export default function TeacherDashboard() {
                   <p className="text-xl font-bold text-gray-800">{teacher.name}</p>
                 </div>
                 <div className="bg-white rounded-xl shadow p-6 border-l-4 border-purple-500">
-                  <p className="text-sm text-gray-500 mb-1">Subject</p>
-                  <p className="text-xl font-bold text-gray-800">{teacher.subject}</p>
+                  <p className="text-sm text-gray-500 mb-1">Specialisation</p>
+                  <p className="text-xl font-bold text-gray-800">{teacher.subject || "—"}</p>
                 </div>
                 <div className="bg-white rounded-xl shadow p-6 border-l-4 border-green-500">
                   <p className="text-sm text-gray-500 mb-1">Email</p>
@@ -88,6 +88,35 @@ export default function TeacherDashboard() {
                 </div>
               </div>
             </div>
+
+            {/* Assigned Subjects */}
+            {teacher.subjects && teacher.subjects.length > 0 && (
+              <div>
+                <h3 className="text-lg font-semibold text-gray-700 mb-3">Assigned Subjects</h3>
+                <div className="bg-white rounded-xl shadow overflow-hidden">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="bg-gray-50 text-xs text-gray-500 border-b">
+                        <th className="text-left px-5 py-3 font-medium">Subject</th>
+                        <th className="text-left px-5 py-3 font-medium">Course</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {teacher.subjects.map((s) => (
+                        <tr key={s.id} className="border-t hover:bg-gray-50 transition">
+                          <td className="px-5 py-3 font-medium text-gray-800">{s.name}</td>
+                          <td className="px-5 py-3">
+                            <span className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full text-xs font-medium">
+                              {s.course_name || "—"}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
 
           </div>
         ) : null}

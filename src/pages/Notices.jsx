@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import Sidebar from "../components/Sidebar"
 import { useAuth } from "../context/AuthContext"
 import { getNoticesAPI, addNoticeAPI, deleteNoticeAPI } from "../api"
@@ -7,7 +7,6 @@ export default function Notices() {
   const { isAdmin } = useAuth()
 
   const [notices, setNotices] = useState([])
-  const [filtered, setFiltered] = useState([])
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState("")
@@ -33,16 +32,13 @@ export default function Notices() {
     }
   }, [success])
 
-  useEffect(() => {
+  const filtered = useMemo(() => {
     const q = search.toLowerCase()
-    let result = notices.filter((n) =>
-      n.title.toLowerCase().includes(q) ||
-      n.content.toLowerCase().includes(q)
-    )
-    if (dateFilter) {
-      result = result.filter((n) => n.date === dateFilter)
-    }
-    setFiltered(result)
+    return notices.filter((n) => {
+      const matchText = n.title.toLowerCase().includes(q) || n.content.toLowerCase().includes(q)
+      const matchDate = !dateFilter || n.date === dateFilter
+      return matchText && matchDate
+    })
   }, [notices, search, dateFilter])
 
   async function fetchNotices() {

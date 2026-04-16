@@ -116,7 +116,7 @@ export default function Courses() {
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">Default Fees (&#8377;)</label>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Default Fees (₹)</label>
                 <input type="number" name="fees" value={courseForm.fees} onChange={handleCourseChange}
                   placeholder="e.g. 12000" min="0"
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
@@ -164,7 +164,7 @@ export default function Courses() {
                   <p className="font-semibold text-gray-800">{c.name}</p>
                   <p className="text-xs text-gray-400 mt-0.5">
                     {c.duration && <span className="mr-3">Duration: {c.duration}</span>}
-                    {c.fees && <span className="mr-3">Fees: &#8377;{c.fees.toLocaleString()}</span>}
+                    {c.fees && <span className="mr-3">Fees: ₹{c.fees.toLocaleString()}</span>}
                     {c.description && <span>{c.description}</span>}
                   </p>
                 </div>
