@@ -39,6 +39,13 @@ export default function ReportCardModal({ studentId, onClose }) {
   const [downloading, setDownloading] = useState(false)
   const [error, setError]           = useState("")
 
+  // Close on Escape key
+  useEffect(() => {
+    function onKey(e) { if (e.key === "Escape") onClose() }
+    document.addEventListener("keydown", onKey)
+    return () => document.removeEventListener("keydown", onKey)
+  }, [onClose])
+
   useEffect(() => {
     async function load() {
       try {

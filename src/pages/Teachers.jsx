@@ -18,6 +18,13 @@ function AssignSubjectsModal({ teacher, allSubjects, onClose, onSaved }) {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState("")
 
+  // Close on Escape key
+  useEffect(() => {
+    function onKey(e) { if (e.key === "Escape") onClose() }
+    document.addEventListener("keydown", onKey)
+    return () => document.removeEventListener("keydown", onKey)
+  }, [onClose])
+
   // Group subjects by course
   const byCourse = {}
   allSubjects.forEach((s) => {

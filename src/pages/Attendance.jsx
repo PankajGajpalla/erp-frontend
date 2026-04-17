@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import Sidebar from "../components/Sidebar"
 import { useAuth } from "../context/AuthContext"
 import {
@@ -13,7 +13,6 @@ export default function Attendance() {
   const { user, isAdmin } = useAuth()
 
   const [attendance, setAttendance]       = useState([])
-  const [filtered, setFiltered]           = useState([])
   const [summary, setSummary]             = useState(null)
   const [subjectSummary, setSubjectSummary] = useState([])
   const [loading, setLoading]             = useState(true)
@@ -49,12 +48,13 @@ export default function Attendance() {
     }
   }, [success])
 
-  // Apply local filters
-  useEffect(() => {
-    let result = [...attendance]
-    if (statusFilter !== "all") result = result.filter((a) => a.status === statusFilter)
-    if (dateFilter) result = result.filter((a) => a.date === dateFilter)
-    setFiltered(result)
+  // Apply local filters (derived — no extra state needed)
+  const filtered = useMemo(() => {
+    return attendance.filter((a) => {
+      const matchStatus = statusFilter === "all" || a.status === statusFilter
+      const matchDate   = !dateFilter || a.date === dateFilter
+      return matchStatus && matchDate
+    })
   }, [attendance, statusFilter, dateFilter])
 
   async function fetchAttendance(params = {}) {

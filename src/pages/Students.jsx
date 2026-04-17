@@ -64,6 +64,19 @@ export default function Students() {
     }
   }, [success])
 
+  // Close detail modal on Escape key
+  useEffect(() => {
+    if (!viewStudent && !reportCardId) return
+    function onKey(e) {
+      if (e.key === "Escape") {
+        setViewStudent(null)
+        setReportCardId(null)
+      }
+    }
+    document.addEventListener("keydown", onKey)
+    return () => document.removeEventListener("keydown", onKey)
+  }, [viewStudent, reportCardId])
+
   const filtered = useMemo(() => {
     const q = search.toLowerCase()
     return students.filter((s) => {

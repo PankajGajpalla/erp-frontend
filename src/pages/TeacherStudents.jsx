@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import Sidebar from "../components/Sidebar"
 import { getStudentsByCourseAPI, getStudentAPI, attendanceSummaryAPI, subjectWiseAttendanceAPI } from "../api"
 
@@ -69,6 +69,14 @@ export default function TeacherStudents() {
     setSubjectAtt([])
     setDetailsError("")
   }
+
+  // Close modal on Escape key
+  useEffect(() => {
+    if (!selectedStudent) return
+    function onKey(e) { if (e.key === "Escape") closeModal() }
+    document.addEventListener("keydown", onKey)
+    return () => document.removeEventListener("keydown", onKey)
+  }, [selectedStudent])
 
   const pct = attendance?.attendance_percentage ?? 0
   const pctColor = pct >= 75 ? "bg-green-500" : pct >= 50 ? "bg-yellow-500" : "bg-red-500"
@@ -205,11 +213,18 @@ export default function TeacherStudents() {
                     {selectedStudent.father_name && (
                       <p className="text-sm text-gray-500">S/o {selectedStudent.father_name}</p>
                     )}
-                    {selectedStudent.course && (
-                      <span className="mt-1 inline-block bg-blue-100 text-blue-700 text-xs px-2 py-0.5 rounded-full font-medium">
-                        {selectedStudent.course}
-                      </span>
-                    )}
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {selectedStudent.course && (
+                        <span className="bg-blue-100 text-blue-700 text-xs px-2 py-0.5 rounded-full font-medium">
+                          {selectedStudent.course}
+                        </span>
+                      )}
+                      {(selectedStudent.additional_courses || []).map((ac) => (
+                        <span key={ac.id} className="bg-indigo-100 text-indigo-700 text-xs px-2 py-0.5 rounded-full font-medium">
+                          +{ac.name}
+                        </span>
+                      ))}
+                    </div>
                   </div>
                 </div>
 
@@ -242,6 +257,18 @@ export default function TeacherStudents() {
                     <InfoRow label="School / College" value={selectedStudent.school_college_name} />
                     <InfoRow label="Course"           value={selectedStudent.course} />
                   </div>
+                  {(selectedStudent.additional_courses || []).length > 0 && (
+                    <div className="mt-3">
+                      <p className="text-xs text-gray-400 font-medium uppercase tracking-wide mb-1">Additional Courses</p>
+                      <div className="flex flex-wrap gap-1">
+                        {selectedStudent.additional_courses.map((ac) => (
+                          <span key={ac.id} className="bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full text-xs font-medium">
+                            {ac.name}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* Attendance */}
