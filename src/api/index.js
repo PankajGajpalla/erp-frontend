@@ -48,7 +48,8 @@ export const getAttendanceAPI = () => API.get("/attendance");
 export const getStudentAttendanceAPI = (id, params = {}) => API.get(`/attendance/${id}`, { params });
 export const markAttendanceAPI = (data) => API.post("/mark_attendance", data);
 export const attendanceSummaryAPI = (id) => API.get(`/attendance/summary/${id}`);
-export const markAttendanceBulkAPI = (data) => API.post("/mark_attendance_bulk", data);
+export const markAttendanceBulkAPI  = (data) => API.post("/mark_attendance_bulk", data)
+export const checkAttendanceBulkAPI = (data) => API.post("/attendance/check", data);
 
 // ─── Fees ────────────────────────────────────────────────────
 export const getFeesAPI = (id) => API.get(`/fees/${id}`);
