@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from "react"
 import Sidebar from "../components/Sidebar"
 import { useAuth } from "../context/AuthContext"
-import { getFeesAPI, addFeesAPI, payFeesAPI, feesSummaryAPI, getFeePaymentsAPI, getStudentAPI, searchStudentsAPI } from "../api"
+import { getFeesAPI, addFeesAPI, payFeesAPI, feesSummaryAPI, getFeePaymentsAPI, getStudentAPI, searchStudentsAPI, getCoursesAPI, getStudentsByCourseAPI } from "../api"
 import jsPDF from "jspdf"
 
 function generateReceipt(payment, fee, studentName, studentCode) {
@@ -437,6 +437,13 @@ function AdminFees() {
   // View Fees: selected student
   const [viewStudent, setViewStudent] = useState(null)  // { id, name, student_code, ... }
 
+  // View Fees: browse by course
+  const [viewMode, setViewMode]           = useState("search")  // "search" | "course"
+  const [courses, setCourses]             = useState([])
+  const [selectedCourse, setSelectedCourse] = useState("")
+  const [courseStudents, setCourseStudents] = useState([])
+  const [courseLoading, setCourseLoading] = useState(false)
+
   const [payForms, setPayForms] = useState({})
   const [payingId, setPayingId] = useState(null)
   const [expandedId, setExpandedId] = useState(null)
@@ -451,6 +458,21 @@ function AdminFees() {
     else if (statusFilter === "paid") setFiltered(fees.filter((f) => f.paid >= f.amount))
     else setFiltered(fees.filter((f) => f.paid < f.amount))
   }, [fees, statusFilter])
+
+  // Load courses once for Browse-by-Course mode
+  useEffect(() => {
+    getCoursesAPI().then((r) => setCourses(r.data.courses || [])).catch(() => {})
+  }, [])
+
+  // When course changes, load its students
+  useEffect(() => {
+    if (!selectedCourse) { setCourseStudents([]); return }
+    setCourseLoading(true)
+    getStudentsByCourseAPI(selectedCourse)
+      .then((r) => setCourseStudents(r.data.students || r.data || []))
+      .catch(() => setCourseStudents([]))
+      .finally(() => setCourseLoading(false))
+  }, [selectedCourse])
 
   async function fetchFees(studentId) {
     if (!studentId) return
@@ -478,6 +500,8 @@ function AdminFees() {
     setFees([])
     setSummary(null)
     setError("")
+    setSelectedCourse("")
+    setCourseStudents([])
   }
 
   async function handleAddFees(e) {
@@ -581,13 +605,82 @@ function AdminFees() {
       </div>
 
       {/* ── View Student Fees ───────────────────────────────── */}
-      <div className="bg-white rounded-xl shadow p-5">
-        <h3 className="text-base font-semibold text-gray-700 mb-3">🔍 View Student Fees</h3>
-        <StudentSearchBox
-          selectedStudent={viewStudent}
-          onSelect={handleSelectViewStudent}
-          onClear={handleClearView}
-        />
+      <div className="bg-white rounded-xl shadow overflow-hidden">
+        {/* Header + mode tabs */}
+        <div className="flex items-center justify-between px-5 pt-4 pb-0">
+          <h3 className="text-base font-semibold text-gray-700">🔍 View Student Fees</h3>
+          <div className="flex border rounded-lg overflow-hidden text-sm">
+            <button
+              onClick={() => { setViewMode("search"); setSelectedCourse(""); setCourseStudents([]) }}
+              className={`px-4 py-1.5 font-medium transition ${viewMode === "search" ? "bg-gray-800 text-white" : "bg-white text-gray-500 hover:bg-gray-50"}`}>
+              Search
+            </button>
+            <button
+              onClick={() => { setViewMode("course"); setViewStudent(null); setFees([]); setSummary(null) }}
+              className={`px-4 py-1.5 font-medium transition ${viewMode === "course" ? "bg-gray-800 text-white" : "bg-white text-gray-500 hover:bg-gray-50"}`}>
+              Browse by Course
+            </button>
+          </div>
+        </div>
+
+        <div className="p-5">
+          {viewMode === "search" ? (
+            /* ── Search mode ── */
+            <StudentSearchBox
+              selectedStudent={viewStudent}
+              onSelect={handleSelectViewStudent}
+              onClear={handleClearView}
+            />
+          ) : (
+            /* ── Browse by course mode ── */
+            <div className="space-y-3">
+              {/* Course selector */}
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Select Course</label>
+                <select
+                  value={selectedCourse}
+                  onChange={(e) => { setSelectedCourse(e.target.value); setViewStudent(null); setFees([]); setSummary(null) }}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                  <option value="">— Choose a course —</option>
+                  {courses.map((c) => (
+                    <option key={c.id} value={c.name}>{c.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Student grid */}
+              {courseLoading ? (
+                <div className="flex items-center gap-2 text-gray-400 text-sm py-2">
+                  <div className="w-4 h-4 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
+                  Loading students…
+                </div>
+              ) : selectedCourse && courseStudents.length === 0 ? (
+                <p className="text-sm text-gray-400 py-2">No students found in this course.</p>
+              ) : courseStudents.length > 0 ? (
+                <>
+                  <p className="text-xs text-gray-400">{courseStudents.length} student{courseStudents.length !== 1 ? "s" : ""} — click to view fees</p>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 max-h-64 overflow-y-auto pr-1">
+                    {courseStudents.map((s) => (
+                      <button key={s.id}
+                        onClick={() => handleSelectViewStudent(s)}
+                        className={`text-left rounded-lg border px-3 py-2.5 transition hover:shadow-md hover:border-blue-400 hover:bg-blue-50
+                          ${viewStudent?.id === s.id ? "border-blue-500 bg-blue-50 shadow-md" : "border-gray-200 bg-white"}`}>
+                        <div className="flex items-center gap-2 mb-1">
+                          <div className="w-7 h-7 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-xs font-bold flex-shrink-0">
+                            {s.name.charAt(0).toUpperCase()}
+                          </div>
+                          <span className="font-mono text-xs text-gray-400">{s.student_code || `#${s.id}`}</span>
+                        </div>
+                        <p className="text-sm font-semibold text-gray-800 leading-tight truncate">{s.name}</p>
+                        {s.phone && <p className="text-xs text-gray-400 truncate mt-0.5">{s.phone}</p>}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              ) : null}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Summary */}
