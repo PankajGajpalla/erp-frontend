@@ -4,83 +4,144 @@ import { useAuth } from "../context/AuthContext"
 import { getFeesAPI, addFeesAPI, payFeesAPI, feesSummaryAPI, getFeePaymentsAPI, getStudentAPI, searchStudentsAPI, getCoursesAPI, getStudentsByCourseAPI } from "../api"
 import jsPDF from "jspdf"
 
-function generateReceipt(payment, fee, studentName, studentCode) {
-  const doc = new jsPDF()
+function generateReceipt(payment, fee, studentName, studentCode, course, parentPhone) {
+  const doc   = new jsPDF()
   const pageW = doc.internal.pageSize.getWidth()
+  const left  = 18
+  const right = pageW - left
 
-  // Header
-  doc.setFillColor(37, 99, 235)
-  doc.rect(0, 0, pageW, 35, "F")
+  // ── Header bar ───────────────────────────────────────────────
+  doc.setFillColor(30, 64, 175)           // deep blue
+  doc.rect(0, 0, pageW, 38, "F")
   doc.setTextColor(255, 255, 255)
-  doc.setFontSize(20)
+  doc.setFontSize(18)
   doc.setFont("helvetica", "bold")
-  doc.text("PAYMENT RECEIPT", pageW / 2, 18, { align: "center" })
+  doc.text("PAYMENT RECEIPT", pageW / 2, 16, { align: "center" })
+  doc.setFontSize(9)
+  doc.setFont("helvetica", "normal")
+  doc.text("ABS Foundation", pageW / 2, 26, { align: "center" })
+  doc.setFontSize(8)
+  doc.text("Computer-generated receipt — no signature required", pageW / 2, 33, { align: "center" })
+
+  // ── Receipt meta row ─────────────────────────────────────────
+  doc.setTextColor(40, 40, 40)
   doc.setFontSize(10)
-  doc.setFont("helvetica", "normal")
-  doc.text("ERP System", pageW / 2, 28, { align: "center" })
-
-  // Reset color
-  doc.setTextColor(30, 30, 30)
-  doc.setFontSize(11)
-
-  const left = 20
   let y = 50
-
-  // Receipt info
   doc.setFont("helvetica", "bold")
-  doc.text(`Receipt No: RCP-${String(payment.id).padStart(5, "0")}`, left, y)
+  doc.text(`Receipt No:  RCP-${String(payment.id).padStart(5, "0")}`, left, y)
   doc.setFont("helvetica", "normal")
-  doc.text(`Date: ${new Date(payment.paid_date).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}`, pageW - left, y, { align: "right" })
-  y += 15
+  const dateStr = payment.paid_date
+    ? new Date(payment.paid_date).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })
+    : "—"
+  doc.text(`Date: ${dateStr}`, right, y, { align: "right" })
 
-  // Divider
-  doc.setDrawColor(200, 200, 200)
-  doc.line(left, y, pageW - left, y)
+  // ── Divider ───────────────────────────────────────────────────
+  y += 8
+  doc.setDrawColor(210, 210, 210)
+  doc.line(left, y, right, y)
   y += 10
 
-  // Student info
-  doc.setFont("helvetica", "bold")
-  doc.text("Student Details", left, y); y += 8
-  doc.setFont("helvetica", "normal")
-  doc.text(`Name: ${studentName || "—"}`, left, y); y += 7
-  if (studentCode) { doc.text(`Student ID: ${studentCode}`, left, y); y += 7 }
-  y += 5
+  // ── Student Details ───────────────────────────────────────────
+  doc.setFillColor(245, 247, 250)
+  doc.roundedRect(left, y - 4, right - left, course && parentPhone ? 38 : course || parentPhone ? 32 : 26, 2, 2, "F")
 
-  // Fee info
+  doc.setFontSize(8)
   doc.setFont("helvetica", "bold")
-  doc.text("Payment Details", left, y); y += 8
-  doc.setFont("helvetica", "normal")
-  doc.text(`Description: ${fee.description || "Fee Payment"}`, left, y); y += 7
-  if (fee.due_date) { doc.text(`Due Date: ${new Date(fee.due_date).toLocaleDateString("en-IN")}`, left, y); y += 7 }
-  y += 5
-
-  // Amount box
-  doc.setFillColor(240, 249, 255)
-  doc.setDrawColor(37, 99, 235)
-  doc.roundedRect(left, y, pageW - left * 2, 30, 3, 3, "FD")
-  doc.setFont("helvetica", "bold")
-  doc.setFontSize(13)
-  doc.setTextColor(37, 99, 235)
-  doc.text("Amount Paid", left + 8, y + 11)
-  doc.setFontSize(18)
-  doc.text(`₹${parseFloat(payment.amount).toLocaleString("en-IN", { minimumFractionDigits: 2 })}`, pageW - left - 8, y + 14, { align: "right" })
-  if (payment.note) {
-    doc.setFontSize(9)
-    doc.setTextColor(100, 100, 100)
-    doc.text(`Note: ${payment.note}`, left + 8, y + 23)
-  }
-  y += 40
-
-  // Footer
-  doc.setDrawColor(200, 200, 200)
-  doc.line(left, y, pageW - left, y)
+  doc.setTextColor(100, 100, 120)
+  doc.text("STUDENT DETAILS", left + 4, y + 2)
   y += 8
-  doc.setFont("helvetica", "italic")
-  doc.setFontSize(9)
-  doc.setTextColor(150, 150, 150)
-  doc.text("This is a computer-generated receipt. No signature required.", pageW / 2, y, { align: "center" })
 
-  doc.save(`Receipt_RCP${String(payment.id).padStart(5,"0")}.pdf`)
+  doc.setFontSize(10)
+  doc.setTextColor(30, 30, 30)
+
+  // Two-column layout: left = label, right = value
+  function row(label, value, yPos) {
+    doc.setFont("helvetica", "bold");   doc.text(label, left + 4, yPos)
+    doc.setFont("helvetica", "normal"); doc.text(String(value || "—"), left + 38, yPos)
+  }
+
+  row("Name :", studentName || "—", y); y += 7
+  if (studentCode)  { row("Student ID :", studentCode, y); y += 7 }
+  if (course)       { row("Course :", course, y);          y += 7 }
+  if (parentPhone)  { row("Parent No. :", parentPhone, y); y += 7 }
+
+  y += 6
+
+  // ── Payment Details ───────────────────────────────────────────
+  doc.setFillColor(245, 247, 250)
+  const payBoxH = fee.due_date ? 26 : 19
+  doc.roundedRect(left, y - 4, right - left, payBoxH, 2, 2, "F")
+
+  doc.setFontSize(8)
+  doc.setFont("helvetica", "bold")
+  doc.setTextColor(100, 100, 120)
+  doc.text("PAYMENT DETAILS", left + 4, y + 2)
+  y += 8
+
+  doc.setFontSize(10)
+  doc.setTextColor(30, 30, 30)
+  row("Description :", fee.description || "Fee Payment", y); y += 7
+  if (fee.due_date) {
+    row("Due Date :", new Date(fee.due_date).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }), y)
+    y += 7
+  }
+  y += 8
+
+  // ── Amount Box ────────────────────────────────────────────────
+  const boxH = payment.note ? 36 : 28
+  doc.setFillColor(239, 246, 255)
+  doc.setDrawColor(30, 64, 175)
+  doc.setLineWidth(0.6)
+  doc.roundedRect(left, y, right - left, boxH, 3, 3, "FD")
+  doc.setLineWidth(0.2)
+
+  // Label
+  doc.setFontSize(9)
+  doc.setFont("helvetica", "bold")
+  doc.setTextColor(30, 64, 175)
+  doc.text("AMOUNT PAID", left + 6, y + 9)
+
+  // Amount — on same line, right-aligned but capped so it never overflows
+  const amountStr = `Rs. ${parseFloat(payment.amount).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+  doc.setFontSize(15)
+  doc.setFont("helvetica", "bold")
+  doc.setTextColor(15, 100, 50)
+  doc.text(amountStr, right - 6, y + 10, { align: "right" })
+
+  // Note (if any) — smaller, inside box below amount
+  if (payment.note) {
+    doc.setFontSize(8)
+    doc.setFont("helvetica", "italic")
+    doc.setTextColor(100, 100, 100)
+    const noteLines = doc.splitTextToSize(`Note: ${payment.note}`, right - left - 12)
+    doc.text(noteLines, left + 6, y + 20)
+  }
+
+  y += boxH + 10
+
+  // ── Summary row ───────────────────────────────────────────────
+  doc.setFontSize(9)
+  doc.setFont("helvetica", "normal")
+  doc.setTextColor(100, 100, 100)
+  const totalFee  = `Total Fee: Rs. ${parseFloat(fee.amount).toLocaleString("en-IN", { minimumFractionDigits: 2 })}`
+  const totalPaid = `Total Paid: Rs. ${parseFloat(fee.paid).toLocaleString("en-IN", { minimumFractionDigits: 2 })}`
+  const pending   = fee.amount - fee.paid
+  const pendingStr = `Balance: Rs. ${parseFloat(pending).toLocaleString("en-IN", { minimumFractionDigits: 2 })}`
+  doc.text(totalFee,  left, y)
+  doc.text(totalPaid, pageW / 2, y, { align: "center" })
+  doc.text(pendingStr, right, y, { align: "right" })
+  y += 10
+
+  // ── Footer ────────────────────────────────────────────────────
+  doc.setDrawColor(210, 210, 210)
+  doc.line(left, y, right, y)
+  y += 7
+  doc.setFont("helvetica", "italic")
+  doc.setFontSize(8)
+  doc.setTextColor(160, 160, 160)
+  doc.text("Thank you for your payment. Please retain this receipt for your records.", pageW / 2, y, { align: "center" })
+
+  doc.save(`Receipt_RCP${String(payment.id).padStart(5, "0")}.pdf`)
 }
 
 function formatCurrency(amount) {
@@ -98,7 +159,7 @@ function isOverdue(dueDateStr) {
 }
 
 // ── Payment history row (shared by admin & student) ──────────
-function PaymentHistory({ feeId, fee, studentName, studentCode }) {
+function PaymentHistory({ feeId, fee, studentName, studentCode, course, parentPhone }) {
   const [payments, setPayments] = useState(null)
   const [loading, setLoading] = useState(true)
 
@@ -132,7 +193,7 @@ function PaymentHistory({ feeId, fee, studentName, studentCode }) {
             <td className="px-4 py-1 text-gray-600">{formatDate(p.paid_date)}</td>
             <td className="px-4 py-1 text-gray-500">{p.note || "—"}</td>
             <td className="px-4 py-1">
-              <button onClick={() => generateReceipt(p, fee, studentName, studentCode)}
+              <button onClick={() => generateReceipt(p, fee, studentName, studentCode, course, parentPhone)}
                 className="bg-blue-100 hover:bg-blue-200 text-blue-700 px-2 py-0.5 rounded text-xs font-medium transition">
                 🧾 Receipt
               </button>
@@ -145,7 +206,7 @@ function PaymentHistory({ feeId, fee, studentName, studentCode }) {
 }
 
 // ── Student View ─────────────────────────────────────────────
-function StudentFees({ studentId, studentName, studentCode }) {
+function StudentFees({ studentId, studentName, studentCode, course, parentPhone }) {
   const [fees, setFees] = useState([])
   const [summary, setSummary] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -287,7 +348,7 @@ function StudentFees({ studentId, studentName, studentCode }) {
                         <tr key={`hist-${f.id}`} className="bg-blue-50 border-t">
                           <td colSpan={7} className="px-2 py-2">
                             <p className="text-xs font-semibold text-gray-500 px-4 pb-1">Payment History</p>
-                            <PaymentHistory feeId={f.id} fee={f} studentName={studentName} studentCode={studentCode} />
+                            <PaymentHistory feeId={f.id} fee={f} studentName={studentName} studentCode={studentCode} course={course} parentPhone={parentPhone} />
                           </td>
                         </tr>
                       )}
@@ -820,7 +881,8 @@ function AdminFees() {
                           <td colSpan={8} className="px-2 py-2">
                             <p className="text-xs font-semibold text-gray-500 px-4 pb-1">Payment History</p>
                             <PaymentHistory key={historyKey} feeId={f.id} fee={f}
-                              studentName={viewStudent?.name} studentCode={viewStudent?.student_code} />
+                              studentName={viewStudent?.name} studentCode={viewStudent?.student_code}
+                              course={viewStudent?.course} parentPhone={viewStudent?.parent_phone} />
                           </td>
                         </tr>
                       )}
@@ -859,7 +921,7 @@ export default function Fees() {
     <div className="flex">
       <Sidebar />
       <main className="flex-1 p-6 bg-gray-50 min-h-screen">
-        {isAdmin ? <AdminFees /> : <StudentFees studentId={user?.student_id} studentName={user?.name} studentCode={user?.student_code} />}
+        {isAdmin ? <AdminFees /> : <StudentFees studentId={user?.student_id} studentName={user?.name} studentCode={user?.student_code} course={user?.course} parentPhone={user?.parent_phone} />}
       </main>
     </div>
   )
