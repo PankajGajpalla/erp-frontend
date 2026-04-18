@@ -714,7 +714,7 @@ function AdminFees() {
       </div>
 
       {/* ── View Student Fees ───────────────────────────────── */}
-      <div className="bg-white rounded-xl shadow overflow-hidden">
+      <div className="bg-white rounded-xl shadow">
         {/* Header + mode tabs */}
         <div className="flex items-center justify-between px-5 pt-4 pb-0">
           <h3 className="text-base font-semibold text-gray-700">🔍 View Student Fees</h3>
