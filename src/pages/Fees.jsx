@@ -852,6 +852,7 @@ function AdminFees() {
         ) : filtered.length === 0 ? (
           <p className="p-6 text-gray-400">No records match the filter.</p>
         ) : (
+          <>
           {/* ── Edit Fee Modal ── */}
           {editingFee && (
             <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
@@ -1008,6 +1009,7 @@ function AdminFees() {
               </tbody>
             </table>
           </div>
+          </>
         )}
       </div>
     </div>
