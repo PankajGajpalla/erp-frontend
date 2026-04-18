@@ -90,9 +90,8 @@ function AdminDashboard() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <StatCard label="Total Students"      value={stats.total_students}              color="border-blue-500" />
-        <StatCard label="Attendance Records"  value={stats.total_attendance}            color="border-green-500" />
         <StatCard label="Total Fees"          value={formatCurrency(stats.total_fees)}  color="border-yellow-500" />
         <StatCard label="Fees Collected"      value={formatCurrency(stats.total_paid)}  color="border-green-500" />
         <StatCard label="Fees Pending"        value={formatCurrency(stats.total_pending)} color="border-red-500" />
