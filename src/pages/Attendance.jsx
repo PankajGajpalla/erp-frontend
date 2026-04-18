@@ -6,7 +6,8 @@ import {
   getStudentAttendanceAPI,
   markAttendanceAPI,
   attendanceSummaryAPI,
-  subjectWiseAttendanceAPI
+  subjectWiseAttendanceAPI,
+  searchStudentsAPI,
 } from "../api"
 
 export default function Attendance() {
@@ -36,8 +37,10 @@ export default function Attendance() {
     status: "present"
   })
 
-  // Search by student id (admin only)
-  const [searchId, setSearchId] = useState("")
+  // Search by student (admin only)
+  const [searchQuery, setSearchQuery]       = useState("")
+  const [searchResults, setSearchResults]   = useState([])   // multiple matches
+  const [selectedStudent, setSelectedStudent] = useState(null) // chosen student obj
 
   useEffect(() => { fetchAttendance() }, [])
 
@@ -109,25 +112,47 @@ export default function Attendance() {
 
   async function handleSearch(e) {
     e.preventDefault(); setError("")
-    if (!searchId) { setError("Enter a student ID"); return }
-    setLoading(true)
+    if (!searchQuery.trim()) { setError("Enter a name, student ID, email or phone"); return }
+    setLoading(true); setSearchResults([]); setSelectedStudent(null)
+    try {
+      const res = await searchStudentsAPI(searchQuery.trim())
+      const students = res.data.students || res.data || []
+      if (students.length === 0) {
+        setError("No student found matching that query")
+        setLoading(false)
+        return
+      }
+      if (students.length === 1) {
+        // Single match — load attendance directly
+        await loadStudentAttendance(students[0])
+      } else {
+        // Multiple matches — show list for admin to pick
+        setSearchResults(students)
+        setLoading(false)
+      }
+    } catch { setError("Search failed — try again") ; setLoading(false) }
+  }
+
+  async function loadStudentAttendance(student) {
+    setLoading(true); setSearchResults([]); setSelectedStudent(student)
     try {
       const params = {}
       if (startDate) params.start_date = startDate
       if (endDate)   params.end_date   = endDate
       const [attRes, summaryRes] = await Promise.all([
-        getStudentAttendanceAPI(searchId, params),
-        attendanceSummaryAPI(searchId)
+        getStudentAttendanceAPI(student.id, params),
+        attendanceSummaryAPI(student.id),
       ])
       setAttendance(attRes.data.attendance)
       setSummary(summaryRes.data)
-    } catch { setError("Student not found") }
+    } catch { setError("Failed to load attendance for this student") }
     finally { setLoading(false) }
   }
 
   function clearAll() {
     setStatusFilter("all"); setDateFilter(""); setSummary(null)
-    setSearchId(""); setStartDate(""); setEndDate(""); setRangeApplied(false)
+    setSearchQuery(""); setSearchResults([]); setSelectedStudent(null)
+    setStartDate(""); setEndDate(""); setRangeApplied(false)
     fetchAttendance()
   }
 
@@ -174,11 +199,17 @@ export default function Attendance() {
           <div className="bg-white rounded-xl shadow p-6 mb-6">
             <h3 className="text-lg font-semibold text-gray-700 mb-4">Search by Student</h3>
             <form onSubmit={handleSearch} className="flex flex-wrap gap-3 items-end">
-              <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">Student ID</label>
-                <input type="number" placeholder="e.g. 5" value={searchId}
-                  onChange={(e) => setSearchId(e.target.value)}
-                  className="border border-gray-300 rounded-lg px-4 py-2 w-32 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              <div className="flex-1 min-w-[220px]">
+                <label className="block text-xs font-medium text-gray-500 mb-1">
+                  Name / Student ID / Email / Phone
+                </label>
+                <input
+                  type="text"
+                  placeholder="Search by name, STU0001, email or phone…"
+                  value={searchQuery}
+                  onChange={(e) => { setSearchQuery(e.target.value); setSearchResults([]) }}
+                  className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-500 mb-1">From Date</label>
@@ -199,6 +230,32 @@ export default function Attendance() {
                 Show All
               </button>
             </form>
+
+            {/* Multiple matches — pick one */}
+            {searchResults.length > 1 && (
+              <div className="mt-4">
+                <p className="text-xs text-gray-500 mb-2">{searchResults.length} students found — click one to view attendance:</p>
+                <div className="divide-y border rounded-lg overflow-hidden">
+                  {searchResults.map((s) => (
+                    <button key={s.id} onClick={() => loadStudentAttendance(s)}
+                      className="w-full text-left px-4 py-2.5 hover:bg-blue-50 transition flex items-center gap-4 text-sm">
+                      <span className="font-mono text-xs text-gray-400 w-20 shrink-0">{s.student_code || `#${s.id}`}</span>
+                      <span className="font-medium text-gray-800 flex-1">{s.name}</span>
+                      <span className="text-gray-400">{s.email || s.phone || ""}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Selected student banner */}
+            {selectedStudent && (
+              <div className="mt-4 flex items-center gap-3 bg-blue-50 border border-blue-200 rounded-lg px-4 py-2 text-sm">
+                <span className="font-mono text-xs text-blue-400">{selectedStudent.student_code || `#${selectedStudent.id}`}</span>
+                <span className="font-semibold text-blue-800">{selectedStudent.name}</span>
+                {selectedStudent.course && <span className="text-blue-500">· {selectedStudent.course}</span>}
+              </div>
+            )}
 
             {summary && isAdmin && (
               <div className="mt-4 flex gap-6 text-center">
