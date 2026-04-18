@@ -3,7 +3,7 @@ import Sidebar from "../components/Sidebar"
 import { useAuth } from "../context/AuthContext"
 import {
   getTimetableByCourseAPI, addTimetableAPI, deleteTimetableAPI,
-  getCoursesAPI, getStudentAPI
+  getCoursesAPI, getStudentAPI, getSubjectsByCourseAPI, getTeachersAPI,
 } from "../api"
 
 const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
@@ -90,12 +90,15 @@ export default function Timetable() {
   const [success, setSuccess]               = useState("")
   const [deleteConfirmId, setDeleteConfirmId] = useState(null)
   const [form, setForm]                     = useState(EMPTY_FORM)
+  const [subjects, setSubjects]             = useState([])
+  const [teachers, setTeachers]             = useState([])
 
   // For student: auto-detect course
   const [studentCourse, setStudentCourse]   = useState(null) // { id, name }
 
   useEffect(() => {
     loadCourses()
+    loadTeachers()
   }, [])
 
   // Student: load their profile to find their course
@@ -108,6 +111,25 @@ export default function Timetable() {
   useEffect(() => {
     if (success) { const t = setTimeout(() => setSuccess(""), 3000); return () => clearTimeout(t) }
   }, [success])
+
+  async function loadTeachers() {
+    try {
+      const res = await getTeachersAPI()
+      setTeachers(res.data.teachers || [])
+    } catch {
+      // non-critical
+    }
+  }
+
+  async function loadSubjects(courseId) {
+    if (!courseId) { setSubjects([]); return }
+    try {
+      const res = await getSubjectsByCourseAPI(courseId)
+      setSubjects(res.data.subjects || [])
+    } catch {
+      setSubjects([])
+    }
+  }
 
   async function loadCourses() {
     try {
@@ -159,6 +181,8 @@ export default function Timetable() {
     setError("")
     setSuccess("")
     setDeleteConfirmId(null)
+    setForm(EMPTY_FORM)
+    loadSubjects(id)
     if (id) fetchTimetable(id)
   }
 
@@ -287,16 +311,51 @@ export default function Timetable() {
               >
                 {DAYS.map((d) => <option key={d} value={d}>{d}</option>)}
               </select>
-              <input
-                type="text" placeholder="Subject" value={form.subject}
-                onChange={(e) => setForm({ ...form, subject: e.target.value })}
-                className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 flex-1 min-w-[140px]"
-              />
-              <input
-                type="text" placeholder="Teacher name" value={form.teacher}
-                onChange={(e) => setForm({ ...form, teacher: e.target.value })}
-                className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 flex-1 min-w-[140px]"
-              />
+              {subjects.length > 0 ? (
+                <select
+                  value={form.subject}
+                  onChange={(e) => {
+                    const subjectName = e.target.value
+                    const matched = subjects.find((s) => s.name === subjectName)
+                    let autoTeacher = form.teacher
+                    if (matched?.teacher_id) {
+                      const t = teachers.find((t) => t.id === matched.teacher_id)
+                      if (t) autoTeacher = t.name
+                    }
+                    setForm({ ...form, subject: subjectName, teacher: autoTeacher })
+                  }}
+                  className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 flex-1 min-w-[140px]"
+                >
+                  <option value="">— Select Subject —</option>
+                  {subjects.map((s) => (
+                    <option key={s.id} value={s.name}>{s.name}</option>
+                  ))}
+                </select>
+              ) : (
+                <input
+                  type="text" placeholder="Subject" value={form.subject}
+                  onChange={(e) => setForm({ ...form, subject: e.target.value })}
+                  className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 flex-1 min-w-[140px]"
+                />
+              )}
+              {teachers.length > 0 ? (
+                <select
+                  value={form.teacher}
+                  onChange={(e) => setForm({ ...form, teacher: e.target.value })}
+                  className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 flex-1 min-w-[160px]"
+                >
+                  <option value="">— Select Teacher —</option>
+                  {teachers.map((t) => (
+                    <option key={t.id} value={t.name}>{t.name}</option>
+                  ))}
+                </select>
+              ) : (
+                <input
+                  type="text" placeholder="Teacher name" value={form.teacher}
+                  onChange={(e) => setForm({ ...form, teacher: e.target.value })}
+                  className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 flex-1 min-w-[140px]"
+                />
+              )}
               <input
                 type="text" placeholder="e.g. 9:00 - 10:00 AM" value={form.time_slot}
                 onChange={(e) => setForm({ ...form, time_slot: e.target.value })}
