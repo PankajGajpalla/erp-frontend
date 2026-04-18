@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
 import Sidebar from "../components/Sidebar"
-import { getCoursesAPI, getSubjectsByCourseAPI, getStudentsByCourseAPI, addGradeAPI, getGradesAPI, getStudentAPI } from "../api"
+import { getCoursesAPI, getSubjectsByCourseAPI, getStudentsByCourseAPI, addGradeAPI, getGradesAPI, getStudentAPI, searchStudentsAPI } from "../api"
 
 function gradeColor(grade) {
   const map = { "A+": "bg-green-100 text-green-700", "A": "bg-green-100 text-green-600", "B": "bg-blue-100 text-blue-700", "C": "bg-yellow-100 text-yellow-700", "D": "bg-orange-100 text-orange-700", "F": "bg-red-100 text-red-700" }
@@ -358,23 +358,69 @@ function AddGrades() {
 
 // ── View Performance ──────────────────────────────────────────
 function ViewPerformance() {
-  const [studentId, setStudentId] = useState("")
-  const [student, setStudent]     = useState(null)
-  const [grades, setGrades]       = useState([])
-  const [loading, setLoading]     = useState(false)
-  const [error, setError]         = useState("")
+  const [viewMode, setViewMode]             = useState("search") // "search" | "course"
+
+  // Search mode
+  const [searchQuery, setSearchQuery]       = useState("")
+  const [searchResults, setSearchResults]   = useState([])
+  const [searching, setSearching]           = useState(false)
+
+  // Browse by course mode
+  const [courses, setCourses]               = useState([])
+  const [selectedCourse, setSelectedCourse] = useState("")
+  const [courseStudents, setCourseStudents] = useState([])
+  const [courseLoading, setCourseLoading]   = useState(false)
+
+  // Selected student + their grades
+  const [student, setStudent]   = useState(null)
+  const [grades, setGrades]     = useState([])
+  const [loading, setLoading]   = useState(false)
+  const [error, setError]       = useState("")
+
+  // Load courses once
+  useEffect(() => {
+    getCoursesAPI().then((r) => setCourses(r.data.courses || [])).catch(() => {})
+  }, [])
+
+  // Load students when course changes
+  useEffect(() => {
+    if (!selectedCourse) { setCourseStudents([]); return }
+    setCourseLoading(true)
+    getStudentsByCourseAPI(selectedCourse)
+      .then((r) => setCourseStudents(r.data.students || r.data || []))
+      .catch(() => setCourseStudents([]))
+      .finally(() => setCourseLoading(false))
+  }, [selectedCourse])
 
   async function handleSearch(e) {
     e.preventDefault()
-    if (!studentId) { setError("Enter a student ID"); return }
-    setLoading(true); setError(""); setGrades([]); setStudent(null)
+    if (!searchQuery.trim()) { setError("Enter a name, student ID, email or phone"); return }
+    setSearching(true); setError(""); setSearchResults([]); setStudent(null); setGrades([])
     try {
-      const [studentRes, gradesRes] = await Promise.all([getStudentAPI(studentId), getGradesAPI(studentId)])
+      const res = await searchStudentsAPI(searchQuery.trim())
+      const list = res.data.students || []
+      if (list.length === 0) { setError("No student found matching that query") }
+      else if (list.length === 1) { await loadStudentGrades(list[0]) }
+      else { setSearchResults(list) }
+    } catch { setError("Search failed — try again") }
+    finally { setSearching(false) }
+  }
+
+  async function loadStudentGrades(s) {
+    setLoading(true); setError(""); setSearchResults([]); setStudent(null); setGrades([])
+    try {
+      const [studentRes, gradesRes] = await Promise.all([getStudentAPI(s.id), getGradesAPI(s.id)])
       setStudent(studentRes.data)
-      setGrades(gradesRes.data.grades)
-      if (gradesRes.data.grades.length === 0) setError("No grades found for this student")
-    } catch { setError("Student not found") }
+      setGrades(gradesRes.data.grades || [])
+      if ((gradesRes.data.grades || []).length === 0) setError("No grades found for this student yet.")
+    } catch { setError("Failed to load student data") }
     finally { setLoading(false) }
+  }
+
+  function clearStudent() {
+    setStudent(null); setGrades([]); setError("")
+    setSearchQuery(""); setSearchResults([])
+    setSelectedCourse(""); setCourseStudents([])
   }
 
   const avgPct = grades.length > 0
@@ -382,7 +428,6 @@ function ViewPerformance() {
     : 0
   const overall = getOverallGrade(parseFloat(avgPct))
 
-  // Group by subject for summary
   const bySubject = grades.reduce((acc, g) => {
     if (!acc[g.subject]) acc[g.subject] = []
     acc[g.subject].push(g)
@@ -391,45 +436,150 @@ function ViewPerformance() {
 
   return (
     <div className="space-y-5">
-      <div className="bg-white rounded-xl shadow p-6">
-        <h3 className="text-base font-semibold text-gray-700 mb-3">Search Student</h3>
-        <form onSubmit={handleSearch} className="flex gap-3">
-          <input type="number" placeholder="Student ID" value={studentId} min="1"
-            onChange={(e) => { setStudentId(e.target.value); setError("") }}
-            className="border border-gray-300 rounded-lg px-4 py-2 w-40 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-          <button type="submit" disabled={loading}
-            className="bg-gray-700 text-white px-5 py-2 rounded-lg hover:bg-gray-800 transition disabled:opacity-50 text-sm">
-            {loading ? "Searching..." : "Search"}
-          </button>
-        </form>
-        {error && <div className="mt-3 bg-red-50 border border-red-200 rounded-lg px-4 py-2"><p className="text-red-600 text-sm">{error}</p></div>}
+
+      {/* ── Student Selector ── */}
+      <div className="bg-white rounded-xl shadow overflow-hidden">
+        {/* Mode tabs */}
+        <div className="flex items-center justify-between px-5 pt-4 pb-0">
+          <h3 className="text-base font-semibold text-gray-700">Find Student</h3>
+          <div className="flex border rounded-lg overflow-hidden text-sm">
+            <button onClick={() => { setViewMode("search"); setSelectedCourse(""); setCourseStudents([]) }}
+              className={`px-4 py-1.5 font-medium transition ${viewMode === "search" ? "bg-gray-800 text-white" : "bg-white text-gray-500 hover:bg-gray-50"}`}>
+              Search
+            </button>
+            <button onClick={() => { setViewMode("course"); setSearchQuery(""); setSearchResults([]) }}
+              className={`px-4 py-1.5 font-medium transition ${viewMode === "course" ? "bg-gray-800 text-white" : "bg-white text-gray-500 hover:bg-gray-50"}`}>
+              Browse by Course
+            </button>
+          </div>
+        </div>
+
+        <div className="p-5 space-y-3">
+          {viewMode === "search" ? (
+            /* Search mode */
+            <form onSubmit={handleSearch} className="flex gap-2">
+              <input
+                type="text"
+                placeholder="Search by name, STU0001, email or phone…"
+                value={searchQuery}
+                onChange={(e) => { setSearchQuery(e.target.value); setSearchResults([]) }}
+                className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <button type="submit" disabled={searching}
+                className="bg-gray-700 text-white px-5 py-2 rounded-lg hover:bg-gray-800 transition disabled:opacity-50 text-sm">
+                {searching ? "…" : "Search"}
+              </button>
+            </form>
+          ) : (
+            /* Browse by course */
+            <div className="space-y-3">
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Select Course</label>
+                <select value={selectedCourse}
+                  onChange={(e) => { setSelectedCourse(e.target.value); setStudent(null); setGrades([]) }}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
+                  <option value="">— Choose a course —</option>
+                  {courses.map((c) => <option key={c.id} value={c.name}>{c.name}</option>)}
+                </select>
+              </div>
+              {courseLoading ? (
+                <div className="flex items-center gap-2 text-gray-400 text-sm py-1">
+                  <div className="w-4 h-4 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
+                  Loading students…
+                </div>
+              ) : selectedCourse && courseStudents.length === 0 ? (
+                <p className="text-sm text-gray-400">No students in this course.</p>
+              ) : courseStudents.length > 0 ? (
+                <>
+                  <p className="text-xs text-gray-400">{courseStudents.length} student{courseStudents.length !== 1 ? "s" : ""} — click to view performance</p>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 max-h-56 overflow-y-auto pr-1">
+                    {courseStudents.map((s) => (
+                      <button key={s.id} onClick={() => loadStudentGrades(s)}
+                        className={`text-left rounded-lg border px-3 py-2.5 transition hover:shadow-md hover:border-blue-400 hover:bg-blue-50
+                          ${student?.id === s.id ? "border-blue-500 bg-blue-50 shadow-md" : "border-gray-200 bg-white"}`}>
+                        <div className="flex items-center gap-2 mb-1">
+                          <div className="w-7 h-7 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-xs font-bold flex-shrink-0">
+                            {s.name.charAt(0).toUpperCase()}
+                          </div>
+                          <span className="font-mono text-xs text-gray-400">{s.student_code || `#${s.id}`}</span>
+                        </div>
+                        <p className="text-sm font-semibold text-gray-800 leading-tight truncate">{s.name}</p>
+                        {s.phone && <p className="text-xs text-gray-400 truncate mt-0.5">{s.phone}</p>}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              ) : null}
+            </div>
+          )}
+
+          {/* Multiple search results */}
+          {searchResults.length > 1 && (
+            <div>
+              <p className="text-xs text-gray-500 mb-2">{searchResults.length} students found — click one:</p>
+              <div className="divide-y border rounded-lg overflow-hidden">
+                {searchResults.map((s) => (
+                  <button key={s.id} onClick={() => loadStudentGrades(s)}
+                    className="w-full text-left px-4 py-2.5 hover:bg-blue-50 transition flex items-center gap-4 text-sm">
+                    <span className="font-mono text-xs text-gray-400 w-20 shrink-0">{s.student_code || `#${s.id}`}</span>
+                    <span className="font-medium text-gray-800 flex-1">{s.name}</span>
+                    <span className="text-gray-400 text-xs">{s.course || ""}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {error && <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-2"><p className="text-red-600 text-sm">{error}</p></div>}
+        </div>
       </div>
 
-      {student && (
+      {/* ── Loading spinner ── */}
+      {loading && (
+        <div className="flex items-center gap-3 text-gray-400 text-sm p-4">
+          <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+          Loading grades…
+        </div>
+      )}
+
+      {/* ── Student banner ── */}
+      {student && !loading && (
         <div className="bg-white rounded-xl shadow p-5 flex items-center gap-4">
           <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center text-xl flex-shrink-0">🎓</div>
-          <div>
+          <div className="flex-1">
             <p className="text-lg font-bold text-gray-800">{student.name}</p>
-            <p className="text-gray-500 text-sm">{student.course || "No course"} · ID: {student.id}</p>
+            <p className="text-gray-500 text-sm">
+              <span className="font-mono mr-2">{student.student_code || `#${student.id}`}</span>
+              {student.course && <span>· {student.course}</span>}
+            </p>
           </div>
           {grades.length > 0 && (
-            <div className="ml-auto text-right">
+            <div className="text-right mr-2">
               <p className={`text-2xl font-bold ${overall.color}`}>{overall.grade}</p>
               <p className="text-xs text-gray-400">{avgPct}% average</p>
             </div>
           )}
+          <button onClick={clearStudent}
+            className="text-gray-400 hover:text-red-500 text-xl font-bold leading-none transition">×</button>
         </div>
       )}
 
-      {grades.length > 0 && (
+      {/* ── Summary cards ── */}
+      {grades.length > 0 && !loading && (
         <>
           <div className="grid grid-cols-3 gap-4">
-            {[["Tests", grades.length, "blue"], ["Avg %", `${avgPct}%`, "green"], ["Overall", overall.grade, "purple"]].map(([label, val, color]) => (
-              <div key={label} className={`bg-white rounded-xl shadow p-5 border-l-4 border-${color}-500`}>
-                <p className="text-sm text-gray-500">{label}</p>
-                <p className={`text-2xl font-bold text-${color}-600`}>{val}</p>
-              </div>
-            ))}
+            <div className="bg-white rounded-xl shadow p-5 border-l-4 border-blue-500">
+              <p className="text-sm text-gray-500">Tests</p>
+              <p className="text-2xl font-bold text-blue-600">{grades.length}</p>
+            </div>
+            <div className="bg-white rounded-xl shadow p-5 border-l-4 border-green-500">
+              <p className="text-sm text-gray-500">Avg %</p>
+              <p className="text-2xl font-bold text-green-600">{avgPct}%</p>
+            </div>
+            <div className="bg-white rounded-xl shadow p-5 border-l-4 border-purple-500">
+              <p className="text-sm text-gray-500">Overall</p>
+              <p className={`text-2xl font-bold ${overall.color}`}>{overall.grade}</p>
+            </div>
           </div>
 
           {/* Grouped by subject */}
