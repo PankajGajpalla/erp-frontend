@@ -55,6 +55,8 @@ export const checkAttendanceBulkAPI = (data) => API.post("/attendance/check", da
 export const getFeesAPI = (id) => API.get(`/fees/${id}`);
 export const addFeesAPI = (data) => API.post("/add_fees", data);
 export const payFeesAPI = (id, data) => API.put(`/pay_fees/${id}`, data);
+export const updateFeeRecordAPI = (feeId, data) => API.put(`/fees/record/${feeId}`, data);
+export const deleteFeeRecordAPI = (feeId) => API.delete(`/fees/record/${feeId}`);
 export const feesSummaryAPI = (id) => API.get(`/fees/summary/${id}`);
 export const getFeePaymentsAPI = (feeId) => API.get(`/fee_payments/${feeId}`);
 export const getOverdueFeesAPI = () => API.get("/fees/overdue");

@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from "react"
 import Sidebar from "../components/Sidebar"
 import { useAuth } from "../context/AuthContext"
-import { getFeesAPI, addFeesAPI, payFeesAPI, feesSummaryAPI, getFeePaymentsAPI, getStudentAPI, searchStudentsAPI, getCoursesAPI, getStudentsByCourseAPI } from "../api"
+import { getFeesAPI, addFeesAPI, payFeesAPI, updateFeeRecordAPI, deleteFeeRecordAPI, feesSummaryAPI, getFeePaymentsAPI, getStudentAPI, searchStudentsAPI, getCoursesAPI, getStudentsByCourseAPI } from "../api"
 import jsPDF from "jspdf"
 
 function generateReceipt(payment, fee, studentName, studentCode, course, parentPhone) {
@@ -510,6 +510,13 @@ function AdminFees() {
   const [expandedId, setExpandedId] = useState(null)
   const [historyKey, setHistoryKey] = useState(0)
 
+  // Edit / delete fee record
+  const [editingFee, setEditingFee]   = useState(null)   // fee object being edited
+  const [editForm, setEditForm]       = useState({ amount: "", description: "", due_date: "" })
+  const [saving, setSaving]           = useState(false)
+  const [deleteConfirmId, setDeleteConfirmId] = useState(null)
+  const [deleting, setDeleting]       = useState(false)
+
   useEffect(() => {
     if (success) { const t = setTimeout(() => setSuccess(""), 4000); return () => clearTimeout(t) }
   }, [success])
@@ -563,6 +570,47 @@ function AdminFees() {
     setError("")
     setSelectedCourse("")
     setCourseStudents([])
+  }
+
+  function openEditFee(fee) {
+    setEditingFee(fee)
+    setEditForm({
+      amount:      String(fee.amount),
+      description: fee.description || "",
+      due_date:    fee.due_date || "",
+    })
+    setDeleteConfirmId(null)
+  }
+
+  async function handleUpdateFee(e) {
+    e.preventDefault(); setError(""); setSuccess("")
+    if (!editForm.amount || parseFloat(editForm.amount) <= 0) { setError("Amount must be greater than 0"); return }
+    setSaving(true)
+    try {
+      await updateFeeRecordAPI(editingFee.id, {
+        amount:      parseFloat(editForm.amount),
+        description: editForm.description || null,
+        due_date:    editForm.due_date    || null,
+      })
+      setSuccess("✅ Fee record updated!")
+      setEditingFee(null)
+      if (viewStudent) fetchFees(viewStudent.id)
+    } catch (err) {
+      setError(err.response?.data?.detail || "Failed to update fee record")
+    } finally { setSaving(false) }
+  }
+
+  async function handleDeleteFee(feeId) {
+    setDeleting(true); setError("")
+    try {
+      await deleteFeeRecordAPI(feeId)
+      setSuccess("✅ Fee record deleted!")
+      setDeleteConfirmId(null)
+      setEditingFee(null)
+      if (viewStudent) fetchFees(viewStudent.id)
+    } catch (err) {
+      setError(err.response?.data?.detail || "Failed to delete fee record")
+    } finally { setDeleting(false) }
   }
 
   async function handleAddFees(e) {
@@ -804,6 +852,67 @@ function AdminFees() {
         ) : filtered.length === 0 ? (
           <p className="p-6 text-gray-400">No records match the filter.</p>
         ) : (
+          {/* ── Edit Fee Modal ── */}
+          {editingFee && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+              onClick={() => setEditingFee(null)}>
+              <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6" onClick={e => e.stopPropagation()}>
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="font-bold text-gray-800">Edit Fee Record</h3>
+                  <button onClick={() => setEditingFee(null)} className="text-gray-400 hover:text-gray-600 text-2xl leading-none">×</button>
+                </div>
+                <form onSubmit={handleUpdateFee} className="space-y-3">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">Total Amount (Rs.) *</label>
+                    <input type="number" value={editForm.amount} min="0.01" step="0.01"
+                      onChange={e => setEditForm(f => ({ ...f, amount: e.target.value }))}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                    {editingFee.paid > 0 && (
+                      <p className="text-xs text-gray-400 mt-0.5">Already paid: {formatCurrency(editingFee.paid)} — amount cannot go below this</p>
+                    )}
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">Description</label>
+                    <input type="text" value={editForm.description}
+                      onChange={e => setEditForm(f => ({ ...f, description: e.target.value }))}
+                      placeholder="e.g. Term 1 Fees"
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">Due Date</label>
+                    <input type="date" value={editForm.due_date}
+                      onChange={e => setEditForm(f => ({ ...f, due_date: e.target.value }))}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                  </div>
+                  {error && <p className="text-red-600 text-sm">{error}</p>}
+                  <div className="flex gap-2 pt-1">
+                    <button type="submit" disabled={saving}
+                      className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg text-sm font-medium transition disabled:opacity-50">
+                      {saving ? "Saving…" : "Save Changes"}
+                    </button>
+                    {deleteConfirmId === editingFee.id ? (
+                      <div className="flex gap-1">
+                        <button type="button" onClick={() => handleDeleteFee(editingFee.id)} disabled={deleting}
+                          className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition disabled:opacity-50">
+                          {deleting ? "…" : "Confirm Delete"}
+                        </button>
+                        <button type="button" onClick={() => setDeleteConfirmId(null)}
+                          className="bg-gray-200 hover:bg-gray-300 text-gray-700 px-3 py-2 rounded-lg text-sm transition">
+                          Cancel
+                        </button>
+                      </div>
+                    ) : (
+                      <button type="button" onClick={() => setDeleteConfirmId(editingFee.id)}
+                        className="bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 px-4 py-2 rounded-lg text-sm font-medium transition">
+                        🗑 Delete
+                      </button>
+                    )}
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+
           <div className="overflow-x-auto">
             <table className="w-full text-sm min-w-[700px]">
               <thead>
@@ -816,6 +925,7 @@ function AdminFees() {
                   <th className="text-left px-5 py-3">Status</th>
                   <th className="text-left px-5 py-3">Record Payment</th>
                   <th className="text-left px-5 py-3">History</th>
+                  <th className="px-5 py-3"></th>
                 </tr>
               </thead>
               <tbody>
@@ -848,7 +958,7 @@ function AdminFees() {
                           {!isFullyPaid ? (
                             <div className="flex flex-col gap-1 min-w-[220px]">
                               <div className="flex gap-1">
-                                <input type="number" placeholder="₹ Amount" value={pf.amount}
+                                <input type="number" placeholder="Rs. Amount" value={pf.amount}
                                   onChange={(e) => setPayForm(f.id, { amount: e.target.value })}
                                   min="1" className="border border-gray-300 rounded px-2 py-1 w-24 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500" />
                                 <input type="date" value={pf.paid_date}
@@ -875,10 +985,16 @@ function AdminFees() {
                             {expanded ? "Hide" : "View"}
                           </button>
                         </td>
+                        <td className="px-5 py-3">
+                          <button onClick={() => openEditFee(f)}
+                            className="bg-gray-100 hover:bg-gray-200 text-gray-600 px-2.5 py-1 rounded text-xs font-medium transition">
+                            ✏️ Edit
+                          </button>
+                        </td>
                       </tr>
                       {expanded && (
                         <tr key={`hist-${f.id}`} className="bg-blue-50 border-t">
-                          <td colSpan={8} className="px-2 py-2">
+                          <td colSpan={9} className="px-2 py-2">
                             <p className="text-xs font-semibold text-gray-500 px-4 pb-1">Payment History</p>
                             <PaymentHistory key={historyKey} feeId={f.id} fee={f}
                               studentName={viewStudent?.name} studentCode={viewStudent?.student_code}
