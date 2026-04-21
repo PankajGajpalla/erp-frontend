@@ -9,6 +9,8 @@ import {
   getCoursesAPI,
   bulkUpdateCourseAPI,
   setStudentAdditionalCoursesAPI,
+  getStudentCredentialsAPI,
+  updateStudentCredentialsAPI,
 } from "../api"
 
 const EMPTY_FORM = {
@@ -52,6 +54,14 @@ export default function Students() {
   // Pagination
   const [page, setPage] = useState(1)
   const PAGE_SIZE = 20
+  // Login management
+  const [loginModal, setLoginModal] = useState(null)
+  const [loginCreds, setLoginCreds] = useState(null)
+  const [loginForm, setLoginForm] = useState({ username: "", password: "", showPass: false })
+  const [loginError, setLoginError] = useState("")
+  const [loginSuccess, setLoginSuccess] = useState("")
+  const [loginSubmitting, setLoginSubmitting] = useState(false)
+  const [loginLoading, setLoginLoading] = useState(false)
   const formRef = useRef(null)
   const fileInputRef = useRef(null)
 
@@ -252,6 +262,48 @@ export default function Students() {
     } catch (err) {
       setError(err.response?.data?.detail || "Delete failed")
       setDeleteConfirmId(null)
+    }
+  }
+
+  async function handleManageLogin(student) {
+    setLoginModal(student)
+    setLoginError("")
+    setLoginSuccess("")
+    setLoginLoading(true)
+    setLoginCreds(null)
+    setLoginForm({ username: "", password: "", showPass: false })
+    try {
+      const res = await getStudentCredentialsAPI(student.id)
+      setLoginCreds(res.data)
+      setLoginForm({ username: res.data.username || "", password: "", showPass: false })
+    } catch {
+      setLoginError("Failed to load login info")
+    } finally {
+      setLoginLoading(false)
+    }
+  }
+
+  async function submitManageLogin(e) {
+    e.preventDefault()
+    setLoginError("")
+    setLoginSuccess("")
+    if (!loginForm.username.trim()) { setLoginError("Username is required"); return }
+    if (loginForm.username.trim().length < 3) { setLoginError("Username must be at least 3 characters"); return }
+    if (!loginCreds?.has_login && !loginForm.password) { setLoginError("Password is required to create a new login"); return }
+    if (loginForm.password && loginForm.password.length < 6) { setLoginError("Password must be at least 6 characters"); return }
+    setLoginSubmitting(true)
+    try {
+      const res = await updateStudentCredentialsAPI(loginModal.id, {
+        username: loginForm.username.trim(),
+        password: loginForm.password || undefined,
+      })
+      setLoginSuccess(res.data.message)
+      setLoginCreds({ has_login: true, username: loginForm.username.trim() })
+      setLoginForm(f => ({ ...f, password: "" }))
+    } catch (err) {
+      setLoginError(err.response?.data?.detail || "Failed to update login")
+    } finally {
+      setLoginSubmitting(false)
     }
   }
 
@@ -648,7 +700,7 @@ export default function Students() {
                             >No</button>
                           </div>
                         ) : (
-                          <div className="flex gap-2">
+                          <div className="flex gap-1.5 flex-wrap">
                             <button
                               onClick={() => setViewStudent(s)}
                               className="bg-gray-100 hover:bg-gray-200 text-gray-600 px-2 py-1 rounded text-xs"
@@ -657,6 +709,10 @@ export default function Students() {
                               onClick={() => handleEdit(s)}
                               className="bg-yellow-400 hover:bg-yellow-500 text-white px-2 py-1 rounded text-xs"
                             >Edit</button>
+                            <button
+                              onClick={() => handleManageLogin(s)}
+                              className="bg-green-500 hover:bg-green-600 text-white px-2 py-1 rounded text-xs"
+                            >🔑 Login</button>
                             <button
                               onClick={() => setDeleteConfirmId(s.id)}
                               className="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded text-xs"
@@ -816,6 +872,100 @@ export default function Students() {
         {/* ── REPORT CARD MODAL ── */}
         {reportCardId && (
           <ReportCardModal studentId={reportCardId} onClose={() => setReportCardId(null)} />
+        )}
+
+        {/* Manage Login Modal */}
+        {loginModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-xl shadow-xl w-full max-w-md">
+              <div className="flex justify-between items-start px-6 pt-6 pb-4 border-b">
+                <div>
+                  <h3 className="text-lg font-bold text-gray-800">🔑 Manage Login</h3>
+                  <p className="text-sm text-gray-500 mt-0.5">
+                    <span className="font-medium text-gray-700">{loginModal.name}</span>
+                    {loginModal.student_code && (
+                      <span className="ml-2 text-xs font-mono bg-gray-100 text-gray-500 px-2 py-0.5 rounded">{loginModal.student_code}</span>
+                    )}
+                  </p>
+                </div>
+                <button onClick={() => setLoginModal(null)}
+                  className="text-gray-400 hover:text-gray-600 text-2xl font-bold leading-none">×</button>
+              </div>
+
+              <div className="px-6 py-5">
+                {loginLoading ? (
+                  <div className="flex items-center gap-2 text-gray-400 py-4 justify-center">
+                    <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+                    Loading login info...
+                  </div>
+                ) : (
+                  <>
+                    <div className={`flex items-center gap-2 px-4 py-2.5 rounded-lg mb-4 text-sm font-medium
+                      ${loginCreds?.has_login ? "bg-green-50 text-green-700 border border-green-200" : "bg-yellow-50 text-yellow-700 border border-yellow-200"}`}>
+                      <span>{loginCreds?.has_login ? "✅" : "⚠️"}</span>
+                      {loginCreds?.has_login
+                        ? `Login exists — Username: ${loginCreds.username}`
+                        : "No login created yet for this student"}
+                    </div>
+
+                    <form onSubmit={submitManageLogin} className="space-y-3">
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-600 mb-1">
+                          Username <span className="text-red-500">*</span>
+                        </label>
+                        <input type="text" placeholder="Enter username (min 3 chars)"
+                          value={loginForm.username}
+                          onChange={(e) => setLoginForm({ ...loginForm, username: e.target.value })}
+                          className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-600 mb-1">
+                          New Password {loginCreds?.has_login
+                            ? <span className="text-gray-400 font-normal">(leave blank to keep current)</span>
+                            : <span className="text-red-500">*</span>}
+                        </label>
+                        <div className="relative">
+                          <input
+                            type={loginForm.showPass ? "text" : "password"}
+                            placeholder={loginCreds?.has_login ? "Leave blank to keep unchanged" : "Set a password (min 6 chars)"}
+                            value={loginForm.password}
+                            onChange={(e) => setLoginForm({ ...loginForm, password: e.target.value })}
+                            className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 pr-12" />
+                          <button type="button"
+                            onClick={() => setLoginForm(f => ({ ...f, showPass: !f.showPass }))}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-xs">
+                            {loginForm.showPass ? "Hide" : "Show"}
+                          </button>
+                        </div>
+                      </div>
+
+                      {loginError && (
+                        <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-2">
+                          <p className="text-red-600 text-sm">{loginError}</p>
+                        </div>
+                      )}
+                      {loginSuccess && (
+                        <div className="bg-green-50 border border-green-200 rounded-lg px-4 py-2">
+                          <p className="text-green-600 text-sm">{loginSuccess}</p>
+                        </div>
+                      )}
+
+                      <div className="flex gap-3 pt-1">
+                        <button type="submit" disabled={loginSubmitting}
+                          className="flex-1 bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 text-sm font-medium transition disabled:opacity-50">
+                          {loginSubmitting ? "Saving..." : loginCreds?.has_login ? "Update Login" : "Create Login"}
+                        </button>
+                        <button type="button" onClick={() => setLoginModal(null)}
+                          className="flex-1 bg-gray-200 text-gray-700 py-2 rounded-lg hover:bg-gray-300 text-sm transition">
+                          Close
+                        </button>
+                      </div>
+                    </form>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
         )}
 
       </main>
