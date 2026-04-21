@@ -75,10 +75,13 @@ function AdminDashboard() {
     { name: "Collected", value: parseFloat(stats.total_paid?.toFixed(2) || 0) },
     { name: "Pending",   value: parseFloat(stats.total_pending?.toFixed(2) || 0) },
   ]
-  const courseBarData = (stats.course_stats || []).map((c) => ({
-    name: c.name.length > 12 ? c.name.slice(0, 12) + "…" : c.name,
-    Students: c.students,
-  }))
+  const courseBarData = (stats.course_stats || [])
+    .filter((c) => c.students > 0)
+    .sort((a, b) => b.students - a.students)
+    .map((c) => ({
+      name: c.name,
+      Students: c.students,
+    }))
 
   const visibleOverdue = showAllOverdue ? overdue : overdue.slice(0, 5)
 
@@ -128,13 +131,34 @@ function AdminDashboard() {
         <div className="bg-white rounded-xl shadow p-5">
           <h3 className="text-sm font-semibold text-gray-700 mb-4">Students by Course</h3>
           {courseBarData.length > 0 ? (
-            <ResponsiveContainer width="100%" height={220}>
-              <BarChart data={courseBarData} margin={{ top: 5, right: 10, left: -10, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                <XAxis dataKey="name" tick={{ fontSize: 11 }} />
-                <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
-                <Tooltip />
-                <Bar dataKey="Students" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+            <ResponsiveContainer width="100%" height={Math.max(220, courseBarData.length * 42)}>
+              <BarChart
+                data={courseBarData}
+                layout="vertical"
+                margin={{ top: 4, right: 40, left: 8, bottom: 4 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" horizontal={false} />
+                <XAxis
+                  type="number"
+                  allowDecimals={false}
+                  tick={{ fontSize: 11 }}
+                  tickLine={false}
+                  axisLine={false}
+                />
+                <YAxis
+                  type="category"
+                  dataKey="name"
+                  width={150}
+                  tick={{ fontSize: 11, fill: "#374151" }}
+                  tickLine={false}
+                  axisLine={false}
+                />
+                <Tooltip
+                  formatter={(v) => [v, "Students"]}
+                  contentStyle={{ fontSize: 12, borderRadius: 8 }}
+                />
+                <Bar dataKey="Students" fill="#3b82f6" radius={[0, 4, 4, 0]}
+                  label={{ position: "right", fontSize: 11, fill: "#6b7280" }} />
               </BarChart>
             </ResponsiveContainer>
           ) : (
