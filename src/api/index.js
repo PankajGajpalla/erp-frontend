@@ -28,6 +28,9 @@ API.interceptors.response.use(
 export const loginAPI = (data) => API.post("/login", data);
 export const registerAPI = (data) => API.post("/register", data);
 export const createAdminAPI = (data) => API.post("/create_admin", data);
+export const getAdminsAPI = () => API.get("/admins");
+export const updateAdminAPI = (id, data) => API.put(`/admins/${id}`, data);
+export const deleteAdminAPI = (id) => API.delete(`/admins/${id}`);
 
 // ─── Dashboard ───────────────────────────────────────────────
 export const getDashboardSummaryAPI = () => API.get("/dashboard/summary");

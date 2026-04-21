@@ -17,6 +17,7 @@ import TeacherDashboard from "./pages/TeacherDashboard"
 import TeacherAttendance from "./pages/TeacherAttendance"
 import TeacherStudents from "./pages/TeacherStudents"
 import TeacherGrades from "./pages/TeacherGrades"
+import AdminAccounts from "./pages/AdminAccounts"
 
 // ─── Loading Spinner ─────────────────────────────────────────
 function LoadingScreen() {
@@ -119,6 +120,7 @@ export default function App() {
         <Route path="/notices" element={<AdminRoute><Notices /></AdminRoute>} />
         <Route path="/import" element={<AdminRoute><ImportStudents /></AdminRoute>} />
         <Route path="/courses" element={<AdminRoute><Courses /></AdminRoute>} />
+        <Route path="/admin-accounts" element={<AdminRoute><AdminAccounts /></AdminRoute>} />
 
         {/* Teacher routes */}
         <Route path="/teacher" element={<TeacherRoute><TeacherDashboard /></TeacherRoute>} />
