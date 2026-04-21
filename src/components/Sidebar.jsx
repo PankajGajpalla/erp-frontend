@@ -71,8 +71,10 @@ export default function Sidebar() {
     { to: "/grades",     label: "📝 Grades" },
     { to: "/timetable",  label: "🗓️ Timetable" },
     { to: "/notices",    label: "📢 Notices" },
+    { to: "/exam-schedule",   label: "📅 Exam Schedule" },
     { to: "/import",          label: "📥 Import Students" },
     { to: "/admin-accounts",  label: "⚙️ Admin Accounts" },
+    { to: "/audit-log",       label: "🔍 Audit Log" },
   ]
 
   const studentLinks = [
@@ -80,8 +82,9 @@ export default function Sidebar() {
     { to: "/student/attendance", label: "📋 My Attendance" },
     { to: "/student/fees",       label: "💰 My Fees" },
     { to: "/student/grades",     label: "📝 My Grades" },
-    { to: "/student/timetable",  label: "🗓️ Timetable" },
-    { to: "/student/notices",    label: "📢 Notices" },
+    { to: "/student/timetable",     label: "🗓️ Timetable" },
+    { to: "/student/exam-schedule", label: "📅 Exam Schedule" },
+    { to: "/student/notices",       label: "📢 Notices" },
   ]
 
   const teacherLinks = [
@@ -89,8 +92,9 @@ export default function Sidebar() {
     { to: "/teacher/attendance", label: "📋 Attendance" },
     { to: "/teacher/students",   label: "🎓 My Students" },
     { to: "/teacher/grades",     label: "📝 Grades" },
-    { to: "/teacher/timetable",  label: "🗓️ Timetable" },
-    { to: "/teacher/notices",    label: "📢 Notices" },
+    { to: "/teacher/timetable",     label: "🗓️ Timetable" },
+    { to: "/teacher/exam-schedule", label: "📅 Exam Schedule" },
+    { to: "/teacher/notices",       label: "📢 Notices" },
   ]
 
   const links = isAdmin ? adminLinks : isTeacher ? teacherLinks : studentLinks

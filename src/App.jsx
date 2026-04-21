@@ -18,6 +18,8 @@ import TeacherAttendance from "./pages/TeacherAttendance"
 import TeacherStudents from "./pages/TeacherStudents"
 import TeacherGrades from "./pages/TeacherGrades"
 import AdminAccounts from "./pages/AdminAccounts"
+import ExamSchedule from "./pages/ExamSchedule"
+import AuditLog from "./pages/AuditLog"
 
 // ─── Loading Spinner ─────────────────────────────────────────
 function LoadingScreen() {
@@ -121,6 +123,8 @@ export default function App() {
         <Route path="/import" element={<AdminRoute><ImportStudents /></AdminRoute>} />
         <Route path="/courses" element={<AdminRoute><Courses /></AdminRoute>} />
         <Route path="/admin-accounts" element={<AdminRoute><AdminAccounts /></AdminRoute>} />
+        <Route path="/exam-schedule"  element={<AdminRoute><ExamSchedule /></AdminRoute>} />
+        <Route path="/audit-log"      element={<AdminRoute><AuditLog /></AdminRoute>} />
 
         {/* Teacher routes */}
         <Route path="/teacher" element={<TeacherRoute><TeacherDashboard /></TeacherRoute>} />
@@ -128,6 +132,7 @@ export default function App() {
         <Route path="/teacher/students" element={<TeacherRoute><TeacherStudents /></TeacherRoute>} />
         <Route path="/teacher/grades" element={<TeacherRoute><TeacherGrades /></TeacherRoute>} />
         <Route path="/teacher/timetable" element={<TeacherRoute><Timetable /></TeacherRoute>} />
+        <Route path="/teacher/exam-schedule" element={<TeacherRoute><ExamSchedule /></TeacherRoute>} />
         <Route path="/teacher/notices" element={<TeacherRoute><Notices /></TeacherRoute>} />
 
         {/* Student routes */}
@@ -136,6 +141,7 @@ export default function App() {
         <Route path="/student/fees" element={<ProtectedRoute><Fees /></ProtectedRoute>} />
         <Route path="/student/grades" element={<ProtectedRoute><Grades /></ProtectedRoute>} />
         <Route path="/student/timetable" element={<ProtectedRoute><Timetable /></ProtectedRoute>} />
+        <Route path="/student/exam-schedule" element={<ProtectedRoute><ExamSchedule /></ProtectedRoute>} />
         <Route path="/student/notices" element={<ProtectedRoute><Notices /></ProtectedRoute>} />
 
         {/* 404 */}

@@ -10,6 +10,8 @@ import {
   searchStudentsAPI,
   getCoursesAPI,
   getStudentsByCourseAPI,
+  markAttendanceBulkAPI,
+  checkAttendanceBulkAPI,
 } from "../api"
 
 const PAGE_SIZE = 20
@@ -76,6 +78,17 @@ export default function Attendance() {
   const [expandedStudent, setExpandedStudent] = useState(null) // student obj
   const [expandedAtt, setExpandedAtt]     = useState([])
   const [expandedLoading, setExpandedLoading] = useState(false)
+
+  // Bulk Mark state
+  const [bulkCourse, setBulkCourse]       = useState("")
+  const [bulkDate, setBulkDate]           = useState(new Date().toISOString().split("T")[0])
+  const [bulkStudents, setBulkStudents]   = useState([])
+  const [bulkAttendance, setBulkAttendance] = useState({}) // student_id -> "present"|"absent"
+  const [bulkOriginal, setBulkOriginal]   = useState({})  // existing marks from DB
+  const [bulkLoading, setBulkLoading]     = useState(false)
+  const [bulkSubmitting, setBulkSubmitting] = useState(false)
+  const [bulkSuccess, setBulkSuccess]     = useState("")
+  const [bulkError, setBulkError]         = useState("")
 
   useEffect(() => { fetchAttendance() }, [])
   useEffect(() => {
@@ -247,6 +260,62 @@ export default function Attendance() {
     fetchAttendance()
   }
 
+  async function handleLoadBulkStudents() {
+    if (!bulkCourse || !bulkDate) { setBulkError("Select a course and date first"); return }
+    setBulkError(""); setBulkSuccess("")
+    setBulkLoading(true); setBulkStudents([]); setBulkAttendance({}); setBulkOriginal({})
+    try {
+      const [studRes, checkRes] = await Promise.all([
+        getStudentsByCourseAPI(bulkCourse),
+        checkAttendanceBulkAPI({ course: bulkCourse, date: bulkDate })
+      ])
+      const students = studRes.data.students || []
+      setBulkStudents(students)
+      // Build existing marks map
+      const existing = {}
+      const checkData = checkRes.data?.records || checkRes.data || []
+      if (Array.isArray(checkData)) {
+        checkData.forEach(r => { existing[r.student_id] = r.status })
+      }
+      setBulkOriginal(existing)
+      // Default attendance: use existing or "present"
+      const att = {}
+      students.forEach(s => { att[s.id] = existing[s.id] || "present" })
+      setBulkAttendance(att)
+    } catch (err) {
+      setBulkError("Failed to load students or attendance data")
+    } finally {
+      setBulkLoading(false)
+    }
+  }
+
+  async function handleBulkSubmit() {
+    const unmarked = bulkStudents.filter(s => !bulkOriginal[s.id])
+    if (unmarked.length === 0) { setBulkError("All students are already marked for this date"); return }
+    setBulkError(""); setBulkSuccess(""); setBulkSubmitting(true)
+    try {
+      const records = unmarked.map(s => ({
+        student_id: s.id,
+        date: bulkDate,
+        status: bulkAttendance[s.id] || "present"
+      }))
+      await markAttendanceBulkAPI({ records })
+      setBulkSuccess(`✅ Attendance marked for ${records.length} student${records.length > 1 ? "s" : ""}!`)
+      // Refresh existing marks
+      const checkRes = await checkAttendanceBulkAPI({ course: bulkCourse, date: bulkDate })
+      const existing = {}
+      const checkData = checkRes.data?.records || checkRes.data || []
+      if (Array.isArray(checkData)) {
+        checkData.forEach(r => { existing[r.student_id] = r.status })
+      }
+      setBulkOriginal(existing)
+    } catch (err) {
+      setBulkError(err.response?.data?.detail || "Failed to mark attendance")
+    } finally {
+      setBulkSubmitting(false)
+    }
+  }
+
   // Pagination helpers for course view
   const totalPages    = Math.ceil(courseStudents.length / PAGE_SIZE)
   const pageStudents  = courseStudents.slice((coursePage - 1) * PAGE_SIZE, coursePage * PAGE_SIZE)
@@ -290,7 +359,7 @@ export default function Attendance() {
 
         {/* ── Admin: Tab Switcher ── */}
         {isAdmin && (
-          <div className="flex gap-2 mb-5">
+          <div className="flex gap-2 mb-5 flex-wrap">
             <button
               onClick={() => setAdminTab("search")}
               className={`px-5 py-2 rounded-lg text-sm font-medium transition
@@ -302,6 +371,12 @@ export default function Attendance() {
               className={`px-5 py-2 rounded-lg text-sm font-medium transition
                 ${adminTab === "course" ? "bg-gray-800 text-white shadow" : "bg-white text-gray-600 border border-gray-200 hover:border-gray-400"}`}>
               🎓 Browse by Course
+            </button>
+            <button
+              onClick={() => setAdminTab("bulk")}
+              className={`px-5 py-2 rounded-lg text-sm font-medium transition
+                ${adminTab === "bulk" ? "bg-gray-800 text-white shadow" : "bg-white text-gray-600 border border-gray-200 hover:border-gray-400"}`}>
+              📝 Bulk Mark
             </button>
           </div>
         )}
@@ -567,6 +642,136 @@ export default function Attendance() {
                   </div>
                 )}
               </>
+            )}
+          </div>
+        )}
+
+        {/* ── Admin Tab: Bulk Mark ── */}
+        {isAdmin && adminTab === "bulk" && (
+          <div className="bg-white rounded-xl shadow p-6 mb-6">
+            <h3 className="text-base font-semibold text-gray-700 mb-4">Bulk Mark Attendance</h3>
+
+            {/* Step 1: Select Course + Date */}
+            <div className="flex flex-wrap gap-3 items-end mb-4">
+              <div className="flex-1 min-w-[200px]">
+                <label className="block text-xs font-semibold text-gray-600 mb-1">Course</label>
+                <select value={bulkCourse} onChange={e => { setBulkCourse(e.target.value); setBulkStudents([]); setBulkAttendance({}); setBulkOriginal({}); setBulkSuccess(""); setBulkError("") }}
+                  className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
+                  <option value="">— Select a course —</option>
+                  {courses.map(c => (
+                    <option key={c.id} value={c.name}>{c.name}{c.duration ? ` (${c.duration})` : ""}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">Date</label>
+                <input type="date" value={bulkDate} onChange={e => { setBulkDate(e.target.value); setBulkStudents([]); setBulkAttendance({}); setBulkOriginal({}); setBulkSuccess(""); setBulkError("") }}
+                  className="border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              </div>
+              <button onClick={handleLoadBulkStudents} disabled={bulkLoading || !bulkCourse || !bulkDate}
+                className="bg-gray-700 hover:bg-gray-800 text-white px-5 py-2 rounded-lg text-sm font-medium transition disabled:opacity-50">
+                {bulkLoading ? "Loading…" : "Load Students"}
+              </button>
+            </div>
+
+            {bulkError && <div className="mb-3 bg-red-50 border border-red-200 rounded-lg px-4 py-2"><p className="text-red-600 text-sm">{bulkError}</p></div>}
+            {bulkSuccess && <div className="mb-3 bg-green-50 border border-green-200 rounded-lg px-4 py-2"><p className="text-green-600 text-sm">{bulkSuccess}</p></div>}
+
+            {/* Step 2: Student list */}
+            {bulkStudents.length > 0 && (
+              <>
+                <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
+                  <p className="text-sm text-gray-500 font-medium">{bulkStudents.length} students · {bulkDate}</p>
+                  <div className="flex gap-2">
+                    <button onClick={() => {
+                      const att = {}
+                      bulkStudents.forEach(s => { att[s.id] = "present" })
+                      setBulkAttendance(att)
+                    }} className="bg-green-100 hover:bg-green-200 text-green-700 px-3 py-1.5 rounded-lg text-xs font-medium transition">
+                      All Present
+                    </button>
+                    <button onClick={() => {
+                      const att = {}
+                      bulkStudents.forEach(s => { att[s.id] = "absent" })
+                      setBulkAttendance(att)
+                    }} className="bg-red-100 hover:bg-red-200 text-red-700 px-3 py-1.5 rounded-lg text-xs font-medium transition">
+                      All Absent
+                    </button>
+                  </div>
+                </div>
+
+                <div className="border rounded-lg overflow-hidden mb-4">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="bg-gray-100 text-gray-600 text-xs">
+                        <th className="text-left px-4 py-2 font-medium">Student ID</th>
+                        <th className="text-left px-4 py-2 font-medium">Name</th>
+                        <th className="text-center px-4 py-2 font-medium">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {bulkStudents.map(s => {
+                        const alreadyMarked = !!bulkOriginal[s.id]
+                        const status = bulkAttendance[s.id] || "present"
+                        return (
+                          <tr key={s.id} className={`border-t ${alreadyMarked ? "bg-gray-50" : "hover:bg-gray-50"}`}>
+                            <td className="px-4 py-2 font-mono text-xs text-gray-400">{s.student_code || `#${s.id}`}</td>
+                            <td className="px-4 py-2 text-gray-800">
+                              {s.name}
+                              {alreadyMarked && (
+                                <span className="ml-2 text-xs bg-gray-200 text-gray-500 px-1.5 py-0.5 rounded">Already Marked</span>
+                              )}
+                            </td>
+                            <td className="px-4 py-2 text-center">
+                              {alreadyMarked ? (
+                                <span className={`px-2 py-1 rounded-full text-xs font-medium ${bulkOriginal[s.id] === "present" ? "bg-green-100 text-green-600" : "bg-red-100 text-red-600"}`}>
+                                  {bulkOriginal[s.id] === "present" ? "✅ Present" : "❌ Absent"}
+                                </span>
+                              ) : (
+                                <div className="flex justify-center gap-1">
+                                  <button
+                                    onClick={() => setBulkAttendance(prev => ({ ...prev, [s.id]: "present" }))}
+                                    className={`px-3 py-1 rounded text-xs font-medium transition
+                                      ${status === "present" ? "bg-green-500 text-white" : "bg-gray-100 text-gray-600 hover:bg-green-100"}`}>
+                                    Present
+                                  </button>
+                                  <button
+                                    onClick={() => setBulkAttendance(prev => ({ ...prev, [s.id]: "absent" }))}
+                                    className={`px-3 py-1 rounded text-xs font-medium transition
+                                      ${status === "absent" ? "bg-red-500 text-white" : "bg-gray-100 text-gray-600 hover:bg-red-100"}`}>
+                                    Absent
+                                  </button>
+                                </div>
+                              )}
+                            </td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+
+                {bulkStudents.some(s => !bulkOriginal[s.id]) && (
+                  <button onClick={handleBulkSubmit} disabled={bulkSubmitting}
+                    className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg text-sm font-medium transition disabled:opacity-50">
+                    {bulkSubmitting ? "Submitting…" : `Submit Attendance (${bulkStudents.filter(s => !bulkOriginal[s.id]).length} students)`}
+                  </button>
+                )}
+              </>
+            )}
+
+            {!bulkLoading && bulkStudents.length === 0 && bulkCourse && (
+              <div className="text-center py-8 text-gray-400">
+                <p className="text-2xl mb-2">📋</p>
+                <p className="text-sm">Click "Load Students" to fetch students for this course and date.</p>
+              </div>
+            )}
+
+            {!bulkCourse && (
+              <div className="text-center py-8 text-gray-400">
+                <p className="text-2xl mb-2">📝</p>
+                <p className="text-sm">Select a course and date above, then click "Load Students".</p>
+              </div>
             )}
           </div>
         )}

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react"
 import Sidebar from "../components/Sidebar"
 import { useAuth } from "../context/AuthContext"
-import { getNoticesAPI, addNoticeAPI, deleteNoticeAPI } from "../api"
+import { getNoticesAPI, addNoticeAPI, deleteNoticeAPI, getCoursesAPI } from "../api"
 
 export default function Notices() {
   const { isAdmin } = useAuth()
@@ -12,6 +12,7 @@ export default function Notices() {
   const [error, setError] = useState("")
   const [success, setSuccess] = useState("")
   const [deleteConfirmId, setDeleteConfirmId] = useState(null)
+  const [courses, setCourses] = useState([])
 
   const [search, setSearch] = useState("")
   const [dateFilter, setDateFilter] = useState("")
@@ -19,10 +20,16 @@ export default function Notices() {
   const [form, setForm] = useState({
     title: "",
     content: "",
-    date: new Date().toISOString().split("T")[0]
+    date: new Date().toISOString().split("T")[0],
+    course: ""
   })
 
-  useEffect(() => { fetchNotices() }, [])
+  useEffect(() => {
+    fetchNotices()
+    if (isAdmin) {
+      getCoursesAPI().then(r => setCourses(r.data.courses || [])).catch(() => {})
+    }
+  }, [])
 
   // ✅ Auto clear success after 3 seconds
   useEffect(() => {
@@ -65,15 +72,17 @@ export default function Notices() {
     setSubmitting(true)
     try {
       await addNoticeAPI({
-        ...form,
         title: form.title.trim(),
-        content: form.content.trim()
+        content: form.content.trim(),
+        date: form.date,
+        course: form.course || null
       })
       setSuccess("✅ Notice posted!")
       setForm({
         title: "",
         content: "",
-        date: new Date().toISOString().split("T")[0]
+        date: new Date().toISOString().split("T")[0],
+        course: ""
       })
       fetchNotices()
     } catch (err) {
@@ -114,6 +123,14 @@ export default function Notices() {
                 <input type="date" value={form.date}
                   onChange={(e) => setForm({ ...form, date: e.target.value })}
                   className="border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                <select value={form.course}
+                  onChange={(e) => setForm({ ...form, course: e.target.value })}
+                  className="border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                  <option value="">— All Students —</option>
+                  {courses.map((c) => (
+                    <option key={c.id} value={c.name}>{c.name}</option>
+                  ))}
+                </select>
               </div>
               <textarea placeholder="Notice content..." value={form.content}
                 onChange={(e) => setForm({ ...form, content: e.target.value })}
@@ -180,6 +197,10 @@ export default function Notices() {
                       <span className="text-xs text-gray-400 bg-gray-100 px-2 py-1 rounded-full">
                         📅 {n.date}
                       </span>
+                      {n.course
+                        ? <span className="text-xs text-indigo-700 bg-indigo-100 px-2 py-1 rounded-full font-medium">🎓 {n.course}</span>
+                        : <span className="text-xs text-green-700 bg-green-100 px-2 py-1 rounded-full font-medium">🌐 Everyone</span>
+                      }
                     </div>
                     <p className="text-gray-600 text-sm leading-relaxed">{n.content}</p>
                   </div>

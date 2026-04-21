@@ -103,6 +103,7 @@ export const deleteCourseAPI = (id) => API.delete(`/delete_course/${id}`);
 
 // ─── Bulk Operations ─────────────────────────────────────────
 export const bulkUpdateCourseAPI = (data) => API.put("/students/bulk-update-course", data);
+export const addBulkFeesAPI = (data) => API.post("/fees/bulk", data);
 
 // ─── Subjects ────────────────────────────────────────────────
 export const getSubjectsAPI = () => API.get("/subjects");
@@ -111,3 +112,17 @@ export const addSubjectAPI = (data) => API.post("/add_subject", data);
 export const updateSubjectAPI = (id, data) => API.put(`/update_subject/${id}`, data);
 export const deleteSubjectAPI = (id) => API.delete(`/delete_subject/${id}`);
 export const subjectWiseAttendanceAPI = (studentId) => API.get(`/attendance/subject-wise/${studentId}`);
+
+// ─── Fee Templates ───────────────────────────────────────────
+export const getFeeTemplatesAPI = () => API.get("/fee-templates");
+export const createFeeTemplateAPI = (data) => API.post("/fee-templates", data);
+export const deleteFeeTemplateAPI = (id) => API.delete(`/fee-templates/${id}`);
+
+// ─── Exam Schedule ───────────────────────────────────────────
+export const getExamScheduleAPI = (courseId) => API.get("/exam-schedule", { params: courseId ? { course_id: courseId } : {} });
+export const createExamAPI = (data) => API.post("/exam-schedule", data);
+export const updateExamAPI = (id, data) => API.put(`/exam-schedule/${id}`, data);
+export const deleteExamAPI = (id) => API.delete(`/exam-schedule/${id}`);
+
+// ─── Audit Logs ──────────────────────────────────────────────
+export const getAuditLogsAPI = (limit = 100) => API.get("/audit-logs", { params: { limit } });

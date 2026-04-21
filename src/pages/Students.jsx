@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState, useRef } from "react"
 import Sidebar from "../components/Sidebar"
 import ReportCardModal from "../components/ReportCardModal"
+import * as XLSX from "xlsx"
+import jsPDF from "jspdf"
 import {
   getStudentsAPI,
   addStudentAPI,
@@ -335,28 +337,111 @@ export default function Students() {
   }
 
   function exportToExcel() {
-    import("xlsx").then(XLSX => {
-      const rows = students.map(s => ({
-        "Student ID": s.student_code || s.id,
-        "Name": s.name,
-        "Father Name": s.father_name || "",
-        "DOB": s.dob || "",
-        "Email": s.email || "",
-        "Phone": s.phone || "",
-        "Parent Phone": s.parent_phone || "",
-        "Course": s.course || "",
-        "Medium": s.medium || "",
-        "School/College": s.school_college_name || "",
-        "Admission Date": s.admission_date || "",
-        "Fees": s.fees || "",
-        "Permanent Address": s.permanent_address || "",
-        "Local Address": s.local_address || "",
-      }))
-      const ws = XLSX.utils.json_to_sheet(rows)
-      const wb = XLSX.utils.book_new()
-      XLSX.utils.book_append_sheet(wb, ws, "Students")
-      XLSX.writeFile(wb, "students_export.xlsx")
-    })
+    const today = new Date().toISOString().split("T")[0]
+    const rows = filtered.map(s => ({
+      "Student Code": s.student_code || s.id,
+      "Name": s.name,
+      "Father Name": s.father_name || "",
+      "Course": s.course || "",
+      "Email": s.email || "",
+      "Phone": s.phone || "",
+      "Parent Phone": s.parent_phone || "",
+      "Medium": s.medium || "",
+      "Admission Date": s.admission_date || "",
+      "Total Fees": s.fees || "",
+    }))
+    const ws = XLSX.utils.json_to_sheet(rows)
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, "Students")
+    XLSX.writeFile(wb, `Students_Export_${today}.xlsx`)
+  }
+
+  function generateIDCard(s) {
+    // A6 landscape: 148mm x 105mm
+    const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a6" })
+    const W = 148, H = 105
+    const darkBlue = [30, 58, 95]
+    const white = [255, 255, 255]
+
+    // ── Header bar ──
+    doc.setFillColor(...darkBlue)
+    doc.rect(0, 0, W, 22, "F")
+    doc.setTextColor(...white)
+    doc.setFontSize(13)
+    doc.setFont("helvetica", "bold")
+    doc.text("ABS Foundation", W / 2, 10, { align: "center" })
+    doc.setFontSize(8)
+    doc.setFont("helvetica", "normal")
+    doc.text("Student Identity Card", W / 2, 17, { align: "center" })
+
+    // ── Photo or initials placeholder ──
+    const photoX = 8, photoY = 28, photoW = 28, photoH = 34
+    if (s.photo) {
+      try {
+        doc.addImage(s.photo, "JPEG", photoX, photoY, photoW, photoH)
+      } catch {
+        doc.setFillColor(220, 230, 245)
+        doc.rect(photoX, photoY, photoW, photoH, "F")
+        doc.setTextColor(...darkBlue)
+        doc.setFontSize(14)
+        doc.setFont("helvetica", "bold")
+        doc.text((s.name || "?").charAt(0).toUpperCase(), photoX + photoW / 2, photoY + photoH / 2 + 4, { align: "center" })
+      }
+    } else {
+      doc.setFillColor(220, 230, 245)
+      doc.rect(photoX, photoY, photoW, photoH, "F")
+      doc.setTextColor(...darkBlue)
+      doc.setFontSize(14)
+      doc.setFont("helvetica", "bold")
+      const initials = (s.name || "?").split(" ").map(w => w.charAt(0)).join("").toUpperCase().slice(0, 2)
+      doc.text(initials, photoX + photoW / 2, photoY + photoH / 2 + 4, { align: "center" })
+    }
+
+    // ── Student Code box ──
+    const rightX = 42
+    doc.setFillColor(240, 244, 255)
+    doc.setDrawColor(...darkBlue)
+    doc.setLineWidth(0.4)
+    doc.rect(rightX, 27, 98, 10, "FD")
+    doc.setTextColor(...darkBlue)
+    doc.setFontSize(9)
+    doc.setFont("helvetica", "bold")
+    doc.text(s.student_code || `#${s.id}`, rightX + 49, 34, { align: "center" })
+
+    // ── Student details ──
+    let dy = 43
+    doc.setTextColor(20, 20, 20)
+    doc.setFontSize(12)
+    doc.setFont("helvetica", "bold")
+    const nameText = doc.splitTextToSize(s.name || "—", 95)
+    doc.text(nameText, rightX, dy)
+    dy += nameText.length * 6 + 1
+
+    doc.setFontSize(8)
+    doc.setFont("helvetica", "normal")
+    doc.setTextColor(60, 60, 60)
+
+    function infoRow(label, val) {
+      if (!val) return
+      doc.setFont("helvetica", "bold"); doc.text(label + ":", rightX, dy)
+      doc.setFont("helvetica", "normal"); doc.text(String(val), rightX + 24, dy)
+      dy += 6
+    }
+
+    infoRow("Father", s.father_name)
+    infoRow("Course", s.course)
+    infoRow("DOB", s.dob)
+    infoRow("Mobile", s.phone)
+
+    // ── Footer bar ──
+    doc.setFillColor(...darkBlue)
+    doc.rect(0, H - 12, W, 12, "F")
+    doc.setTextColor(...white)
+    doc.setFontSize(7)
+    doc.setFont("helvetica", "italic")
+    doc.text("Valid for Academic Year  |  ABS Foundation", W / 2, H - 5, { align: "center" })
+
+    doc.save(`IDCard_${s.student_code || s.id}.pdf`)
   }
 
   const uniqueCourses = [...new Set(students.map((s) => s.course).filter(Boolean))]
@@ -709,6 +794,10 @@ export default function Students() {
                               onClick={() => handleEdit(s)}
                               className="bg-yellow-400 hover:bg-yellow-500 text-white px-2 py-1 rounded text-xs"
                             >Edit</button>
+                            <button
+                              onClick={() => generateIDCard(s)}
+                              className="bg-indigo-500 hover:bg-indigo-600 text-white px-2 py-1 rounded text-xs"
+                            >🪪 ID Card</button>
                             <button
                               onClick={() => handleManageLogin(s)}
                               className="bg-green-500 hover:bg-green-600 text-white px-2 py-1 rounded text-xs"

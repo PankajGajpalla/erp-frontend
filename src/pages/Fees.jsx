@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from "react"
 import Sidebar from "../components/Sidebar"
 import { useAuth } from "../context/AuthContext"
-import { getFeesAPI, addFeesAPI, payFeesAPI, updateFeeRecordAPI, deleteFeeRecordAPI, feesSummaryAPI, getFeePaymentsAPI, getStudentAPI, searchStudentsAPI, getCoursesAPI, getStudentsByCourseAPI } from "../api"
+import { getFeesAPI, addFeesAPI, payFeesAPI, updateFeeRecordAPI, deleteFeeRecordAPI, feesSummaryAPI, getFeePaymentsAPI, getStudentAPI, searchStudentsAPI, getCoursesAPI, getStudentsByCourseAPI, addBulkFeesAPI, getFeeTemplatesAPI, createFeeTemplateAPI, deleteFeeTemplateAPI } from "../api"
 import jsPDF from "jspdf"
 
 function generateReceipt(payment, fee, studentName, studentCode, course, parentPhone) {
@@ -517,9 +517,35 @@ function AdminFees() {
   const [deleteConfirmId, setDeleteConfirmId] = useState(null)
   const [deleting, setDeleting]       = useState(false)
 
+  // Bulk Fee Addition
+  const [bulkForm, setBulkForm] = useState({ course_name: "", amount: "", description: "", due_date: "" })
+  const [bulkSubmitting, setBulkSubmitting] = useState(false)
+  const [bulkSuccess, setBulkSuccess] = useState("")
+  const [bulkError, setBulkError] = useState("")
+
+  // Templates
+  const [templates, setTemplates] = useState([])
+  const [templatesLoading, setTemplatesLoading] = useState(false)
+  const [templatesOpen, setTemplatesOpen] = useState(false)
+  const [newTemplate, setNewTemplate] = useState({ name: "", course: "", amount: "", description: "" })
+  const [templateSubmitting, setTemplateSubmitting] = useState(false)
+  const [templateError, setTemplateError] = useState("")
+  const [templateSuccess, setTemplateSuccess] = useState("")
+  const [applyModal, setApplyModal] = useState(null) // template to apply
+  const [applyCourse, setApplyCourse] = useState("")
+  const [applySubmitting, setApplySubmitting] = useState(false)
+
   useEffect(() => {
     if (success) { const t = setTimeout(() => setSuccess(""), 4000); return () => clearTimeout(t) }
   }, [success])
+
+  useEffect(() => {
+    if (bulkSuccess) { const t = setTimeout(() => setBulkSuccess(""), 4000); return () => clearTimeout(t) }
+  }, [bulkSuccess])
+
+  useEffect(() => {
+    if (templateSuccess) { const t = setTimeout(() => setTemplateSuccess(""), 4000); return () => clearTimeout(t) }
+  }, [templateSuccess])
 
   useEffect(() => {
     if (statusFilter === "all") setFiltered(fees)
@@ -662,6 +688,89 @@ function AdminFees() {
     } finally { setPayingId(null) }
   }
 
+  async function handleBulkFee(e) {
+    e.preventDefault(); setBulkError(""); setBulkSuccess("")
+    if (!bulkForm.course_name) { setBulkError("Select a course"); return }
+    if (!bulkForm.amount || parseFloat(bulkForm.amount) <= 0) { setBulkError("Enter a valid amount"); return }
+    setBulkSubmitting(true)
+    try {
+      const res = await addBulkFeesAPI({
+        course_name: bulkForm.course_name,
+        amount: parseFloat(bulkForm.amount),
+        description: bulkForm.description || null,
+        due_date: bulkForm.due_date || null,
+      })
+      const count = res.data?.count || res.data?.students_count || "multiple"
+      setBulkSuccess(`✅ Fee added to ${count} students in ${bulkForm.course_name}!`)
+      setBulkForm({ course_name: "", amount: "", description: "", due_date: "" })
+    } catch (err) {
+      setBulkError(err.response?.data?.detail || "Bulk fee addition failed")
+    } finally { setBulkSubmitting(false) }
+  }
+
+  async function loadTemplates() {
+    setTemplatesLoading(true)
+    try {
+      const res = await getFeeTemplatesAPI()
+      setTemplates(res.data.templates || res.data || [])
+    } catch { setTemplateError("Failed to load templates") }
+    finally { setTemplatesLoading(false) }
+  }
+
+  function toggleTemplates() {
+    const next = !templatesOpen
+    setTemplatesOpen(next)
+    if (next && templates.length === 0) loadTemplates()
+  }
+
+  async function handleCreateTemplate(e) {
+    e.preventDefault(); setTemplateError(""); setTemplateSuccess("")
+    if (!newTemplate.name.trim()) { setTemplateError("Template name is required"); return }
+    if (!newTemplate.amount || parseFloat(newTemplate.amount) <= 0) { setTemplateError("Enter a valid amount"); return }
+    setTemplateSubmitting(true)
+    try {
+      await createFeeTemplateAPI({
+        name: newTemplate.name.trim(),
+        course: newTemplate.course || null,
+        amount: parseFloat(newTemplate.amount),
+        description: newTemplate.description || null,
+      })
+      setTemplateSuccess("✅ Template created!")
+      setNewTemplate({ name: "", course: "", amount: "", description: "" })
+      loadTemplates()
+    } catch (err) {
+      setTemplateError(err.response?.data?.detail || "Failed to create template")
+    } finally { setTemplateSubmitting(false) }
+  }
+
+  async function handleDeleteTemplate(id) {
+    try {
+      await deleteFeeTemplateAPI(id)
+      setTemplateSuccess("Template deleted")
+      setTemplates(prev => prev.filter(t => t.id !== id))
+    } catch { setTemplateError("Failed to delete template") }
+  }
+
+  async function handleApplyTemplate() {
+    if (!applyModal) return
+    const course = applyModal.course || applyCourse
+    if (!course) { setTemplateError("Select a course to apply this template"); return }
+    setApplySubmitting(true); setTemplateError("")
+    try {
+      const res = await addBulkFeesAPI({
+        course_name: course,
+        amount: applyModal.amount,
+        description: applyModal.description || applyModal.name,
+        due_date: null,
+      })
+      const count = res.data?.count || res.data?.students_count || "multiple"
+      setTemplateSuccess(`✅ Applied "${applyModal.name}" to ${count} students in ${course}!`)
+      setApplyModal(null); setApplyCourse("")
+    } catch (err) {
+      setTemplateError(err.response?.data?.detail || "Failed to apply template")
+    } finally { setApplySubmitting(false) }
+  }
+
   return (
     <div className="space-y-5">
       <h2 className="text-2xl font-bold text-gray-800">💰 Fees</h2>
@@ -712,6 +821,193 @@ function AdminFees() {
         {error && <div className="mt-3 bg-red-50 border border-red-200 rounded-lg px-4 py-2"><p className="text-red-600 text-sm">{error}</p></div>}
         {success && <div className="mt-3 bg-green-50 border border-green-200 rounded-lg px-4 py-2"><p className="text-green-600 text-sm">{success}</p></div>}
       </div>
+
+      {/* ── Bulk Fee Addition ───────────────────────────────── */}
+      <div className="bg-white rounded-xl shadow p-6">
+        <h3 className="text-base font-semibold text-gray-700 mb-4 pb-2 border-b">🏫 Bulk Add Fee (Entire Course)</h3>
+        <form onSubmit={handleBulkFee} className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Course *</label>
+              <select value={bulkForm.course_name}
+                onChange={e => setBulkForm(f => ({ ...f, course_name: e.target.value }))}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <option value="">— Select course —</option>
+                {courses.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Amount (₹) *</label>
+              <input type="number" value={bulkForm.amount} min="1"
+                onChange={e => setBulkForm(f => ({ ...f, amount: e.target.value }))}
+                placeholder="e.g. 5000"
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Description</label>
+              <input type="text" value={bulkForm.description}
+                onChange={e => setBulkForm(f => ({ ...f, description: e.target.value }))}
+                placeholder="e.g. Annual Fees"
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Due Date</label>
+              <input type="date" value={bulkForm.due_date}
+                onChange={e => setBulkForm(f => ({ ...f, due_date: e.target.value }))}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            </div>
+          </div>
+          <button type="submit" disabled={bulkSubmitting}
+            className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded-lg text-sm font-medium transition disabled:opacity-50">
+            {bulkSubmitting ? "Applying…" : "Apply to All Students in Course"}
+          </button>
+        </form>
+        {bulkError && <div className="mt-3 bg-red-50 border border-red-200 rounded-lg px-4 py-2"><p className="text-red-600 text-sm">{bulkError}</p></div>}
+        {bulkSuccess && <div className="mt-3 bg-green-50 border border-green-200 rounded-lg px-4 py-2"><p className="text-green-600 text-sm">{bulkSuccess}</p></div>}
+      </div>
+
+      {/* ── Fee Templates ───────────────────────────────────── */}
+      <div className="bg-white rounded-xl shadow overflow-hidden">
+        <button onClick={toggleTemplates}
+          className="w-full flex items-center justify-between px-6 py-4 text-left hover:bg-gray-50 transition">
+          <h3 className="text-base font-semibold text-gray-700">📋 Fee Templates</h3>
+          <span className="text-gray-400 text-sm">{templatesOpen ? "▲ Collapse" : "▼ Expand"}</span>
+        </button>
+
+        {templatesOpen && (
+          <div className="border-t px-6 py-5 space-y-5">
+            {templateError && <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-2"><p className="text-red-600 text-sm">{templateError}</p></div>}
+            {templateSuccess && <div className="bg-green-50 border border-green-200 rounded-lg px-4 py-2"><p className="text-green-600 text-sm">{templateSuccess}</p></div>}
+
+            {/* Create Template */}
+            <div>
+              <h4 className="text-sm font-semibold text-gray-600 mb-3">Create New Template</h4>
+              <form onSubmit={handleCreateTemplate} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Template Name *</label>
+                  <input type="text" value={newTemplate.name}
+                    onChange={e => setNewTemplate(f => ({ ...f, name: e.target.value }))}
+                    placeholder="e.g. Term 1 Fee"
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Course (optional)</label>
+                  <select value={newTemplate.course}
+                    onChange={e => setNewTemplate(f => ({ ...f, course: e.target.value }))}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <option value="">All Courses</option>
+                    {courses.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Amount (₹) *</label>
+                  <input type="number" value={newTemplate.amount} min="1"
+                    onChange={e => setNewTemplate(f => ({ ...f, amount: e.target.value }))}
+                    placeholder="e.g. 8000"
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Description</label>
+                  <input type="text" value={newTemplate.description}
+                    onChange={e => setNewTemplate(f => ({ ...f, description: e.target.value }))}
+                    placeholder="Optional description"
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                </div>
+                <div className="sm:col-span-2 lg:col-span-4">
+                  <button type="submit" disabled={templateSubmitting}
+                    className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg text-sm font-medium transition disabled:opacity-50">
+                    {templateSubmitting ? "Saving…" : "Create Template"}
+                  </button>
+                </div>
+              </form>
+            </div>
+
+            {/* Template List */}
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <h4 className="text-sm font-semibold text-gray-600">Existing Templates</h4>
+                <button onClick={loadTemplates} className="text-xs text-blue-600 hover:underline">Refresh</button>
+              </div>
+              {templatesLoading ? (
+                <div className="flex items-center gap-2 text-gray-400 text-sm py-2">
+                  <div className="w-4 h-4 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />Loading…
+                </div>
+              ) : templates.length === 0 ? (
+                <p className="text-gray-400 text-sm py-2">No templates yet. Create one above.</p>
+              ) : (
+                <div className="space-y-2">
+                  {templates.map(t => (
+                    <div key={t.id} className="flex items-center justify-between bg-gray-50 rounded-lg px-4 py-3 border border-gray-200">
+                      <div className="flex items-center gap-3 flex-1 min-w-0">
+                        <div>
+                          <p className="text-sm font-semibold text-gray-800">{t.name}</p>
+                          {t.description && <p className="text-xs text-gray-400">{t.description}</p>}
+                        </div>
+                        {t.course
+                          ? <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-medium flex-shrink-0">{t.course}</span>
+                          : <span className="text-xs bg-gray-200 text-gray-500 px-2 py-0.5 rounded-full font-medium flex-shrink-0">All Courses</span>
+                        }
+                        <span className="text-sm font-bold text-gray-800 flex-shrink-0">{formatCurrency(t.amount)}</span>
+                      </div>
+                      <div className="flex gap-2 ml-3 flex-shrink-0">
+                        <button onClick={() => { setApplyModal(t); setApplyCourse(t.course || ""); setTemplateError("") }}
+                          className="bg-indigo-100 hover:bg-indigo-200 text-indigo-700 px-3 py-1 rounded text-xs font-medium transition">
+                          Apply
+                        </button>
+                        <button onClick={() => handleDeleteTemplate(t.id)}
+                          className="bg-red-100 hover:bg-red-200 text-red-600 px-3 py-1 rounded text-xs font-medium transition">
+                          Delete
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Apply Template Modal */}
+      {applyModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+          onClick={() => { setApplyModal(null); setApplyCourse("") }}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-bold text-gray-800">Apply Template: {applyModal.name}</h3>
+              <button onClick={() => { setApplyModal(null); setApplyCourse("") }} className="text-gray-400 hover:text-gray-600 text-2xl leading-none">×</button>
+            </div>
+            <p className="text-sm text-gray-500 mb-4">
+              Amount: <strong>{formatCurrency(applyModal.amount)}</strong>
+              {applyModal.description && <span> · {applyModal.description}</span>}
+            </p>
+            {!applyModal.course && (
+              <div className="mb-4">
+                <label className="block text-xs font-medium text-gray-600 mb-1">Select Course *</label>
+                <select value={applyCourse} onChange={e => setApplyCourse(e.target.value)}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                  <option value="">— Choose a course —</option>
+                  {courses.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
+                </select>
+              </div>
+            )}
+            {applyModal.course && (
+              <p className="text-sm text-gray-600 mb-4">This will apply to all students in <strong>{applyModal.course}</strong>.</p>
+            )}
+            {templateError && <p className="text-red-600 text-sm mb-3">{templateError}</p>}
+            <div className="flex gap-3">
+              <button onClick={handleApplyTemplate} disabled={applySubmitting || (!applyModal.course && !applyCourse)}
+                className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white py-2 rounded-lg text-sm font-medium transition disabled:opacity-50">
+                {applySubmitting ? "Applying…" : "Confirm & Apply"}
+              </button>
+              <button onClick={() => { setApplyModal(null); setApplyCourse("") }}
+                className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700 py-2 rounded-lg text-sm transition">
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── View Student Fees ───────────────────────────────── */}
       <div className="bg-white rounded-xl shadow">
