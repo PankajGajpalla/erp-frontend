@@ -88,7 +88,7 @@ function generateReceipt(payment, fee, studentName, studentCode, course, parentP
   y += 8
 
   // ── Amount Box ────────────────────────────────────────────────
-  const boxH = payment.note ? 36 : 28
+  const boxH = (payment.note || payment.payment_mode) ? 36 : 28
   doc.setFillColor(239, 246, 255)
   doc.setDrawColor(30, 64, 175)
   doc.setLineWidth(0.6)
@@ -108,13 +108,18 @@ function generateReceipt(payment, fee, studentName, studentCode, course, parentP
   doc.setTextColor(15, 100, 50)
   doc.text(amountStr, right - 6, y + 10, { align: "right" })
 
-  // Note (if any) — smaller, inside box below amount
-  if (payment.note) {
-    doc.setFontSize(8)
-    doc.setFont("helvetica", "italic")
-    doc.setTextColor(100, 100, 100)
-    const noteLines = doc.splitTextToSize(`Note: ${payment.note}`, right - left - 12)
-    doc.text(noteLines, left + 6, y + 20)
+  // Mode & Note — smaller, inside box below amount
+  {
+    const lines = []
+    if (payment.payment_mode) lines.push(`Mode: ${payment.payment_mode}`)
+    if (payment.note) lines.push(`Note: ${payment.note}`)
+    if (lines.length > 0) {
+      doc.setFontSize(8)
+      doc.setFont("helvetica", "italic")
+      doc.setTextColor(100, 100, 100)
+      const combined = doc.splitTextToSize(lines.join("  |  "), right - left - 12)
+      doc.text(combined, left + 6, y + 20)
+    }
   }
 
   y += boxH + 10
@@ -181,25 +186,38 @@ function PaymentHistory({ feeId, fee, studentName, studentCode, course, parentPh
           <th className="text-left px-4 py-1 font-medium">#</th>
           <th className="text-left px-4 py-1 font-medium">Amount Paid</th>
           <th className="text-left px-4 py-1 font-medium">Date</th>
+          <th className="text-left px-4 py-1 font-medium">Mode</th>
           <th className="text-left px-4 py-1 font-medium">Note</th>
           <th className="px-4 py-1"></th>
         </tr>
       </thead>
       <tbody>
-        {payments.map((p, i) => (
-          <tr key={p.id} className="border-b last:border-0">
-            <td className="px-4 py-1 text-gray-400">{i + 1}</td>
-            <td className="px-4 py-1 font-semibold text-green-700">{formatCurrency(p.amount)}</td>
-            <td className="px-4 py-1 text-gray-600">{formatDate(p.paid_date)}</td>
-            <td className="px-4 py-1 text-gray-500">{p.note || "—"}</td>
-            <td className="px-4 py-1">
-              <button onClick={() => generateReceipt(p, fee, studentName, studentCode, course, parentPhone)}
-                className="bg-blue-100 hover:bg-blue-200 text-blue-700 px-2 py-0.5 rounded text-xs font-medium transition">
-                🧾 Receipt
-              </button>
-            </td>
-          </tr>
-        ))}
+        {payments.map((p, i) => {
+          const mode = p.payment_mode || p.note || "—"
+          const modeBadge = {
+            "Cash": "bg-green-100 text-green-700",
+            "UPI": "bg-blue-100 text-blue-700",
+            "Bank Transfer": "bg-purple-100 text-purple-700",
+            "Cheque": "bg-orange-100 text-orange-700",
+          }[p.payment_mode] || "bg-gray-100 text-gray-500"
+          return (
+            <tr key={p.id} className="border-b last:border-0">
+              <td className="px-4 py-1 text-gray-400">{i + 1}</td>
+              <td className="px-4 py-1 font-semibold text-green-700">{formatCurrency(p.amount)}</td>
+              <td className="px-4 py-1 text-gray-600">{formatDate(p.paid_date)}</td>
+              <td className="px-4 py-1">
+                <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${modeBadge}`}>{mode}</span>
+              </td>
+              <td className="px-4 py-1 text-gray-500">{p.note || "—"}</td>
+              <td className="px-4 py-1">
+                <button onClick={() => generateReceipt(p, fee, studentName, studentCode, course, parentPhone)}
+                  className="bg-blue-100 hover:bg-blue-200 text-blue-700 px-2 py-0.5 rounded text-xs font-medium transition">
+                  🧾 Receipt
+                </button>
+              </td>
+            </tr>
+          )
+        })}
       </tbody>
     </table>
   )
@@ -662,7 +680,7 @@ function AdminFees() {
   }
 
   function getPayForm(feeId) {
-    return payForms[feeId] || { amount: "", paid_date: today(), note: "" }
+    return payForms[feeId] || { amount: "", paid_date: today(), note: "", payment_mode: "Cash" }
   }
   function setPayForm(feeId, patch) {
     setPayForms((prev) => ({ ...prev, [feeId]: { ...getPayForm(feeId), ...patch } }))
@@ -678,9 +696,10 @@ function AdminFees() {
         pay_amount: payAmount,
         paid_date: pf.paid_date || today(),
         note: pf.note || null,
+        payment_mode: pf.payment_mode || "Cash",
       })
       setSuccess(`✅ ${formatCurrency(payAmount)} payment recorded!`)
-      setPayForms((prev) => ({ ...prev, [feeId]: { amount: "", paid_date: today(), note: "" } }))
+      setPayForms((prev) => ({ ...prev, [feeId]: { amount: "", paid_date: today(), note: "", payment_mode: "Cash" } }))
       setHistoryKey((k) => k + 1)
       if (viewStudent) fetchFees(viewStudent.id)
     } catch (err) {
@@ -1266,6 +1285,16 @@ function AdminFees() {
                                 <input type="text" placeholder="Note (optional)" value={pf.note}
                                   onChange={(e) => setPayForm(f.id, { note: e.target.value })}
                                   className="border border-gray-300 rounded px-2 py-1 flex-1 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                              </div>
+                              <div className="flex gap-1">
+                                <select value={pf.payment_mode}
+                                  onChange={(e) => setPayForm(f.id, { payment_mode: e.target.value })}
+                                  className="border border-gray-300 rounded px-2 py-1 flex-1 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500">
+                                  <option value="Cash">Cash</option>
+                                  <option value="UPI">UPI</option>
+                                  <option value="Bank Transfer">Bank Transfer</option>
+                                  <option value="Cheque">Cheque</option>
+                                </select>
                                 <button onClick={() => handlePay(f.id)} disabled={payingId === f.id}
                                   className="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded text-xs transition disabled:opacity-50">
                                   {payingId === f.id ? "..." : "Pay"}

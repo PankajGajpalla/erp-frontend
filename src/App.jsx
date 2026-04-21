@@ -20,6 +20,7 @@ import TeacherGrades from "./pages/TeacherGrades"
 import AdminAccounts from "./pages/AdminAccounts"
 import ExamSchedule from "./pages/ExamSchedule"
 import AuditLog from "./pages/AuditLog"
+import DataExport from "./pages/DataExport"
 
 // ─── Loading Spinner ─────────────────────────────────────────
 function LoadingScreen() {
@@ -125,6 +126,7 @@ export default function App() {
         <Route path="/admin-accounts" element={<AdminRoute><AdminAccounts /></AdminRoute>} />
         <Route path="/exam-schedule"  element={<AdminRoute><ExamSchedule /></AdminRoute>} />
         <Route path="/audit-log"      element={<AdminRoute><AuditLog /></AdminRoute>} />
+        <Route path="/data-export"    element={<AdminRoute><DataExport /></AdminRoute>} />
 
         {/* Teacher routes */}
         <Route path="/teacher" element={<TeacherRoute><TeacherDashboard /></TeacherRoute>} />

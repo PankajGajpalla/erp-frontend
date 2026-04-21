@@ -126,3 +126,16 @@ export const deleteExamAPI = (id) => API.delete(`/exam-schedule/${id}`);
 
 // ─── Audit Logs ──────────────────────────────────────────────
 export const getAuditLogsAPI = (limit = 100) => API.get("/audit-logs", { params: { limit } });
+
+// ─── Notice Reads ────────────────────────────────────────────
+export const markNoticeReadAPI = (noticeId) => API.post(`/notices/${noticeId}/read`)
+export const getNoticeReadsAPI = (noticeId) => API.get(`/notices/${noticeId}/reads`)
+
+// ─── Attendance Heatmap ──────────────────────────────────────
+export const getAttendanceHeatmapAPI = (studentId) => API.get(`/attendance/heatmap/${studentId}`)
+
+// ─── Data Export ─────────────────────────────────────────────
+export const exportStudentsAPI = () => API.get("/export/students")
+export const exportFeesAPI = () => API.get("/export/fees")
+export const exportAttendanceAPI = () => API.get("/export/attendance")
+export const exportPaymentsAPI = () => API.get("/export/payments")

@@ -6,7 +6,7 @@ import {
 } from "recharts"
 
 import Sidebar from "../components/Sidebar"
-import { getDashboardSummaryAPI, getStudentAPI, getOverdueFeesAPI } from "../api"
+import { getDashboardSummaryAPI, getStudentAPI, getOverdueFeesAPI, attendanceSummaryAPI, getAttendanceHeatmapAPI } from "../api"
 
 // ─── Stats Card ──────────────────────────────────────────────
 function StatCard({ label, value, color }) {
@@ -90,11 +90,13 @@ function AdminDashboard() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
         <StatCard label="Total Students"      value={stats.total_students}              color="border-blue-500" />
         <StatCard label="Total Fees"          value={formatCurrency(stats.total_fees)}  color="border-yellow-500" />
         <StatCard label="Fees Collected"      value={formatCurrency(stats.total_paid)}  color="border-green-500" />
         <StatCard label="Fees Pending"        value={formatCurrency(stats.total_pending)} color="border-red-500" />
+        <StatCard label="Total Teachers"      value={stats.total_teachers ?? "—"}       color="border-indigo-500" />
+        <StatCard label="Today's Attendance"  value={stats.attendance_today?.pct != null ? stats.attendance_today.pct.toFixed(1) + "%" : "—"} color="border-teal-500" />
       </div>
 
       {/* Charts Row */}
@@ -137,6 +139,56 @@ function AdminDashboard() {
             </ResponsiveContainer>
           ) : (
             <p className="text-gray-400 text-center py-10">No course data yet</p>
+          )}
+        </div>
+      </div>
+
+      {/* Upcoming Exams & Recent Notices */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+        {/* Upcoming Exams */}
+        <div className="bg-white rounded-xl shadow p-5">
+          <h3 className="text-sm font-semibold text-gray-700 mb-4">📅 Upcoming Exams (Next 7 Days)</h3>
+          {(stats.upcoming_exams || []).length === 0 ? (
+            <p className="text-gray-400 text-sm py-4 text-center">No upcoming exams</p>
+          ) : (
+            <ul className="space-y-2">
+              {(stats.upcoming_exams || []).map((ex) => {
+                const d = new Date(ex.exam_date)
+                const dateLabel = d.toLocaleDateString("en-IN", { day: "2-digit", month: "short" })
+                return (
+                  <li key={ex.id} className="flex items-start gap-2 text-sm text-gray-700">
+                    <span className="mt-1 w-2 h-2 rounded-full bg-blue-500 flex-shrink-0" />
+                    <span>
+                      <span className="font-medium text-gray-500 mr-1">{dateLabel}</span>
+                      — {ex.title} <span className="text-gray-400">({ex.subject})</span>
+                    </span>
+                  </li>
+                )
+              })}
+            </ul>
+          )}
+        </div>
+
+        {/* Recent Notices */}
+        <div className="bg-white rounded-xl shadow p-5">
+          <h3 className="text-sm font-semibold text-gray-700 mb-4">📢 Recent Notices</h3>
+          {(stats.recent_notices || []).length === 0 ? (
+            <p className="text-gray-400 text-sm py-4 text-center">No recent notices</p>
+          ) : (
+            <ul className="space-y-3">
+              {(stats.recent_notices || []).map((n) => (
+                <li key={n.id} className="flex items-start justify-between gap-2 text-sm">
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-gray-800 truncate">{n.title}</p>
+                    <p className="text-xs text-gray-400 mt-0.5">{n.date}</p>
+                  </div>
+                  {n.course && (
+                    <span className="text-xs bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full flex-shrink-0">{n.course}</span>
+                  )}
+                </li>
+              ))}
+            </ul>
           )}
         </div>
       </div>
@@ -204,9 +256,43 @@ function InfoRow({ label, value }) {
   )
 }
 
+// ─── Attendance Heatmap ───────────────────────────────────────
+function AttendanceHeatmap({ heatmap }) {
+  const days = []
+  for (let i = 89; i >= 0; i--) {
+    const d = new Date()
+    d.setDate(d.getDate() - i)
+    const key = d.toISOString().split("T")[0]
+    days.push({ key, date: d, status: heatmap[key] || null })
+  }
+
+  return (
+    <div className="bg-white rounded-xl shadow p-5">
+      <h3 className="text-sm font-semibold text-gray-700 mb-3">Attendance Heatmap (Last 90 Days)</h3>
+      <div className="flex flex-wrap gap-1">
+        {days.map(({ key, date, status }) => (
+          <div key={key} title={`${key}: ${status || "No record"}`}
+            className={`w-4 h-4 rounded-sm ${
+              status === "present" ? "bg-green-500" :
+              status === "absent"  ? "bg-red-400"  :
+              "bg-gray-200"
+            }`} />
+        ))}
+      </div>
+      <div className="flex gap-4 mt-3 text-xs text-gray-400">
+        <span><span className="inline-block w-3 h-3 rounded-sm bg-green-500 mr-1" />Present</span>
+        <span><span className="inline-block w-3 h-3 rounded-sm bg-red-400 mr-1" />Absent</span>
+        <span><span className="inline-block w-3 h-3 rounded-sm bg-gray-200 mr-1" />No Record</span>
+      </div>
+    </div>
+  )
+}
+
 // ─── Student Dashboard ────────────────────────────────────────
 function StudentDashboard({ studentId }) {
   const [profile, setProfile] = useState(null)
+  const [attSummary, setAttSummary] = useState(null)
+  const [heatmap, setHeatmap] = useState({})
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
 
@@ -218,8 +304,14 @@ function StudentDashboard({ studentId }) {
         return
       }
       try {
-        const res = await getStudentAPI(studentId)
-        setProfile(res.data)
+        const [sRes, attRes, heatRes] = await Promise.all([
+          getStudentAPI(studentId),
+          attendanceSummaryAPI(studentId).catch(() => ({ data: null })),
+          getAttendanceHeatmapAPI(studentId).catch(() => ({ data: null })),
+        ])
+        setProfile(sRes.data)
+        setAttSummary(attRes.data)
+        setHeatmap(heatRes.data?.heatmap || {})
       } catch (err) {
         setError("Failed to load your profile")
         console.error(err)
@@ -287,6 +379,28 @@ function StudentDashboard({ studentId }) {
           </a>
         ))}
       </div>
+
+      {/* ── Attendance Summary ── */}
+      {attSummary && (
+        <div className="bg-white rounded-xl shadow p-5">
+          <h3 className="text-sm font-semibold text-gray-700 mb-3">Attendance Summary</h3>
+          <div className="flex items-center justify-between text-sm text-gray-600 mb-2">
+            <span>{attSummary.present ?? 0} Present / {attSummary.absent ?? 0} Absent</span>
+            <span className="font-semibold text-gray-800">{attSummary.percentage != null ? attSummary.percentage.toFixed(1) : "—"}%</span>
+          </div>
+          <div className="w-full bg-gray-100 rounded-full h-3">
+            <div
+              className={`h-3 rounded-full transition-all duration-500 ${
+                (attSummary.percentage || 0) >= 75 ? "bg-green-500" : "bg-red-500"
+              }`}
+              style={{ width: `${Math.min(attSummary.percentage || 0, 100)}%` }}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* ── Attendance Heatmap ── */}
+      {Object.keys(heatmap).length > 0 && <AttendanceHeatmap heatmap={heatmap} />}
 
       {/* ── Profile Details ── */}
       <div className="bg-white rounded-2xl shadow-md p-6">

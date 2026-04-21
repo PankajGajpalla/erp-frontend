@@ -75,6 +75,7 @@ export default function Sidebar() {
     { to: "/import",          label: "📥 Import Students" },
     { to: "/admin-accounts",  label: "⚙️ Admin Accounts" },
     { to: "/audit-log",       label: "🔍 Audit Log" },
+    { to: "/data-export",     label: "📤 Data Export" },
   ]
 
   const studentLinks = [

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react"
 import Sidebar from "../components/Sidebar"
 import { useAuth } from "../context/AuthContext"
-import { getNoticesAPI, addNoticeAPI, deleteNoticeAPI, getCoursesAPI } from "../api"
+import { getNoticesAPI, addNoticeAPI, deleteNoticeAPI, getCoursesAPI, markNoticeReadAPI } from "../api"
 
 export default function Notices() {
   const { isAdmin } = useAuth()
@@ -51,7 +51,11 @@ export default function Notices() {
   async function fetchNotices() {
     try {
       const res = await getNoticesAPI()
-      setNotices(res.data.notices)
+      const list = res.data.notices
+      setNotices(list)
+      if (!isAdmin && list.length > 0) {
+        list.forEach(n => markNoticeReadAPI(n.id).catch(() => {}))
+      }
     } catch (err) {
       setError("Failed to load notices")
     } finally {
@@ -201,6 +205,9 @@ export default function Notices() {
                         ? <span className="text-xs text-indigo-700 bg-indigo-100 px-2 py-1 rounded-full font-medium">🎓 {n.course}</span>
                         : <span className="text-xs text-green-700 bg-green-100 px-2 py-1 rounded-full font-medium">🌐 Everyone</span>
                       }
+                      {isAdmin && n.read_count > 0 && (
+                        <span className="bg-gray-100 text-gray-500 text-xs px-2 py-0.5 rounded-full">👁 {n.read_count} read</span>
+                      )}
                     </div>
                     <p className="text-gray-600 text-sm leading-relaxed">{n.content}</p>
                   </div>
