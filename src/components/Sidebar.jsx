@@ -114,7 +114,7 @@ export default function Sidebar() {
       <div className="flex items-center justify-between px-4 py-5 border-b border-gray-700 gap-2">
         {!collapsed && (
           <div className="flex-1 min-w-0">
-            <h1 className="text-xl font-bold text-blue-400">ERP System</h1>
+            <h1 className="text-xl font-bold text-blue-400">ABS Foundation</h1>
             <p className="text-xs text-gray-400 mt-0.5 truncate">
               {user?.sub} · <span className="capitalize">{user?.role}</span>
             </p>

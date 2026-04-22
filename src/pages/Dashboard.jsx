@@ -89,7 +89,7 @@ function AdminDashboard() {
     <div className="space-y-6">
       <div>
         <h2 className="text-2xl font-bold text-gray-800 mb-1">Admin Dashboard</h2>
-        <p className="text-gray-400 text-sm">Overview of your ERP system</p>
+        <p className="text-gray-400 text-sm">Overview of ABS Foundation</p>
       </div>
 
       {/* Stats Cards */}
