@@ -11,9 +11,9 @@ import { getDashboardSummaryAPI, getStudentAPI, getOverdueFeesAPI, attendanceSum
 // ─── Stats Card ──────────────────────────────────────────────
 function StatCard({ label, value, color }) {
   return (
-    <div className={`bg-white rounded-xl shadow p-6 border-l-4 ${color}`}>
-      <p className="text-sm text-gray-500">{label}</p>
-      <p className="text-2xl font-bold text-gray-800 mt-1 break-words">{value}</p>
+    <div className={`bg-white rounded-xl shadow p-3 sm:p-6 border-l-4 ${color}`}>
+      <p className="text-xs sm:text-sm text-gray-500">{label}</p>
+      <p className="text-lg sm:text-2xl font-bold text-gray-800 mt-1 break-words">{value}</p>
     </div>
   )
 }
@@ -233,7 +233,7 @@ function AdminDashboard() {
               </button>
             )}
           </div>
-          <table className="w-full text-sm">
+          <div className="overflow-x-auto"><table className="w-full text-sm min-w-[600px]">
             <thead>
               <tr className="bg-gray-50 text-xs text-gray-500 border-b">
                 <th className="text-left px-5 py-2 font-medium">Student</th>
@@ -263,7 +263,7 @@ function AdminDashboard() {
                 )
               })}
             </tbody>
-          </table>
+          </table></div>
         </div>
       )}
     </div>
@@ -480,9 +480,9 @@ export default function Dashboard() {
   const { user, isAdmin, isStudent } = useAuth()
 
   return (
-    <div className="flex">
+    <div className="flex min-h-screen">
       <Sidebar />
-      <main className="flex-1 p-4 sm:p-8 bg-gray-50 min-h-screen">
+      <main className="flex-1 p-4 md:p-6 pt-16 md:pt-6 bg-gray-50 min-h-screen">
         {isAdmin
           ? <AdminDashboard />
           : <StudentDashboard studentId={user?.student_id} />

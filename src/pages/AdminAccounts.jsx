@@ -109,9 +109,9 @@ export default function AdminAccounts() {
   const isSelf = (admin) => admin.username === user?.sub
 
   return (
-    <div className="flex">
+    <div className="flex min-h-screen">
       <Sidebar />
-      <main className="flex-1 p-4 sm:p-8 bg-gray-50 min-h-screen">
+      <main className="flex-1 p-4 md:p-6 pt-16 md:pt-6 bg-gray-50 min-h-screen">
 
         <h2 className="text-2xl font-bold text-gray-800 mb-2">⚙️ Admin Accounts</h2>
         <p className="text-sm text-gray-500 mb-6">Manage administrator login credentials. Each admin has full access to the ERP.</p>
@@ -179,7 +179,8 @@ export default function AdminAccounts() {
           ) : admins.length === 0 ? (
             <div className="p-12 text-center text-gray-400">No admin accounts found.</div>
           ) : (
-            <table className="w-full text-sm">
+            <div className="overflow-x-auto">
+            <table className="w-full text-sm min-w-[500px]">
               <thead>
                 <tr className="bg-gray-800 text-white">
                   <th className="text-left px-6 py-3 font-medium">ID</th>
@@ -243,6 +244,7 @@ export default function AdminAccounts() {
                 ))}
               </tbody>
             </table>
+            </div>
           )}
         </div>
 

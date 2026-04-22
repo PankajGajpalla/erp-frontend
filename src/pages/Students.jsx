@@ -360,9 +360,9 @@ export default function Students() {
   const paginated     = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
 
   return (
-    <div className="flex">
+    <div className="flex min-h-screen">
       <Sidebar />
-      <main className="flex-1 p-6 bg-gray-50 min-h-screen">
+      <main className="flex-1 p-4 md:p-6 pt-16 md:pt-6 bg-gray-50 min-h-screen">
 
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-2xl font-bold text-gray-800">Students</h2>
@@ -610,7 +610,7 @@ export default function Students() {
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+              <table className="w-full text-sm min-w-[800px]">
                 <thead>
                   <tr className="bg-gray-800 text-white text-xs uppercase tracking-wide">
                     <th className="px-4 py-3">
@@ -817,7 +817,7 @@ export default function Students() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3 text-sm">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
                 <DetailRow label="Date of Birth" value={viewStudent.dob} />
                 <DetailRow label="Admission Date" value={viewStudent.admission_date} />
                 <DetailRow label="Student Mobile" value={viewStudent.phone} />

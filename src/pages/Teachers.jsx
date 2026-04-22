@@ -370,9 +370,9 @@ export default function Teachers() {
   })
 
   return (
-    <div className="flex">
+    <div className="flex min-h-screen">
       <Sidebar />
-      <main className="flex-1 p-4 sm:p-8 bg-gray-50 min-h-screen">
+      <main className="flex-1 p-4 md:p-6 pt-16 md:pt-6 bg-gray-50 min-h-screen">
 
         <h2 className="text-2xl font-bold text-gray-800 mb-6">👨‍🏫 Teachers</h2>
 

@@ -174,9 +174,9 @@ export default function AuditLog() {
   }, [lastRefreshed])
 
   return (
-    <div className="flex">
+    <div className="flex min-h-screen">
       <Sidebar />
-      <main className="flex-1 p-6 bg-gray-50 min-h-screen">
+      <main className="flex-1 p-4 md:p-6 pt-16 md:pt-6 bg-gray-50 min-h-screen">
 
         {/* Header */}
         <div className="flex items-start justify-between gap-4 mb-6 flex-wrap">
@@ -303,7 +303,7 @@ export default function AuditLog() {
         ) : (
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+              <table className="w-full text-sm min-w-[700px]">
                 <thead>
                   <tr className="bg-gray-50 border-b border-gray-100">
                     <th className="text-left px-5 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">

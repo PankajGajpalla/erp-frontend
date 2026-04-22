@@ -1361,9 +1361,9 @@ function today() {
 export default function Fees() {
   const { user, isAdmin } = useAuth()
   return (
-    <div className="flex">
+    <div className="flex min-h-screen">
       <Sidebar />
-      <main className="flex-1 p-6 bg-gray-50 min-h-screen">
+      <main className="flex-1 p-4 md:p-6 pt-16 md:pt-6 bg-gray-50 min-h-screen">
         {isAdmin ? <AdminFees /> : <StudentFees studentId={user?.student_id} studentName={user?.name} studentCode={user?.student_code} course={user?.course} parentPhone={user?.parent_phone} />}
       </main>
     </div>

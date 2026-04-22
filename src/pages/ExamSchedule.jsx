@@ -505,9 +505,9 @@ export default function ExamSchedule() {
   // ── Student view ──────────────────────────────────────────────────────────
   if (isStudent) {
     return (
-      <div className="flex">
+      <div className="flex min-h-screen">
         <Sidebar />
-        <main className="flex-1 p-6 bg-gray-50 min-h-screen">
+        <main className="flex-1 p-4 md:p-6 pt-16 md:pt-6 bg-gray-50 min-h-screen">
           <div className="mb-6">
             <h2 className="text-2xl font-bold text-gray-800">📅 Exam Schedule</h2>
             <p className="text-sm text-gray-500 mt-1">Your upcoming and past exams</p>
@@ -580,9 +580,9 @@ export default function ExamSchedule() {
   // ── Teacher view ──────────────────────────────────────────────────────────
   if (isTeacher) {
     return (
-      <div className="flex">
+      <div className="flex min-h-screen">
         <Sidebar />
-        <main className="flex-1 p-6 bg-gray-50 min-h-screen">
+        <main className="flex-1 p-4 md:p-6 pt-16 md:pt-6 bg-gray-50 min-h-screen">
           <div className="mb-6">
             <h2 className="text-2xl font-bold text-gray-800">📅 Exam Schedule</h2>
             <p className="text-sm text-gray-500 mt-1">View exam schedules by course</p>
@@ -651,9 +651,9 @@ export default function ExamSchedule() {
 
   // ── Admin view ────────────────────────────────────────────────────────────
   return (
-    <div className="flex">
+    <div className="flex min-h-screen">
       <Sidebar />
-      <main className="flex-1 p-6 bg-gray-50 min-h-screen">
+      <main className="flex-1 p-4 md:p-6 pt-16 md:pt-6 bg-gray-50 min-h-screen">
 
         {/* Header */}
         <div className="flex items-center justify-between mb-6 flex-wrap gap-3">

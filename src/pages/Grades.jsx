@@ -690,7 +690,7 @@ function ViewPerformance() {
                     </div>
                   </div>
                   <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
+                    <table className="w-full text-sm min-w-[400px]">
                       <thead>
                         <tr className="text-xs text-gray-500 border-b bg-gray-50">
                           <th className="text-left px-5 py-2 font-medium">Test</th>
@@ -855,9 +855,9 @@ export default function Grades() {
   const [activeTab, setActiveTab] = useState("add")
 
   return (
-    <div className="flex">
+    <div className="flex min-h-screen">
       <Sidebar />
-      <main className="flex-1 p-4 sm:p-6 bg-gray-50 min-h-screen">
+      <main className="flex-1 p-4 md:p-6 pt-16 md:pt-6 bg-gray-50 min-h-screen">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-2xl font-bold text-gray-800">{isAdmin ? "Grades" : "My Grades"}</h2>
           {!isAdmin && (

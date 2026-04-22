@@ -325,9 +325,9 @@ export default function Attendance() {
   const rangedPct    = filtered.length > 0 ? ((presentCount / filtered.length) * 100).toFixed(1) : 0
 
   return (
-    <div className="flex">
+    <div className="flex min-h-screen">
       <Sidebar />
-      <main className="flex-1 p-4 sm:p-8 bg-gray-50 min-h-screen">
+      <main className="flex-1 p-4 md:p-6 pt-16 md:pt-6 bg-gray-50 min-h-screen">
 
         <h2 className="text-2xl font-bold text-gray-800 mb-6">📋 Attendance</h2>
 
@@ -486,7 +486,7 @@ export default function Attendance() {
               <>
                 {/* Course attendance table */}
                 <div className="overflow-x-auto rounded-lg border border-gray-200">
-                  <table className="w-full text-sm">
+                  <table className="w-full text-sm min-w-[600px]">
                     <thead>
                       <tr className="bg-gray-800 text-white">
                         <th className="text-left px-4 py-3 font-medium">#</th>
