@@ -54,9 +54,11 @@ export default function Login() {
 
         {/* Logo / Title */}
         <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
-            <span className="text-3xl">🏫</span>
-          </div>
+          <img
+            src="/logo.png"
+            alt="ABS Foundation"
+            className="w-28 h-28 object-contain mx-auto mb-3"
+          />
           <h2 className="text-2xl font-bold text-gray-800">ABS Foundation</h2>
           <p className="text-gray-400 text-sm mt-1">Sign in to your account</p>
         </div>

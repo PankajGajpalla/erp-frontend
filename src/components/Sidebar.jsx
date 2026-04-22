@@ -113,11 +113,14 @@ export default function Sidebar() {
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-5 border-b border-gray-700 gap-2">
         {!collapsed && (
-          <div className="flex-1 min-w-0">
-            <h1 className="text-xl font-bold text-blue-400">ABS Foundation</h1>
-            <p className="text-xs text-gray-400 mt-0.5 truncate">
-              {user?.sub} · <span className="capitalize">{user?.role}</span>
-            </p>
+          <div className="flex items-center gap-2 flex-1 min-w-0">
+            <img src="/logo.png" alt="ABS Foundation" className="w-9 h-9 object-contain flex-shrink-0 bg-white rounded-lg p-0.5" />
+            <div className="min-w-0">
+              <h1 className="text-base font-bold text-blue-400 leading-tight">ABS Foundation</h1>
+              <p className="text-xs text-gray-400 truncate">
+                {user?.sub} · <span className="capitalize">{user?.role}</span>
+              </p>
+            </div>
           </div>
         )}
 
