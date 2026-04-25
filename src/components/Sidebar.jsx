@@ -4,7 +4,7 @@ import { useAuth } from "../context/AuthContext"
 import { getNoticesAPI } from "../api"
 
 export default function Sidebar() {
-  const { user, logout, isAdmin, isTeacher } = useAuth()
+  const { user, logout, isAdmin, isTeacher, isStaff } = useAuth()
   const location  = useLocation()
   const navigate  = useNavigate()
   const [collapsed, setCollapsed]           = useState(false)
@@ -60,7 +60,7 @@ export default function Sidebar() {
   function goToNotices() {
     setShowNotifPanel(false)
     setMobileOpen(false)
-    const path = isAdmin ? "/notices" : isTeacher ? "/teacher/notices" : "/student/notices"
+    const path = isAdmin ? "/notices" : isTeacher ? "/teacher/notices" : isStaff ? "/staff/notices" : "/student/notices"
     navigate(path)
   }
 
@@ -103,12 +103,24 @@ export default function Sidebar() {
     { to: "/teacher/notices",       label: "📢 Notices" },
   ]
 
-  const links = isAdmin ? adminLinks : isTeacher ? teacherLinks : studentLinks
+  const staffLinks = [
+    { to: "/staff/dashboard",    label: "🏠 Dashboard" },
+    { to: "/staff/students",     label: "🎓 Students" },
+    { to: "/staff/attendance",   label: "📋 Attendance" },
+    { to: "/staff/grades",       label: "📝 Grades" },
+    { to: "/staff/notices",      label: "📢 Notices" },
+    { to: "/staff/timetable",    label: "🗓️ Timetable" },
+    { to: "/staff/exam-schedule", label: "📅 Exam Schedule" },
+    { to: "/staff/import",       label: "📥 Import Students" },
+  ]
+
+  const links = isAdmin ? adminLinks : isTeacher ? teacherLinks : isStaff ? staffLinks : studentLinks
 
   function isActive(path) {
     if (path === "/teacher")           return location.pathname === "/teacher"
     if (path === "/dashboard")         return location.pathname === "/dashboard"
     if (path === "/student/dashboard") return location.pathname === "/student/dashboard"
+    if (path === "/staff/dashboard")   return location.pathname === "/staff/dashboard"
     return location.pathname.startsWith(path)
   }
 

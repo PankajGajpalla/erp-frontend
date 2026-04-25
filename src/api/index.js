@@ -139,3 +139,10 @@ export const exportStudentsAPI = () => API.get("/export/students")
 export const exportFeesAPI = () => API.get("/export/fees")
 export const exportAttendanceAPI = () => API.get("/export/attendance")
 export const exportPaymentsAPI = () => API.get("/export/payments")
+
+// ─── Staff ───────────────────────────────────────────────────
+export const createStaffAPI = (data) => API.post("/create_staff", data)
+export const getStaffAPI = () => API.get("/staff")
+export const updateStaffAPI = (id, data) => API.put(`/staff/${id}`, data)
+export const deleteStaffAPI = (id) => API.delete(`/staff/${id}`)
+export const getStaffDashboardAPI = () => API.get("/dashboard/staff-summary")

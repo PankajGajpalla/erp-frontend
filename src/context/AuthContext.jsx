@@ -51,6 +51,7 @@ export function AuthProvider({ children }) {
   const isAdmin = user?.role === "admin";
   const isTeacher = user?.role === "teacher";
   const isStudent = user?.role === "student";
+  const isStaff = user?.role === "staff";
 
   // ✅ Check if token is still valid (useful for protected routes)
   const isAuthenticated = () => {
@@ -68,6 +69,7 @@ export function AuthProvider({ children }) {
       isAdmin,
       isTeacher,
       isStudent,
+      isStaff,
       isAuthenticated,
     }}>
       {children}

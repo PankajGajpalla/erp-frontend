@@ -38,6 +38,8 @@ export default function Login() {
         navigate("/teacher")
       } else if (user?.role === "student") {
         navigate("/student/dashboard")
+      } else if (user?.role === "staff") {
+        navigate("/staff/dashboard")
       } else {
         navigate("/dashboard")
       }

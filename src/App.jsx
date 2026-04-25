@@ -14,6 +14,7 @@ import Notices from "./pages/Notices"
 import ImportStudents from "./pages/ImportStudents"
 import Courses from "./pages/Courses"
 import TeacherDashboard from "./pages/TeacherDashboard"
+import StaffDashboard from "./pages/StaffDashboard"
 import TeacherAttendance from "./pages/TeacherAttendance"
 import TeacherStudents from "./pages/TeacherStudents"
 import TeacherGrades from "./pages/TeacherGrades"
@@ -50,7 +51,17 @@ function AdminRoute({ children }) {
   if (!user) return <Navigate to="/login" replace />
   if (user.role === "student") return <Navigate to="/student/dashboard" replace />
   if (user.role === "teacher") return <Navigate to="/teacher" replace />
+  if (user.role === "staff") return <Navigate to="/staff/dashboard" replace />
   if (user.role !== "admin") return <Navigate to="/login" replace />
+  return children
+}
+
+// Staff only
+function StaffRoute({ children }) {
+  const { user, loading } = useAuth()
+  if (loading) return <LoadingScreen />
+  if (!user) return <Navigate to="/login" replace />
+  if (user.role !== "staff") return <Navigate to="/login" replace />
   return children
 }
 
@@ -70,6 +81,7 @@ function PublicRoute({ children }) {
   if (user) {
     if (user.role === "teacher") return <Navigate to="/teacher" replace />
     if (user.role === "student") return <Navigate to="/student/dashboard" replace />
+    if (user.role === "staff") return <Navigate to="/staff/dashboard" replace />
     return <Navigate to="/dashboard" replace />
   }
   return children
@@ -90,6 +102,8 @@ function NotFound() {
               ? "/teacher"
               : user?.role === "student"
               ? "/student/dashboard"
+              : user?.role === "staff"
+              ? "/staff/dashboard"
               : "/dashboard"
           }
           className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition"
@@ -136,6 +150,16 @@ export default function App() {
         <Route path="/teacher/timetable" element={<TeacherRoute><Timetable /></TeacherRoute>} />
         <Route path="/teacher/exam-schedule" element={<TeacherRoute><ExamSchedule /></TeacherRoute>} />
         <Route path="/teacher/notices" element={<TeacherRoute><Notices /></TeacherRoute>} />
+
+        {/* Staff routes */}
+        <Route path="/staff/dashboard"     element={<StaffRoute><StaffDashboard /></StaffRoute>} />
+        <Route path="/staff/students"      element={<StaffRoute><Students /></StaffRoute>} />
+        <Route path="/staff/attendance"    element={<StaffRoute><Attendance /></StaffRoute>} />
+        <Route path="/staff/grades"        element={<StaffRoute><Grades /></StaffRoute>} />
+        <Route path="/staff/notices"       element={<StaffRoute><Notices /></StaffRoute>} />
+        <Route path="/staff/timetable"     element={<StaffRoute><Timetable /></StaffRoute>} />
+        <Route path="/staff/exam-schedule" element={<StaffRoute><ExamSchedule /></StaffRoute>} />
+        <Route path="/staff/import"        element={<StaffRoute><ImportStudents /></StaffRoute>} />
 
         {/* Student routes */}
         <Route path="/student/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
