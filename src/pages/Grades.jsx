@@ -815,31 +815,33 @@ function StudentGrades({ studentId }) {
                   <span className={`px-3 py-1 rounded-full text-sm font-bold ${gradeColor(sGrade.grade)}`}>{sGrade.grade}</span>
                 </div>
               </div>
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="text-xs text-gray-500 border-b bg-gray-50">
-                    <th className="text-left px-5 py-2 font-medium">Test</th>
-                    <th className="text-left px-5 py-2 font-medium">Marks</th>
-                    <th className="text-left px-5 py-2 font-medium">Total</th>
-                    <th className="text-left px-5 py-2 font-medium">%</th>
-                    <th className="text-left px-5 py-2 font-medium">Grade</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {tests.map((g) => {
-                    const pct = ((g.marks / g.total_marks) * 100).toFixed(1)
-                    return (
-                      <tr key={g.id} className="border-t hover:bg-gray-50 transition">
-                        <td className="px-5 py-3 font-medium text-gray-700">{g.test_title || <span className="text-gray-400 italic">Unnamed</span>}</td>
-                        <td className="px-5 py-3">{g.marks}</td>
-                        <td className="px-5 py-3 text-gray-500">{g.total_marks}</td>
-                        <td className="px-5 py-3"><span className={`font-semibold ${pctColor(parseFloat(pct))}`}>{pct}%</span></td>
-                        <td className="px-5 py-3"><span className={`px-2 py-0.5 rounded-full text-xs font-bold ${gradeColor(g.grade)}`}>{g.grade}</span></td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm min-w-[380px]">
+                  <thead>
+                    <tr className="text-xs text-gray-500 border-b bg-gray-50">
+                      <th className="text-left px-5 py-2 font-medium">Test</th>
+                      <th className="text-left px-5 py-2 font-medium">Marks</th>
+                      <th className="text-left px-5 py-2 font-medium">Total</th>
+                      <th className="text-left px-5 py-2 font-medium">%</th>
+                      <th className="text-left px-5 py-2 font-medium">Grade</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {tests.map((g) => {
+                      const pct = ((g.marks / g.total_marks) * 100).toFixed(1)
+                      return (
+                        <tr key={g.id} className="border-t hover:bg-gray-50 transition">
+                          <td className="px-5 py-3 font-medium text-gray-700">{g.test_title || <span className="text-gray-400 italic">Unnamed</span>}</td>
+                          <td className="px-5 py-3">{g.marks}</td>
+                          <td className="px-5 py-3 text-gray-500">{g.total_marks}</td>
+                          <td className="px-5 py-3"><span className={`font-semibold ${pctColor(parseFloat(pct))}`}>{pct}%</span></td>
+                          <td className="px-5 py-3"><span className={`px-2 py-0.5 rounded-full text-xs font-bold ${gradeColor(g.grade)}`}>{g.grade}</span></td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )
         })}
@@ -851,27 +853,26 @@ function StudentGrades({ studentId }) {
 
 // ── Main ─────────────────────────────────────────────────────
 export default function Grades() {
-  const { user, isAdmin } = useAuth()
-  const [activeTab, setActiveTab] = useState("add")
+  const { user, isAdmin, isStaff } = useAuth()
+  const [activeTab, setActiveTab] = useState("view")
+
+  // Admin and Staff see the management view; students see their own grades
+  const isManagerView = isAdmin || isStaff
 
   return (
     <div className="flex min-h-screen">
       <Sidebar />
       <main className="flex-1 p-4 md:p-6 pt-16 md:pt-6 bg-gray-50 min-h-screen">
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-bold text-gray-800">{isAdmin ? "Grades" : "My Grades"}</h2>
-          {!isAdmin && (
-            <button onClick={() => {/* handled inside StudentGrades */}}
-              className="hidden" />
-          )}
+          <h2 className="text-2xl font-bold text-gray-800">{isManagerView ? "Grades" : "My Grades"}</h2>
         </div>
 
-        {isAdmin ? (
+        {isManagerView ? (
           <>
             {/* Tabs */}
             <div className="bg-white rounded-xl shadow mb-5">
               <div className="flex border-b">
-                {[{ key: "add", label: "Add Grades" }, { key: "view", label: "View Performance" }].map((tab) => (
+                {[{ key: "view", label: "📊 View Performance" }, { key: "add", label: "➕ Add Grades" }].map((tab) => (
                   <button key={tab.key} onClick={() => setActiveTab(tab.key)}
                     className={`px-6 py-3 text-sm font-medium transition border-b-2 ${activeTab === tab.key ? "border-blue-600 text-blue-600" : "border-transparent text-gray-500 hover:text-gray-700"}`}>
                     {tab.label}

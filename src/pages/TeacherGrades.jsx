@@ -272,7 +272,8 @@ function AddGrades() {
           </div>
 
           {/* Marks Table */}
-          <table className="w-full text-sm">
+          <div className="overflow-x-auto">
+          <table className="w-full text-sm min-w-[480px]">
             <thead>
               <tr className="bg-gray-800 text-white text-xs uppercase">
                 <th className="text-left px-5 py-3">Student</th>
@@ -326,6 +327,7 @@ function AddGrades() {
               })}
             </tbody>
           </table>
+          </div>
 
           {/* Save */}
           <div className="p-5 border-t">
@@ -423,8 +425,9 @@ function ViewPerformance() {
     setSelectedCourse(""); setCourseStudents([])
   }
 
+  // Weighted average: sum of marks / sum of total_marks (correct when tests have different totals)
   const avgPct = grades.length > 0
-    ? (grades.reduce((s, g) => s + (g.marks / g.total_marks) * 100, 0) / grades.length).toFixed(1)
+    ? ((grades.reduce((s, g) => s + g.marks, 0) / grades.reduce((s, g) => s + g.total_marks, 0)) * 100).toFixed(1)
     : 0
   const overall = getOverallGrade(parseFloat(avgPct))
 
@@ -584,14 +587,15 @@ function ViewPerformance() {
 
           {/* Grouped by subject */}
           {Object.entries(bySubject).map(([subjectName, subGrades]) => {
-            const subAvg = (subGrades.reduce((s, g) => s + (g.marks / g.total_marks) * 100, 0) / subGrades.length).toFixed(1)
+            const subAvg = ((subGrades.reduce((s, g) => s + g.marks, 0) / subGrades.reduce((s, g) => s + g.total_marks, 0)) * 100).toFixed(1)
             return (
               <div key={subjectName} className="bg-white rounded-xl shadow overflow-hidden">
                 <div className="px-5 py-3 border-b bg-gray-50 flex justify-between items-center">
                   <p className="font-semibold text-gray-700">{subjectName}</p>
                   <span className={`text-sm font-bold ${parseFloat(subAvg) >= 50 ? "text-green-600" : "text-red-600"}`}>{subAvg}% avg</span>
                 </div>
-                <table className="w-full text-sm">
+                <div className="overflow-x-auto">
+                <table className="w-full text-sm min-w-[380px]">
                   <thead>
                     <tr className="bg-gray-100 text-gray-600 text-xs uppercase">
                       <th className="text-left px-5 py-2">Test</th>
@@ -620,6 +624,7 @@ function ViewPerformance() {
                     })}
                   </tbody>
                 </table>
+                </div>
               </div>
             )
           })}
