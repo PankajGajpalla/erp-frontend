@@ -4,6 +4,7 @@ import { useAuth } from "../context/AuthContext"
 import {
   getTimetableByCourseAPI, addTimetableAPI, deleteTimetableAPI,
   getCoursesAPI, getStudentAPI, getSubjectsByCourseAPI, getTeachersAPI,
+  getMyTimetableAPI,
 } from "../api"
 
 const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
@@ -77,8 +78,149 @@ function TimetableGrid({ timetable, isAdmin, onDelete, deleteConfirmId, setDelet
 }
 
 // ── Main Component ────────────────────────────────────────────────────────────
+// ── Teacher personal timetable view ──────────────────────────────────────────
+function TeacherTimetable() {
+  const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
+  const [timetable, setTimetable]     = useState([])
+  const [loading, setLoading]         = useState(true)
+  const [error, setError]             = useState("")
+  const [teacherName, setTeacherName] = useState("")
+
+  useEffect(() => {
+    getMyTimetableAPI()
+      .then(r => { setTimetable(r.data.timetable || []); setTeacherName(r.data.teacher_name || "") })
+      .catch(() => setError("Failed to load your timetable"))
+      .finally(() => setLoading(false))
+  }, [])
+
+  const todayName = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"][new Date().getDay()]
+  const todayClasses = timetable
+    .filter(e => e.day === todayName)
+    .sort((a, b) => a.time_slot.localeCompare(b.time_slot))
+
+  const grouped = DAYS.reduce((acc, day) => {
+    acc[day] = timetable.filter(e => e.day === day).sort((a, b) => a.time_slot.localeCompare(b.time_slot))
+    return acc
+  }, {})
+  const activeDays = DAYS.filter(d => grouped[d].length > 0)
+
+  if (loading) return (
+    <div className="flex min-h-screen"><Sidebar />
+      <main className="flex-1 p-4 md:p-6 pt-16 md:pt-6 bg-gray-50 flex items-center gap-3 text-gray-500">
+        <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />Loading your timetable...
+      </main>
+    </div>
+  )
+
+  return (
+    <div className="flex min-h-screen">
+      <Sidebar />
+      <main className="flex-1 p-4 md:p-6 pt-16 md:pt-6 bg-gray-50 min-h-screen">
+
+        {/* Header */}
+        <div className="mb-6">
+          <h2 className="text-2xl font-bold text-gray-800">🗓️ My Timetable</h2>
+          {teacherName && <p className="text-sm text-gray-400 mt-1">Showing all classes for <span className="font-medium text-gray-600">{teacherName}</span></p>}
+        </div>
+
+        {error && <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-red-600 text-sm mb-5">{error}</div>}
+
+        {timetable.length === 0 && !error && (
+          <div className="bg-white rounded-xl shadow p-12 text-center">
+            <p className="text-4xl mb-3">🗓️</p>
+            <p className="text-gray-500 font-medium">No classes assigned yet.</p>
+            <p className="text-gray-400 text-sm mt-1">Ask the admin to add your name to the timetable entries.</p>
+          </div>
+        )}
+
+        {timetable.length > 0 && (
+          <div className="space-y-6">
+
+            {/* ── Today's Classes ── */}
+            <div className={`rounded-xl shadow overflow-hidden border-2 ${todayClasses.length > 0 ? "border-blue-500" : "border-gray-200"}`}>
+              <div className={`px-5 py-3 flex items-center justify-between ${todayClasses.length > 0 ? "bg-blue-600" : "bg-gray-200"}`}>
+                <div className="flex items-center gap-2">
+                  <span className="text-xl">📅</span>
+                  <h3 className={`font-bold text-base ${todayClasses.length > 0 ? "text-white" : "text-gray-600"}`}>
+                    Today — {todayName}
+                  </h3>
+                </div>
+                <span className={`text-xs font-semibold px-2 py-1 rounded-full ${todayClasses.length > 0 ? "bg-blue-500 text-white" : "bg-gray-300 text-gray-600"}`}>
+                  {todayClasses.length} class{todayClasses.length !== 1 ? "es" : ""}
+                </span>
+              </div>
+              {todayClasses.length === 0 ? (
+                <div className="px-5 py-6 text-center text-gray-400 text-sm bg-white">No classes today 🎉</div>
+              ) : (
+                <div className="divide-y bg-white">
+                  {todayClasses.map(entry => (
+                    <div key={entry.id} className="px-5 py-4 flex items-start justify-between hover:bg-blue-50 transition">
+                      <div>
+                        <p className="font-semibold text-gray-800 text-base">{entry.subject}</p>
+                        <p className="text-sm text-blue-600 mt-0.5">🕐 {entry.time_slot}</p>
+                        <span className="inline-block mt-1.5 bg-blue-100 text-blue-700 text-xs font-medium px-2 py-0.5 rounded-full">
+                          {entry.course_name}
+                        </span>
+                      </div>
+                      <span className="text-2xl mt-1">📖</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* ── Full Week ── */}
+            <div>
+              <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">Full Week Schedule</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                {activeDays.map(day => (
+                  <div key={day} className={`bg-white rounded-xl shadow overflow-hidden ${day === todayName ? "ring-2 ring-blue-400" : ""}`}>
+                    <div className={`px-5 py-3 flex items-center justify-between ${day === todayName ? "bg-blue-600 text-white" : "bg-gray-800 text-white"}`}>
+                      <h4 className="font-semibold text-sm">
+                        {day} {day === todayName && <span className="ml-1 text-xs bg-white text-blue-600 px-1.5 py-0.5 rounded-full font-bold">TODAY</span>}
+                      </h4>
+                      <span className="text-xs opacity-70">{grouped[day].length} class{grouped[day].length !== 1 ? "es" : ""}</span>
+                    </div>
+                    <div className="divide-y">
+                      {grouped[day].map(entry => (
+                        <div key={entry.id} className="px-4 py-3 hover:bg-gray-50 transition">
+                          <p className="font-medium text-gray-800 text-sm">{entry.subject}</p>
+                          <p className="text-xs text-blue-600 mt-0.5">🕐 {entry.time_slot}</p>
+                          <p className="text-xs text-gray-400 mt-0.5">📚 {entry.course_name}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* ── Summary ── */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              <div className="bg-white rounded-xl shadow p-4 border-l-4 border-blue-500">
+                <p className="text-xs text-gray-500">Total Classes/Week</p>
+                <p className="text-2xl font-bold text-gray-800">{timetable.length}</p>
+              </div>
+              <div className="bg-white rounded-xl shadow p-4 border-l-4 border-green-500">
+                <p className="text-xs text-gray-500">Active Days</p>
+                <p className="text-2xl font-bold text-gray-800">{activeDays.length}</p>
+              </div>
+              <div className="bg-white rounded-xl shadow p-4 border-l-4 border-purple-500">
+                <p className="text-xs text-gray-500">Courses Teaching</p>
+                <p className="text-2xl font-bold text-gray-800">{new Set(timetable.map(e => e.course_id)).size}</p>
+              </div>
+            </div>
+
+          </div>
+        )}
+      </main>
+    </div>
+  )
+}
+
+// ── Main Component ────────────────────────────────────────────────────────────
 export default function Timetable() {
-  const { user, isAdmin, isStudent } = useAuth()
+  const { user, isAdmin, isStudent, isTeacher } = useAuth()
 
   const [courses, setCourses]               = useState([])
   const [selectedCourseId, setSelectedCourseId] = useState("")
@@ -225,6 +367,9 @@ export default function Timetable() {
   }
 
   const selectedCourseName = courses.find((c) => c.id === parseInt(selectedCourseId))?.name || ""
+
+  // ── Teacher view — personal timetable ────────────────────────────────────
+  if (isTeacher) return <TeacherTimetable />
 
   // ── Student view ──────────────────────────────────────────────────────────
   if (isStudent) {
