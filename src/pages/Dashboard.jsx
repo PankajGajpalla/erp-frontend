@@ -2,12 +2,13 @@ import { useEffect, useState } from "react"
 import { useAuth } from "../context/AuthContext"
 import {
   PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer,
-  BarChart, Bar, XAxis, YAxis, CartesianGrid
+  BarChart, Bar, XAxis, YAxis, CartesianGrid,
+  AreaChart, Area,
 } from "recharts"
 
 import Sidebar from "../components/Sidebar"
 import { StatCard, LoadingState, Alert } from "../components/UI"
-import { getDashboardSummaryAPI, getStudentAPI, getOverdueFeesAPI, attendanceSummaryAPI, getAttendanceHeatmapAPI } from "../api"
+import { getDashboardSummaryAPI, getDashboardChartsAPI, getStudentAPI, getOverdueFeesAPI, attendanceSummaryAPI, getAttendanceHeatmapAPI } from "../api"
 
 const PIE_COLORS = ["#22c55e", "#ef4444", "#3b82f6"]
 
@@ -26,6 +27,7 @@ function daysOverdue(dueDateStr) {
 // ─── Admin Dashboard ──────────────────────────────────────────
 function AdminDashboard() {
   const [stats, setStats]         = useState(null)
+  const [charts, setCharts]       = useState(null)
   const [overdue, setOverdue]     = useState([])
   const [loading, setLoading]     = useState(true)
   const [error, setError]         = useState("")
@@ -34,12 +36,14 @@ function AdminDashboard() {
   useEffect(() => {
     async function load() {
       try {
-        const [sRes, oRes] = await Promise.all([
+        const [sRes, oRes, cRes] = await Promise.all([
           getDashboardSummaryAPI(),
           getOverdueFeesAPI().catch(() => ({ data: [] })),
+          getDashboardChartsAPI().catch(() => ({ data: null })),
         ])
         setStats(sRes.data)
         setOverdue(Array.isArray(oRes.data) ? oRes.data : [])
+        setCharts(cRes.data)
       } catch (err) {
         setError("Failed to load dashboard")
         console.error(err)
@@ -73,7 +77,7 @@ function AdminDashboard() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
         <StatCard label="Total Students"     value={stats.total_students}              color="blue" />
         <StatCard label="Total Fees"         value={formatCurrency(stats.total_fees)}  color="yellow" />
         <StatCard label="Fees Collected"     value={formatCurrency(stats.total_paid)}  color="green" />
@@ -82,7 +86,7 @@ function AdminDashboard() {
         <StatCard label="Today's Attendance" value={stats.attendance_today?.pct != null ? stats.attendance_today.pct.toFixed(1) + "%" : "—"} color="blue" />
       </div>
 
-      {/* Charts Row */}
+      {/* Row 1 — Fee pie + Students by course */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="card p-5">
           <h3 className="section-title mb-4">Fee Collection Status</h3>
@@ -123,6 +127,89 @@ function AdminDashboard() {
           )}
         </div>
       </div>
+
+      {/* Row 2 — Monthly fee trend + Monthly enrollment */}
+      {charts && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 min-w-0">
+          <div className="card p-5">
+            <h3 className="section-title mb-1">Monthly Fee Collection</h3>
+            <p className="text-xs text-slate-400 mb-4">Last 6 months</p>
+            {charts.monthly_fees?.some(m => m.collected > 0) ? (
+              <ResponsiveContainer width="100%" height={220}>
+                <AreaChart data={charts.monthly_fees} margin={{ top: 4, right: 16, left: 8, bottom: 4 }}>
+                  <defs>
+                    <linearGradient id="feeGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%"  stopColor="#2563eb" stopOpacity={0.15} />
+                      <stop offset="95%" stopColor="#2563eb" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                  <XAxis dataKey="month" tick={{ fontSize: 11, fill: "#64748b" }} tickLine={false} axisLine={false} />
+                  <YAxis tick={{ fontSize: 11, fill: "#64748b" }} tickLine={false} axisLine={false}
+                    tickFormatter={(v) => `₹${(v / 1000).toFixed(0)}k`} />
+                  <Tooltip formatter={(v) => [formatCurrency(v), "Collected"]}
+                    contentStyle={{ fontSize: 12, borderRadius: 8, border: "1px solid #e2e8f0" }} />
+                  <Area type="monotone" dataKey="collected" stroke="#2563eb" strokeWidth={2}
+                    fill="url(#feeGrad)" dot={{ fill: "#2563eb", r: 3 }} />
+                </AreaChart>
+              </ResponsiveContainer>
+            ) : (
+              <p className="text-slate-400 text-center py-10 text-sm">No payment data yet</p>
+            )}
+          </div>
+
+          <div className="card p-5">
+            <h3 className="section-title mb-1">Student Enrollment Trend</h3>
+            <p className="text-xs text-slate-400 mb-4">Last 12 months</p>
+            {charts.monthly_enrollment?.some(m => m.students > 0) ? (
+              <ResponsiveContainer width="100%" height={220}>
+                <BarChart data={charts.monthly_enrollment} margin={{ top: 4, right: 16, left: 0, bottom: 4 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                  <XAxis dataKey="month" tick={{ fontSize: 10, fill: "#64748b" }} tickLine={false} axisLine={false} />
+                  <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: "#64748b" }} tickLine={false} axisLine={false} />
+                  <Tooltip formatter={(v) => [v, "New Students"]}
+                    contentStyle={{ fontSize: 12, borderRadius: 8, border: "1px solid #e2e8f0" }} />
+                  <Bar dataKey="students" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <p className="text-slate-400 text-center py-10 text-sm">No enrollment data yet</p>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Row 3 — Course-wise attendance */}
+      {charts?.course_attendance?.length > 0 && (
+        <div className="card p-5">
+          <h3 className="section-title mb-1">Course-wise Attendance</h3>
+          <p className="text-xs text-slate-400 mb-4">Last 30 days · ≥75% is healthy</p>
+          <ResponsiveContainer width="100%" height={Math.max(180, charts.course_attendance.length * 44)}>
+            <BarChart data={charts.course_attendance} layout="vertical"
+              margin={{ top: 4, right: 60, left: 8, bottom: 4 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
+              <XAxis type="number" domain={[0, 100]} tick={{ fontSize: 11, fill: "#64748b" }}
+                tickLine={false} axisLine={false} tickFormatter={(v) => `${v}%`} />
+              <YAxis type="category" dataKey="course" width={160}
+                tick={{ fontSize: 11, fill: "#374151" }} tickLine={false} axisLine={false} />
+              <Tooltip formatter={(v) => [`${v}%`, "Attendance"]}
+                contentStyle={{ fontSize: 12, borderRadius: 8, border: "1px solid #e2e8f0" }} />
+              <Bar dataKey="attendance" radius={[0, 4, 4, 0]}
+                label={{ position: "right", fontSize: 11, fill: "#6b7280", formatter: (v) => `${v}%` }}>
+                {charts.course_attendance.map((entry, i) => (
+                  <Cell key={i}
+                    fill={entry.attendance >= 85 ? "#22c55e" : entry.attendance >= 75 ? "#f59e0b" : "#ef4444"} />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+          <div className="flex gap-5 mt-3 text-xs text-slate-400">
+            <span><span className="inline-block w-3 h-3 rounded-sm bg-green-500 mr-1.5" />≥ 85% Excellent</span>
+            <span><span className="inline-block w-3 h-3 rounded-sm bg-yellow-400 mr-1.5" />75–85% Good</span>
+            <span><span className="inline-block w-3 h-3 rounded-sm bg-red-500 mr-1.5" />&lt; 75% Low</span>
+          </div>
+        </div>
+      )}
 
       {/* Upcoming Exams & Recent Notices */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

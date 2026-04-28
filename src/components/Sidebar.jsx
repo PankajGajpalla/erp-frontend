@@ -71,6 +71,7 @@ export default function Sidebar() {
     { to: "/students",   label: "🎓 Students" },
     { to: "/courses",    label: "📚 Courses" },
     { to: "/attendance", label: "📋 Attendance" },
+    { to: "/attendance-report", label: "📊 Att. Report" },
     { to: "/fees",       label: "💰 Fees" },
     { to: "/teachers",   label: "👨‍🏫 Teachers" },
     { to: "/grades",     label: "📝 Grades" },
@@ -106,7 +107,8 @@ export default function Sidebar() {
   const staffLinks = [
     { to: "/staff/dashboard",    label: "🏠 Dashboard" },
     { to: "/staff/students",     label: "🎓 Students" },
-    { to: "/staff/attendance",   label: "📋 Attendance" },
+    { to: "/staff/attendance",        label: "📋 Attendance" },
+    { to: "/staff/attendance-report", label: "📊 Att. Report" },
     { to: "/staff/grades",       label: "📝 Grades" },
     { to: "/staff/notices",      label: "📢 Notices" },
     { to: "/staff/timetable",    label: "🗓️ Timetable" },

@@ -34,6 +34,8 @@ export const deleteAdminAPI = (id) => API.delete(`/admins/${id}`);
 
 // ─── Dashboard ───────────────────────────────────────────────
 export const getDashboardSummaryAPI = () => API.get("/dashboard/summary");
+export const getDashboardChartsAPI  = () => API.get("/dashboard/charts");
+export const getAttendanceReportAPI = () => API.get("/attendance/report");
 
 // ─── Students ────────────────────────────────────────────────
 export const getStudentsAPI = () => API.get("/students");

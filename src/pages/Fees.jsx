@@ -2,6 +2,9 @@ import { useEffect, useState, useRef } from "react"
 import Sidebar from "../components/Sidebar"
 import { useAuth } from "../context/AuthContext"
 import { getFeesAPI, addFeesAPI, payFeesAPI, updateFeeRecordAPI, deleteFeeRecordAPI, feesSummaryAPI, getFeePaymentsAPI, getStudentAPI, searchStudentsAPI, getCoursesAPI, getStudentsByCourseAPI, addBulkFeesAPI, getFeeTemplatesAPI, createFeeTemplateAPI, deleteFeeTemplateAPI } from "../api"
+import { PaginationBar } from "../components/UI"
+
+const FEE_PAGE_SIZE = 15
 import jsPDF from "jspdf"
 
 function generateReceipt(payment, fee, studentName, studentCode, course, parentPhone) {
@@ -527,6 +530,7 @@ function AdminFees() {
   const [payingId, setPayingId] = useState(null)
   const [expandedId, setExpandedId] = useState(null)
   const [historyKey, setHistoryKey] = useState(0)
+  const [feePage, setFeePage] = useState(1)
 
   // Edit / delete fee record
   const [editingFee, setEditingFee]   = useState(null)   // fee object being edited
@@ -569,7 +573,10 @@ function AdminFees() {
     if (statusFilter === "all") setFiltered(fees)
     else if (statusFilter === "paid") setFiltered(fees.filter((f) => f.paid >= f.amount))
     else setFiltered(fees.filter((f) => f.paid < f.amount))
+    setFeePage(1)
   }, [fees, statusFilter])
+
+  useEffect(() => { setFeePage(1) }, [viewStudent])
 
   // Load courses once for Browse-by-Course mode
   useEffect(() => {
@@ -1135,23 +1142,22 @@ function AdminFees() {
 
       {/* Filter */}
       {fees.length > 0 && (
-        <div className="bg-white rounded-xl shadow p-4 flex flex-wrap gap-3 items-center">
-          <span className="text-sm font-medium text-gray-600">Filter:</span>
-          <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}
-            className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+        <div className="card p-4 flex flex-wrap gap-3 items-center">
+          <span className="text-sm font-medium text-slate-600">Filter:</span>
+          <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="inp w-auto">
             <option value="all">All</option>
             <option value="paid">Fully Paid</option>
             <option value="unpaid">Has Pending</option>
           </select>
-          <span className="text-sm text-gray-400 ml-auto">{filtered.length} of {fees.length} records</span>
+          <span className="text-sm text-slate-400 ml-auto">{filtered.length} of {fees.length} records</span>
         </div>
       )}
 
       {/* Fees Table */}
       <div className="card overflow-hidden">
         {loading ? (
-          <div className="p-6 flex items-center gap-3 text-gray-500">
-            <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+          <div className="p-6 flex items-center gap-3 text-slate-500">
+            <div className="w-5 h-5 border-2 border-primary-500 border-t-transparent rounded-full animate-spin" />
             Loading fees...
           </div>
         ) : !viewStudent ? (
@@ -1232,7 +1238,7 @@ function AdminFees() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm min-w-[700px]">
               <thead>
-                <tr className="bg-gray-800 text-white text-xs uppercase">
+                <tr className="bg-slate-800 text-white text-xs uppercase">
                   <th className="text-left px-5 py-3">Description</th>
                   <th className="text-left px-5 py-3">Due Date</th>
                   <th className="text-left px-5 py-3">Total</th>
@@ -1245,7 +1251,7 @@ function AdminFees() {
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((f) => {
+                {filtered.slice((feePage - 1) * FEE_PAGE_SIZE, feePage * FEE_PAGE_SIZE).map((f) => {
                   const pending = f.amount - f.paid
                   const isFullyPaid = pending <= 0.001
                   const overdue = !isFullyPaid && isOverdue(f.due_date)
@@ -1334,6 +1340,7 @@ function AdminFees() {
               </tbody>
             </table>
           </div>
+          <PaginationBar page={feePage} total={filtered.length} pageSize={FEE_PAGE_SIZE} onChange={setFeePage} />
           </>
         )}
       </div>

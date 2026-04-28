@@ -22,6 +22,7 @@ import AdminAccounts from "./pages/AdminAccounts"
 import ExamSchedule from "./pages/ExamSchedule"
 import AuditLog from "./pages/AuditLog"
 import DataExport from "./pages/DataExport"
+import AttendanceReport from "./pages/AttendanceReport"
 
 // ─── Loading Spinner ─────────────────────────────────────────
 function LoadingScreen() {
@@ -139,8 +140,9 @@ export default function App() {
         <Route path="/courses" element={<AdminRoute><Courses /></AdminRoute>} />
         <Route path="/admin-accounts" element={<AdminRoute><AdminAccounts /></AdminRoute>} />
         <Route path="/exam-schedule"  element={<AdminRoute><ExamSchedule /></AdminRoute>} />
-        <Route path="/audit-log"      element={<AdminRoute><AuditLog /></AdminRoute>} />
-        <Route path="/data-export"    element={<AdminRoute><DataExport /></AdminRoute>} />
+        <Route path="/audit-log"           element={<AdminRoute><AuditLog /></AdminRoute>} />
+        <Route path="/data-export"         element={<AdminRoute><DataExport /></AdminRoute>} />
+        <Route path="/attendance-report"   element={<AdminRoute><AttendanceReport /></AdminRoute>} />
 
         {/* Teacher routes */}
         <Route path="/teacher" element={<TeacherRoute><TeacherDashboard /></TeacherRoute>} />
@@ -159,7 +161,8 @@ export default function App() {
         <Route path="/staff/notices"       element={<StaffRoute><Notices /></StaffRoute>} />
         <Route path="/staff/timetable"     element={<StaffRoute><Timetable /></StaffRoute>} />
         <Route path="/staff/exam-schedule" element={<StaffRoute><ExamSchedule /></StaffRoute>} />
-        <Route path="/staff/import"        element={<StaffRoute><ImportStudents /></StaffRoute>} />
+        <Route path="/staff/import"             element={<StaffRoute><ImportStudents /></StaffRoute>} />
+        <Route path="/staff/attendance-report"  element={<StaffRoute><AttendanceReport /></StaffRoute>} />
 
         {/* Student routes */}
         <Route path="/student/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />

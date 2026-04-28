@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo, useRef } from "react"
 import Sidebar from "../components/Sidebar"
-import { Spinner, Alert, EmptyState } from "../components/UI"
+import { Spinner, Alert, EmptyState, PaginationBar } from "../components/UI"
 import { getAuditLogsAPI } from "../api"
 
 const LIMIT_OPTIONS = [50, 100, 200, 500]
@@ -61,6 +61,8 @@ function TimestampCell({ ts }) {
   )
 }
 
+const LOG_PAGE_SIZE = 50
+
 export default function AuditLog() {
   const [logs, setLogs]         = useState([])
   const [loading, setLoading]   = useState(true)
@@ -70,6 +72,7 @@ export default function AuditLog() {
   const [actionFilter, setActionFilter] = useState("all")
   const [entityFilter, setEntityFilter] = useState("all")
   const [limit, setLimit]           = useState(100)
+  const [page, setPage]             = useState(1)
 
   const [autoRefresh, setAutoRefresh] = useState(false)
   const autoRefreshRef              = useRef(null)
@@ -118,6 +121,12 @@ export default function AuditLog() {
   const hasActiveFilters = search || actionFilter !== "all" || entityFilter !== "all"
 
   function clearFilters() { setSearch(""); setActionFilter("all"); setEntityFilter("all") }
+
+  // Reset to page 1 whenever filters change
+  useEffect(() => { setPage(1) }, [search, actionFilter, entityFilter, limit])
+
+  const totalPages  = Math.max(1, Math.ceil(filteredLogs.length / LOG_PAGE_SIZE))
+  const pagedLogs   = filteredLogs.slice((page - 1) * LOG_PAGE_SIZE, page * LOG_PAGE_SIZE)
 
   const lastRefreshedLabel = useMemo(() => {
     if (!lastRefreshed) return null
@@ -193,6 +202,7 @@ export default function AuditLog() {
             )}
             <p className="text-sm text-slate-400 ml-auto whitespace-nowrap">
               {filteredLogs.length}{hasActiveFilters ? ` / ${logs.length}` : ""} log{filteredLogs.length !== 1 ? "s" : ""}
+              {totalPages > 1 && ` · page ${page}/${totalPages}`}
             </p>
           </div>
         </div>
@@ -228,7 +238,7 @@ export default function AuditLog() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50">
-                  {filteredLogs.map((log, i) => (
+                  {pagedLogs.map((log, i) => (
                     <tr key={log.id ?? i} className="hover:bg-slate-50 transition-colors">
                       <td className="px-5 py-3.5 whitespace-nowrap">
                         <TimestampCell ts={log.timestamp || log.created_at} />
@@ -270,12 +280,7 @@ export default function AuditLog() {
                 </tbody>
               </table>
             </div>
-            <div className="px-5 py-3 border-t border-slate-100 bg-slate-50 flex items-center justify-between text-xs text-slate-400">
-              <span>Showing {filteredLogs.length} of {logs.length} total entries</span>
-              {hasActiveFilters && (
-                <button onClick={clearFilters} className="text-primary-500 hover:text-primary-600 transition">Clear all filters</button>
-              )}
-            </div>
+            <PaginationBar page={page} total={filteredLogs.length} pageSize={LOG_PAGE_SIZE} onChange={setPage} />
           </div>
         )}
 

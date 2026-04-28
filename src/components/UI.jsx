@@ -33,7 +33,7 @@ export function StatCard({ label, value, icon, color = "blue", sub }) {
       <div className="flex items-center justify-between">
         <div className="min-w-0 flex-1">
           <p className="text-xs text-slate-500 font-medium truncate">{label}</p>
-          <p className="text-2xl font-bold text-slate-800 mt-1 leading-none">{value}</p>
+          <p className="text-xl sm:text-2xl font-bold text-slate-800 mt-1 leading-none break-all">{value}</p>
           {sub && <p className="text-xs text-slate-400 mt-1">{sub}</p>}
         </div>
         {icon && <span className="text-3xl opacity-25 flex-shrink-0 ml-2">{icon}</span>}
@@ -178,6 +178,50 @@ export function SearchBar({ value, onChange, placeholder = "Search…", classNam
         placeholder={placeholder}
         className="inp pl-9"
       />
+    </div>
+  )
+}
+
+/* ── PaginationBar ───────────────────────────────────────── */
+export function PaginationBar({ page, total, pageSize, onChange, className = "" }) {
+  const totalPages = Math.max(1, Math.ceil(total / pageSize))
+  if (totalPages <= 1) return null
+
+  const pages = []
+  const delta = 2
+  for (let p = 1; p <= totalPages; p++) {
+    if (p === 1 || p === totalPages || (p >= page - delta && p <= page + delta)) {
+      pages.push(p)
+    } else if (pages[pages.length - 1] !== "…") {
+      pages.push("…")
+    }
+  }
+
+  return (
+    <div className={`flex items-center justify-between flex-wrap gap-2 px-5 py-3 border-t border-slate-100 bg-slate-50 ${className}`}>
+      <span className="text-xs text-slate-500">
+        {Math.min((page - 1) * pageSize + 1, total)}–{Math.min(page * pageSize, total)} of {total}
+      </span>
+      <div className="flex items-center gap-1">
+        <button onClick={() => onChange(1)} disabled={page === 1}
+          className="px-2 py-1 rounded text-xs text-slate-500 hover:bg-slate-200 disabled:opacity-30 transition">«</button>
+        <button onClick={() => onChange(page - 1)} disabled={page === 1}
+          className="px-2 py-1 rounded text-xs text-slate-500 hover:bg-slate-200 disabled:opacity-30 transition">‹</button>
+        {pages.map((p, i) =>
+          p === "…" ? (
+            <span key={`e${i}`} className="px-2 text-xs text-slate-400">…</span>
+          ) : (
+            <button key={p} onClick={() => onChange(p)}
+              className={`px-2.5 py-1 rounded text-xs transition font-medium ${p === page ? "bg-primary-600 text-white" : "text-slate-600 hover:bg-slate-200"}`}>
+              {p}
+            </button>
+          )
+        )}
+        <button onClick={() => onChange(page + 1)} disabled={page === totalPages}
+          className="px-2 py-1 rounded text-xs text-slate-500 hover:bg-slate-200 disabled:opacity-30 transition">›</button>
+        <button onClick={() => onChange(totalPages)} disabled={page === totalPages}
+          className="px-2 py-1 rounded text-xs text-slate-500 hover:bg-slate-200 disabled:opacity-30 transition">»</button>
+      </div>
     </div>
   )
 }

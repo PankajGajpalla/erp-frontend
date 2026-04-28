@@ -48,7 +48,12 @@
 
   /* ── Page layout ── */
   .page-main {
-    @apply flex-1 p-4 md:p-6 pt-16 md:pt-6 bg-slate-50 min-h-screen;
+    @apply flex-1 p-4 md:p-6 pt-16 md:pt-6 bg-slate-50 min-h-screen overflow-x-hidden;
+  }
+
+  /* ── Responsive table wrapper (auto-applied inside .card) ── */
+  .table-wrap {
+    @apply overflow-x-auto -mx-px;
   }
 
   /* ── Section title ── */
