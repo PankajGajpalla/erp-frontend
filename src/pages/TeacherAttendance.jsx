@@ -214,71 +214,125 @@ function MarkAttendance() {
             </div>
           </div>
 
-          {/* Table */}
-          <table className="tbl">
-            <thead>
-              <tr>
-                <th>ID</th>
-                <th>Name</th>
-                <th>Type</th>
-                <th>Status</th>
-                <th>Mark State</th>
-                <th>Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {students.map((s) => {
-                const isPresent   = attendance[s.id] === "present"
-                const orig        = originalStatus[s.id]
-                const isNew       = orig === undefined
-                const isEdited    = !isNew && orig !== attendance[s.id]
-                const isUnchanged = !isNew && !isEdited
+          {/* ── Mobile card list (shown on small screens) ── */}
+          <div className="md:hidden divide-y divide-slate-100">
+            {students.map((s) => {
+              const isPresent   = attendance[s.id] === "present"
+              const orig        = originalStatus[s.id]
+              const isNew       = orig === undefined
+              const isEdited    = !isNew && orig !== attendance[s.id]
+              const isUnchanged = !isNew && !isEdited
 
-                const rowBg = isUnchanged
-                  ? (isPresent ? "bg-green-50/60" : "bg-red-50/60")
-                  : (isPresent ? "bg-green-50"    : "bg-red-50")
+              return (
+                <div key={s.id}
+                  className={`flex items-center justify-between gap-3 px-4 py-3 transition
+                    ${isUnchanged
+                      ? (isPresent ? "bg-green-50/50" : "bg-red-50/50")
+                      : (isPresent ? "bg-green-50"    : "bg-red-50")}`}>
 
-                return (
-                  <tr key={s.id} className={`border-b border-slate-100 transition ${rowBg}`}>
-                    <td className="text-slate-400 font-mono text-xs">{s.student_code || s.id}</td>
-                    <td className="font-medium text-slate-800">
-                      {s.name}
+                  {/* Left: student info */}
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <p className="font-semibold text-slate-800 text-sm truncate">{s.name}</p>
                       {s.is_additional && (
-                        <span className="ml-2 bg-indigo-100 text-indigo-600 px-1.5 py-0.5 rounded text-xs font-medium" title="Enrolled via additional course">+Add</span>
+                        <span className="bg-indigo-100 text-indigo-600 px-1.5 py-0.5 rounded text-[10px] font-medium">+Add</span>
                       )}
-                    </td>
-                    <td>
-                      <span className={`badge ${s.is_additional ? "badge-purple" : "badge-blue"}`}>
-                        {s.is_additional ? `${selectedCourse?.name} (+)` : (s.course || selectedCourse?.name)}
-                      </span>
-                    </td>
-                    <td>
-                      <span className={`badge ${isPresent ? "badge-green" : "badge-red"}`}>
-                        {isPresent ? "Present" : "Absent"}
-                      </span>
-                    </td>
-                    <td>
-                      {isNew       && <span className="badge badge-gray">New</span>}
-                      {isUnchanged && <span className="badge badge-blue">✓ Marked</span>}
-                      {isEdited    && (
-                        <span className="badge badge-yellow">
-                          ✏️ Edited ({orig} → {attendance[s.id]})
+                      {isEdited && (
+                        <span className="badge badge-yellow text-[10px]">edited</span>
+                      )}
+                      {isUnchanged && (
+                        <span className="badge badge-blue text-[10px]">✓</span>
+                      )}
+                    </div>
+                    <p className="text-xs text-slate-400 font-mono mt-0.5">{s.student_code || `#${s.id}`}</p>
+                  </div>
+
+                  {/* Right: status badge + big toggle button */}
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <span className={`badge ${isPresent ? "badge-green" : "badge-red"}`}>
+                      {isPresent ? "P" : "A"}
+                    </span>
+                    <button
+                      onClick={() => toggleAttendance(s.id)}
+                      className={`min-w-[96px] py-2 px-3 rounded-lg text-sm font-semibold transition active:scale-95
+                        ${isPresent
+                          ? "bg-red-500 hover:bg-red-600 text-white"
+                          : "bg-emerald-500 hover:bg-emerald-600 text-white"}`}>
+                      {isPresent ? "Mark Absent" : "Mark Present"}
+                    </button>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+
+          {/* ── Desktop table (hidden on mobile) ── */}
+          <div className="hidden md:block overflow-x-auto">
+            <table className="tbl">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Name</th>
+                  <th>Type</th>
+                  <th>Status</th>
+                  <th>Mark State</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {students.map((s) => {
+                  const isPresent   = attendance[s.id] === "present"
+                  const orig        = originalStatus[s.id]
+                  const isNew       = orig === undefined
+                  const isEdited    = !isNew && orig !== attendance[s.id]
+                  const isUnchanged = !isNew && !isEdited
+
+                  const rowBg = isUnchanged
+                    ? (isPresent ? "bg-green-50/60" : "bg-red-50/60")
+                    : (isPresent ? "bg-green-50"    : "bg-red-50")
+
+                  return (
+                    <tr key={s.id} className={`border-b border-slate-100 transition ${rowBg}`}>
+                      <td className="text-slate-400 font-mono text-xs">{s.student_code || s.id}</td>
+                      <td className="font-medium text-slate-800">
+                        {s.name}
+                        {s.is_additional && (
+                          <span className="ml-2 bg-indigo-100 text-indigo-600 px-1.5 py-0.5 rounded text-xs font-medium">+Add</span>
+                        )}
+                      </td>
+                      <td>
+                        <span className={`badge ${s.is_additional ? "badge-purple" : "badge-blue"}`}>
+                          {s.is_additional ? `${selectedCourse?.name} (+)` : (s.course || selectedCourse?.name)}
                         </span>
-                      )}
-                    </td>
-                    <td>
-                      <button onClick={() => toggleAttendance(s.id)}
-                        className={`px-3 py-1 rounded-lg text-xs font-medium transition ${
-                          isPresent ? "bg-red-100 text-red-700 hover:bg-red-200" : "bg-green-100 text-green-700 hover:bg-green-200"
-                        }`}>
-                        Mark {isPresent ? "Absent" : "Present"}
-                      </button>
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
+                      </td>
+                      <td>
+                        <span className={`badge ${isPresent ? "badge-green" : "badge-red"}`}>
+                          {isPresent ? "Present" : "Absent"}
+                        </span>
+                      </td>
+                      <td>
+                        {isNew       && <span className="badge badge-gray">New</span>}
+                        {isUnchanged && <span className="badge badge-blue">✓ Marked</span>}
+                        {isEdited    && (
+                          <span className="badge badge-yellow">
+                            ✏️ Edited ({orig} → {attendance[s.id]})
+                          </span>
+                        )}
+                      </td>
+                      <td>
+                        <button onClick={() => toggleAttendance(s.id)}
+                          className={`px-3 py-1 rounded-lg text-xs font-medium transition ${
+                            isPresent ? "bg-red-100 text-red-700 hover:bg-red-200" : "bg-green-100 text-green-700 hover:bg-green-200"
+                          }`}>
+                          Mark {isPresent ? "Absent" : "Present"}
+                        </button>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
 
           {/* Footer */}
           <div className="p-5 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3">
