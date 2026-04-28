@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react"
 import Sidebar from "../components/Sidebar"
+import { LoadingState, Alert, EmptyState } from "../components/UI"
 import {
   getCoursesAPI, addCourseAPI, updateCourseAPI, deleteCourseAPI,
   getSubjectsByCourseAPI, addSubjectAPI, updateSubjectAPI, deleteSubjectAPI,
@@ -93,51 +94,45 @@ export default function Courses() {
   return (
     <div className="flex min-h-screen">
       <Sidebar />
-      <main className="flex-1 p-4 md:p-6 pt-16 md:pt-6 bg-gray-50 min-h-screen">
-        <h2 className="text-2xl font-bold text-gray-800 mb-6">Courses & Subjects</h2>
+      <main className="page-main">
+        <h2 className="text-2xl font-bold text-slate-800 mb-6">Courses & Subjects</h2>
 
         {/* Course Form */}
-        <div className="bg-white rounded-xl shadow-md p-6 mb-6">
-          <h3 className="text-base font-semibold text-gray-700 mb-4 pb-2 border-b">
+        <div className="card p-6 mb-6">
+          <h3 className="section-title mb-4 pb-2 border-b border-slate-100">
             {editCourseId ? "Edit Course" : "Add New Course"}
           </h3>
           <form onSubmit={handleCourseSubmit}>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">Course Name *</label>
+                <label className="form-label">Course Name *</label>
                 <input type="text" name="name" value={courseForm.name} onChange={handleCourseChange}
-                  placeholder="e.g. Class 10, B.Com, ITI"
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                  placeholder="e.g. Class 10, B.Com, ITI" className="inp" />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">Duration</label>
+                <label className="form-label">Duration</label>
                 <input type="text" name="duration" value={courseForm.duration} onChange={handleCourseChange}
-                  placeholder="e.g. 1 Year"
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                  placeholder="e.g. 1 Year" className="inp" />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">Default Fees (₹)</label>
+                <label className="form-label">Default Fees (₹)</label>
                 <input type="number" name="fees" value={courseForm.fees} onChange={handleCourseChange}
-                  placeholder="e.g. 12000" min="0"
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                  placeholder="e.g. 12000" min="0" className="inp" />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">Description</label>
+                <label className="form-label">Description</label>
                 <input type="text" name="description" value={courseForm.description} onChange={handleCourseChange}
-                  placeholder="Short description"
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                  placeholder="Short description" className="inp" />
               </div>
             </div>
-            {error && <div className="mb-3 bg-red-50 border border-red-200 rounded-lg px-4 py-2"><p className="text-red-600 text-sm">{error}</p></div>}
-            {success && <div className="mb-3 bg-green-50 border border-green-200 rounded-lg px-4 py-2"><p className="text-green-600 text-sm">{success}</p></div>}
+            {error && <Alert type="error" message={error} className="mb-3" />}
+            {success && <Alert type="success" message={success} className="mb-3" />}
             <div className="flex gap-3">
-              <button type="submit" disabled={submitting}
-                className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition font-medium disabled:opacity-50">
+              <button type="submit" disabled={submitting} className="btn-primary">
                 {submitting ? "Saving..." : editCourseId ? "Update Course" : "Add Course"}
               </button>
               {editCourseId && (
-                <button type="button" onClick={() => { setEditCourseId(null); setCourseForm(EMPTY_COURSE) }}
-                  className="bg-gray-200 text-gray-700 px-5 py-2 rounded-lg hover:bg-gray-300 transition">
+                <button type="button" onClick={() => { setEditCourseId(null); setCourseForm(EMPTY_COURSE) }} className="btn-ghost">
                   Cancel
                 </button>
               )}
@@ -148,21 +143,16 @@ export default function Courses() {
         {/* Course List */}
         <div className="space-y-3">
           {loading ? (
-            <div className="bg-white rounded-xl shadow p-8 flex items-center gap-3 text-gray-500">
-              <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />Loading...
-            </div>
+            <div className="card p-8"><LoadingState /></div>
           ) : courses.length === 0 ? (
-            <div className="bg-white rounded-xl shadow p-12 text-center">
-              <p className="text-4xl mb-3">📚</p>
-              <p className="text-gray-400">No courses yet. Add your first course above.</p>
-            </div>
+            <EmptyState icon="📚" title="No courses yet. Add your first course above." />
           ) : courses.map((c) => (
-            <div key={c.id} className="bg-white rounded-xl shadow overflow-hidden">
+            <div key={c.id} className="card overflow-hidden">
               {/* Course Row */}
               <div className="flex items-center gap-4 px-5 py-4">
                 <div className="flex-1">
-                  <p className="font-semibold text-gray-800">{c.name}</p>
-                  <p className="text-xs text-gray-400 mt-0.5">
+                  <p className="font-semibold text-slate-800">{c.name}</p>
+                  <p className="text-xs text-slate-400 mt-0.5">
                     {c.duration && <span className="mr-3">Duration: {c.duration}</span>}
                     {c.fees && <span className="mr-3">Fees: ₹{c.fees.toLocaleString()}</span>}
                     {c.description && <span>{c.description}</span>}
@@ -170,23 +160,19 @@ export default function Courses() {
                 </div>
                 <button
                   onClick={() => setExpandedCourseId(expandedCourseId === c.id ? null : c.id)}
-                  className="text-sm text-blue-600 hover:text-blue-800 font-medium px-3 py-1 rounded border border-blue-200 hover:bg-blue-50 transition"
+                  className="btn-ghost text-xs px-3 py-1"
                 >
                   {expandedCourseId === c.id ? "Hide Subjects" : "Manage Subjects"}
                 </button>
-                <button onClick={() => handleEditCourse(c)}
-                  className="bg-yellow-400 hover:bg-yellow-500 text-white px-3 py-1 rounded text-xs">Edit</button>
+                <button onClick={() => handleEditCourse(c)} className="bg-yellow-400 hover:bg-yellow-500 text-white px-3 py-1 rounded text-xs">Edit</button>
                 {deleteConfirmId === c.id ? (
                   <div className="flex gap-1 items-center">
                     <span className="text-xs text-red-600 font-medium">Delete?</span>
-                    <button onClick={() => handleDeleteCourse(c.id)}
-                      className="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded text-xs">Yes</button>
-                    <button onClick={() => setDeleteConfirmId(null)}
-                      className="bg-gray-200 text-gray-700 px-2 py-1 rounded text-xs">No</button>
+                    <button onClick={() => handleDeleteCourse(c.id)} className="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded text-xs">Yes</button>
+                    <button onClick={() => setDeleteConfirmId(null)} className="bg-slate-200 text-slate-700 px-2 py-1 rounded text-xs">No</button>
                   </div>
                 ) : (
-                  <button onClick={() => setDeleteConfirmId(c.id)}
-                    className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded text-xs">Delete</button>
+                  <button onClick={() => setDeleteConfirmId(c.id)} className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded text-xs">Delete</button>
                 )}
               </div>
 
@@ -256,45 +242,41 @@ function SubjectsPanel({ courseId, courseName, teachers }) {
   }
 
   return (
-    <div className="border-t bg-gray-50 p-5">
-      <p className="text-sm font-semibold text-gray-600 mb-3">Subjects in {courseName}</p>
+    <div className="border-t border-slate-100 bg-slate-50 p-5">
+      <p className="text-sm font-semibold text-slate-600 mb-3">Subjects in {courseName}</p>
 
       {/* Add/Edit Subject Form */}
       <form onSubmit={handleSubmit} className="flex flex-wrap gap-2 mb-4">
         <input type="text" placeholder="Subject name *" value={form.name}
           onChange={(e) => { setForm({ ...form, name: e.target.value }); setError("") }}
-          className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+          className="inp w-auto" />
         <select value={form.teacher_id}
           onChange={(e) => setForm({ ...form, teacher_id: e.target.value })}
-          className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
+          className="inp w-auto bg-white">
           <option value="">— Assign Teacher (optional) —</option>
           {teachers.map((t) => (
             <option key={t.id} value={t.id}>{t.name} ({t.subject})</option>
           ))}
         </select>
-        <button type="submit" disabled={submitting}
-          className="bg-blue-600 text-white px-4 py-1.5 rounded-lg text-sm hover:bg-blue-700 transition disabled:opacity-50">
+        <button type="submit" disabled={submitting} className="btn-primary text-xs px-4 py-1.5">
           {submitting ? "Saving..." : editId ? "Update" : "Add Subject"}
         </button>
         {editId && (
-          <button type="button" onClick={() => { setEditId(null); setForm(EMPTY_SUBJECT) }}
-            className="bg-gray-200 text-gray-700 px-3 py-1.5 rounded-lg text-sm hover:bg-gray-300 transition">
-            Cancel
-          </button>
+          <button type="button" onClick={() => { setEditId(null); setForm(EMPTY_SUBJECT) }} className="btn-ghost text-xs px-3 py-1.5">Cancel</button>
         )}
       </form>
 
       {error && <p className="text-red-600 text-xs mb-2">{error}</p>}
-      {success && <p className="text-green-600 text-xs mb-2">{success}</p>}
+      {success && <p className="text-emerald-600 text-xs mb-2">{success}</p>}
 
       {loading ? (
-        <p className="text-sm text-gray-400">Loading subjects...</p>
+        <p className="text-sm text-slate-400">Loading subjects...</p>
       ) : subjects.length === 0 ? (
-        <p className="text-sm text-gray-400">No subjects added yet for this course.</p>
+        <p className="text-sm text-slate-400">No subjects added yet for this course.</p>
       ) : (
         <table className="w-full text-sm">
           <thead>
-            <tr className="text-xs text-gray-500 border-b">
+            <tr className="text-xs text-slate-500 border-b border-slate-200">
               <th className="text-left py-2 px-3 font-medium">Subject</th>
               <th className="text-left py-2 px-3 font-medium">Teacher</th>
               <th className="text-left py-2 px-3 font-medium">Actions</th>
@@ -302,15 +284,15 @@ function SubjectsPanel({ courseId, courseName, teachers }) {
           </thead>
           <tbody>
             {subjects.map((s) => (
-              <tr key={s.id} className="border-b last:border-0 hover:bg-white transition">
-                <td className="py-2 px-3 font-medium text-gray-800">{s.name}</td>
-                <td className="py-2 px-3 text-gray-500">{s.teacher_name || <span className="text-gray-300">Not assigned</span>}</td>
+              <tr key={s.id} className="border-b border-slate-100 last:border-0 hover:bg-white transition">
+                <td className="py-2 px-3 font-medium text-slate-800">{s.name}</td>
+                <td className="py-2 px-3 text-slate-500">{s.teacher_name || <span className="text-slate-300">Not assigned</span>}</td>
                 <td className="py-2 px-3">
                   {deleteConfirmId === s.id ? (
                     <div className="flex gap-1 items-center">
                       <span className="text-xs text-red-600">Delete?</span>
                       <button onClick={() => handleDelete(s.id)} className="bg-red-500 text-white px-2 py-0.5 rounded text-xs">Yes</button>
-                      <button onClick={() => setDeleteConfirmId(null)} className="bg-gray-200 text-gray-700 px-2 py-0.5 rounded text-xs">No</button>
+                      <button onClick={() => setDeleteConfirmId(null)} className="bg-slate-200 text-slate-700 px-2 py-0.5 rounded text-xs">No</button>
                     </div>
                   ) : (
                     <div className="flex gap-2">

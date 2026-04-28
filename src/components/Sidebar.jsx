@@ -126,23 +126,23 @@ export default function Sidebar() {
 
   // Shared notification dropdown content
   const NotifDropdown = () => (
-    <div className="absolute right-0 top-10 w-72 bg-white text-gray-800 rounded-xl shadow-2xl z-50 overflow-hidden border border-gray-100">
-      <div className="flex items-center justify-between px-4 py-3 border-b bg-gray-50">
-        <span className="font-semibold text-sm text-gray-700">Notices</span>
+    <div className="absolute right-0 top-10 w-72 bg-white text-slate-800 rounded-xl shadow-2xl z-50 overflow-hidden border border-slate-100">
+      <div className="flex items-center justify-between px-4 py-3 border-b bg-slate-50">
+        <span className="font-semibold text-sm text-slate-700">Notices</span>
         <button onClick={goToNotices} className="text-xs text-blue-600 hover:underline">View all</button>
       </div>
       {notices.length === 0 ? (
         <div className="px-4 py-6 text-center text-gray-400 text-sm">No notices yet</div>
       ) : (
-        <ul className="max-h-72 overflow-y-auto divide-y divide-gray-100">
+        <ul className="max-h-72 overflow-y-auto divide-y divide-slate-100">
           {notices.slice(0, 10).map((n, i) => (
             <li key={n.id ?? i} className="px-4 py-3 hover:bg-blue-50 transition cursor-pointer" onClick={goToNotices}>
-              <p className="text-sm font-medium text-gray-800 truncate">{n.title || n.message?.slice(0, 50) || "Notice"}</p>
+              <p className="text-sm font-medium text-slate-800 truncate">{n.title || n.message?.slice(0, 50) || "Notice"}</p>
               {n.message && (
-                <p className="text-xs text-gray-500 mt-0.5 line-clamp-2">{n.message}</p>
+                <p className="text-xs text-slate-500 mt-0.5 line-clamp-2">{n.message}</p>
               )}
               {n.created_at && (
-                <p className="text-xs text-gray-400 mt-1">
+                <p className="text-xs text-slate-400 mt-1">
                   {new Date(n.created_at).toLocaleDateString("en-IN", { day: "2-digit", month: "short" })}
                 </p>
               )}
@@ -158,7 +158,7 @@ export default function Sidebar() {
     <button
       onClick={handleBellClick}
       title="Notifications"
-      className="relative text-gray-400 hover:text-white transition p-1.5 rounded-lg hover:bg-gray-700"
+      className="relative text-slate-400 hover:text-white transition p-1.5 rounded-lg hover:bg-slate-700"
     >
       <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
@@ -175,10 +175,10 @@ export default function Sidebar() {
   return (
     <>
       {/* ── Mobile Top Bar ─────────────────────────────── */}
-      <div className="fixed top-0 left-0 right-0 h-14 bg-gray-900 flex items-center justify-between px-4 z-30 md:hidden border-b border-gray-700">
+      <div className="fixed top-0 left-0 right-0 h-14 bg-slate-900 flex items-center justify-between px-4 z-30 md:hidden border-b border-slate-700">
         <button
           onClick={() => setMobileOpen(true)}
-          className="text-gray-300 hover:text-white p-2 rounded-lg hover:bg-gray-700 transition"
+          className="text-slate-300 hover:text-white p-2 rounded-lg hover:bg-slate-700 transition"
         >
           <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
@@ -205,7 +205,7 @@ export default function Sidebar() {
 
       {/* ── Sidebar Panel ───────────────────────────────── */}
       <div className={`
-        fixed inset-y-0 left-0 z-50 bg-gray-900 text-white flex flex-col transition-transform duration-300
+        fixed inset-y-0 left-0 z-50 bg-slate-900 text-white flex flex-col transition-transform duration-300
         ${mobileOpen ? "translate-x-0" : "-translate-x-full"}
         w-64
         md:static md:translate-x-0 md:z-auto md:h-screen md:sticky md:top-0
@@ -214,13 +214,13 @@ export default function Sidebar() {
       `}>
 
         {/* Header — desktop only */}
-        <div className="hidden md:flex items-center justify-between px-4 py-5 border-b border-gray-700 gap-2">
+        <div className="hidden md:flex items-center justify-between px-4 py-5 border-b border-slate-700 gap-2">
           {!collapsed && (
             <div className="flex items-center gap-2 flex-1 min-w-0">
               <img src="/logo.png" alt="ABS Foundation" className="w-9 h-9 object-contain flex-shrink-0 bg-white rounded-lg p-0.5" />
               <div className="min-w-0">
                 <h1 className="text-base font-bold text-blue-400 leading-tight">ABS Foundation</h1>
-                <p className="text-xs text-gray-400 truncate">
+                <p className="text-xs text-slate-400 truncate">
                   {user?.sub} · <span className="capitalize">{user?.role}</span>
                 </p>
               </div>
@@ -236,24 +236,24 @@ export default function Sidebar() {
           {/* Collapse Toggle */}
           <button
             onClick={() => setCollapsed(!collapsed)}
-            className="text-gray-400 hover:text-white transition p-1 rounded-lg hover:bg-gray-700 flex-shrink-0"
+            className="text-slate-400 hover:text-white transition p-1 rounded-lg hover:bg-slate-700 flex-shrink-0"
           >
             {collapsed ? "→" : "←"}
           </button>
         </div>
 
         {/* Mobile sidebar header */}
-        <div className="md:hidden flex items-center justify-between px-4 py-4 border-b border-gray-700">
+        <div className="md:hidden flex items-center justify-between px-4 py-4 border-b border-slate-700">
           <div className="flex items-center gap-2">
             <img src="/logo.png" alt="ABS" className="w-8 h-8 object-contain bg-white rounded-lg p-0.5" />
             <div>
               <p className="text-sm font-bold text-blue-400">ABS Foundation</p>
-              <p className="text-xs text-gray-400">{user?.sub} · <span className="capitalize">{user?.role}</span></p>
+              <p className="text-xs text-slate-400">{user?.sub} · <span className="capitalize">{user?.role}</span></p>
             </div>
           </div>
           <button
             onClick={() => setMobileOpen(false)}
-            className="text-gray-400 hover:text-white p-1 rounded-lg hover:bg-gray-700"
+            className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-700"
           >
             ✕
           </button>
@@ -267,8 +267,8 @@ export default function Sidebar() {
               to={link.to}
               onClick={() => setMobileOpen(false)}
               title={collapsed ? link.label : ""}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition
-                ${isActive(link.to) ? "bg-blue-600 text-white" : "text-gray-300 hover:bg-gray-700 hover:text-white"}`}
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150
+                ${isActive(link.to) ? "bg-primary-600 text-white" : "text-slate-300 hover:bg-slate-700/70 hover:text-white"}`}
             >
               <span className="text-lg flex-shrink-0">{link.label.split(" ")[0]}</span>
               <span className={`truncate flex-1 ${collapsed ? "md:hidden" : ""}`}>
@@ -284,7 +284,7 @@ export default function Sidebar() {
         </nav>
 
         {/* Logout */}
-        <div className="px-2 py-4 border-t border-gray-700">
+        <div className="px-2 py-4 border-t border-slate-700">
           <button
             onClick={logout}
             title={collapsed ? "Logout" : ""}

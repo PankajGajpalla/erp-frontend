@@ -250,12 +250,12 @@ function StudentFees({ studentId, studentName, studentCode, course, parentPhone 
   const paidFees = fees.filter((f) => f.paid >= f.amount)
   const displayFees = activeTab === "all" ? fees : activeTab === "pending" ? pendingFees : paidFees
 
-  if (loading) return <div className="flex items-center gap-3 text-gray-500"><div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />Loading fees...</div>
+  if (loading) return <div className="flex items-center gap-3 text-slate-500"><div className="w-5 h-5 border-2 border-primary-500 border-t-transparent rounded-full animate-spin" />Loading fees...</div>
   if (error) return <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-red-600">{error}</div>
 
   return (
     <div className="space-y-5">
-      <h2 className="text-2xl font-bold text-gray-800">My Fees</h2>
+      <h2 className="text-xl font-bold text-slate-800">My Fees</h2>
 
       {/* Summary Cards */}
       {summary && (
@@ -268,12 +268,12 @@ function StudentFees({ studentId, studentName, studentCode, course, parentPhone 
 
       {/* Progress bar */}
       {summary && summary.total_fees > 0 && (
-        <div className="bg-white rounded-xl shadow p-5">
-          <div className="flex justify-between text-sm text-gray-500 mb-2">
+        <div className="card p-5">
+          <div className="flex justify-between text-sm text-slate-500 mb-2">
             <span>Payment Progress</span>
             <span>{((summary.paid / summary.total_fees) * 100).toFixed(1)}% paid</span>
           </div>
-          <div className="w-full bg-gray-100 rounded-full h-3">
+          <div className="w-full bg-slate-100 rounded-full h-3">
             <div className="h-3 rounded-full bg-green-500 transition-all duration-500"
               style={{ width: `${Math.min((summary.paid / summary.total_fees) * 100, 100)}%` }} />
           </div>
@@ -292,16 +292,16 @@ function StudentFees({ studentId, studentName, studentCode, course, parentPhone 
       )}
 
       {fees.length === 0 && (
-        <div className="bg-white rounded-xl shadow p-12 text-center">
+        <div className="card p-12 text-center">
           <p className="text-4xl mb-3">💰</p>
-          <p className="text-gray-400">No fee records assigned yet.</p>
+          <p className="text-slate-400">No fee records assigned yet.</p>
         </div>
       )}
 
       {fees.length > 0 && (
-        <div className="bg-white rounded-xl shadow overflow-hidden">
+        <div className="card overflow-hidden">
           {/* Tabs */}
-          <div className="flex border-b">
+          <div className="flex border-b border-slate-100">
             {[
               { key: "all", label: `All (${fees.length})` },
               { key: "pending", label: `Pending (${pendingFees.length})` },
@@ -309,7 +309,7 @@ function StudentFees({ studentId, studentName, studentCode, course, parentPhone 
             ].map((tab) => (
               <button key={tab.key} onClick={() => setActiveTab(tab.key)}
                 className={`px-6 py-3 text-sm font-medium transition border-b-2
-                  ${activeTab === tab.key ? "border-blue-600 text-blue-600" : "border-transparent text-gray-500 hover:text-gray-700"}`}>
+                  ${activeTab === tab.key ? "border-primary-600 text-primary-600" : "border-transparent text-slate-500 hover:text-slate-700"}`}>
                 {tab.label}
               </button>
             ))}
@@ -432,7 +432,7 @@ function StudentSearchBox({ label, onSelect, selectedStudent, onClear }) {
 
   return (
     <div className="relative" ref={dropRef}>
-      {label && <label className="block text-xs font-medium text-gray-600 mb-1">{label}</label>}
+      {label && <label className="form-label">{label}</label>}
 
       {selectedStudent ? (
         /* Selected student chip */
@@ -792,11 +792,11 @@ function AdminFees() {
 
   return (
     <div className="space-y-5">
-      <h2 className="text-2xl font-bold text-gray-800">💰 Fees</h2>
+      <h2 className="text-xl font-bold text-slate-800">Fees</h2>
 
       {/* ── Add Fees Record ─────────────────────────────────── */}
-      <div className="bg-white rounded-xl shadow p-6">
-        <h3 className="text-base font-semibold text-gray-700 mb-4 pb-2 border-b">➕ Add Fee Record</h3>
+      <div className="card p-6">
+        <h3 className="section-title mb-4 pb-2 border-b border-slate-100">Add Fee Record</h3>
         <form onSubmit={handleAddFees} className="space-y-4">
 
           {/* Student search */}
@@ -810,29 +810,29 @@ function AdminFees() {
           {/* Fee fields */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Total Amount (₹) *</label>
+              <label className="form-label">Total Amount (₹) *</label>
               <input type="number" value={addForm.amount}
                 onChange={(e) => setAddForm({ ...addForm, amount: e.target.value })}
                 placeholder="e.g. 12000" min="1"
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                className="inp" />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Due Date</label>
+              <label className="form-label">Due Date</label>
               <input type="date" value={addForm.due_date}
                 onChange={(e) => setAddForm({ ...addForm, due_date: e.target.value })}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                className="inp" />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Description</label>
+              <label className="form-label">Description</label>
               <input type="text" value={addForm.description}
                 onChange={(e) => setAddForm({ ...addForm, description: e.target.value })}
                 placeholder="e.g. Term 1 Fees"
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                className="inp" />
             </div>
           </div>
 
           <button type="submit" disabled={submitting || !addStudent}
-            className="bg-blue-600 text-white px-7 py-2 rounded-lg hover:bg-blue-700 transition disabled:opacity-50 font-medium text-sm">
+            className="btn-primary">
             {submitting ? "Adding..." : "Add Fees"}
           </button>
         </form>
@@ -842,38 +842,38 @@ function AdminFees() {
       </div>
 
       {/* ── Bulk Fee Addition ───────────────────────────────── */}
-      <div className="bg-white rounded-xl shadow p-6">
-        <h3 className="text-base font-semibold text-gray-700 mb-4 pb-2 border-b">🏫 Bulk Add Fee (Entire Course)</h3>
+      <div className="card p-6">
+        <h3 className="section-title mb-4 pb-2 border-b border-slate-100">Bulk Add Fee (Entire Course)</h3>
         <form onSubmit={handleBulkFee} className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Course *</label>
+              <label className="form-label">Course *</label>
               <select value={bulkForm.course_name}
                 onChange={e => setBulkForm(f => ({ ...f, course_name: e.target.value }))}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                className="inp">
                 <option value="">— Select course —</option>
                 {courses.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
               </select>
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Amount (₹) *</label>
+              <label className="form-label">Amount (₹) *</label>
               <input type="number" value={bulkForm.amount} min="1"
                 onChange={e => setBulkForm(f => ({ ...f, amount: e.target.value }))}
                 placeholder="e.g. 5000"
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                className="inp" />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Description</label>
+              <label className="form-label">Description</label>
               <input type="text" value={bulkForm.description}
                 onChange={e => setBulkForm(f => ({ ...f, description: e.target.value }))}
                 placeholder="e.g. Annual Fees"
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                className="inp" />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Due Date</label>
+              <label className="form-label">Due Date</label>
               <input type="date" value={bulkForm.due_date}
                 onChange={e => setBulkForm(f => ({ ...f, due_date: e.target.value }))}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                className="inp" />
             </div>
           </div>
           <button type="submit" disabled={bulkSubmitting}
@@ -886,7 +886,7 @@ function AdminFees() {
       </div>
 
       {/* ── Fee Templates ───────────────────────────────────── */}
-      <div className="bg-white rounded-xl shadow overflow-hidden">
+      <div className="card overflow-hidden">
         <button onClick={toggleTemplates}
           className="w-full flex items-center justify-between px-6 py-4 text-left hover:bg-gray-50 transition">
           <h3 className="text-base font-semibold text-gray-700">📋 Fee Templates</h3>
@@ -903,34 +903,34 @@ function AdminFees() {
               <h4 className="text-sm font-semibold text-gray-600 mb-3">Create New Template</h4>
               <form onSubmit={handleCreateTemplate} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                 <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1">Template Name *</label>
+                  <label className="form-label">Template Name *</label>
                   <input type="text" value={newTemplate.name}
                     onChange={e => setNewTemplate(f => ({ ...f, name: e.target.value }))}
                     placeholder="e.g. Term 1 Fee"
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                    className="inp" />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1">Course (optional)</label>
+                  <label className="form-label">Course (optional)</label>
                   <select value={newTemplate.course}
                     onChange={e => setNewTemplate(f => ({ ...f, course: e.target.value }))}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    className="inp">
                     <option value="">All Courses</option>
                     {courses.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1">Amount (₹) *</label>
+                  <label className="form-label">Amount (₹) *</label>
                   <input type="number" value={newTemplate.amount} min="1"
                     onChange={e => setNewTemplate(f => ({ ...f, amount: e.target.value }))}
                     placeholder="e.g. 8000"
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                    className="inp" />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1">Description</label>
+                  <label className="form-label">Description</label>
                   <input type="text" value={newTemplate.description}
                     onChange={e => setNewTemplate(f => ({ ...f, description: e.target.value }))}
                     placeholder="Optional description"
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                    className="inp" />
                 </div>
                 <div className="sm:col-span-2 lg:col-span-4">
                   <button type="submit" disabled={templateSubmitting}
@@ -1002,9 +1002,9 @@ function AdminFees() {
             </p>
             {!applyModal.course && (
               <div className="mb-4">
-                <label className="block text-xs font-medium text-gray-600 mb-1">Select Course *</label>
+                <label className="form-label">Select Course *</label>
                 <select value={applyCourse} onChange={e => setApplyCourse(e.target.value)}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                  className="inp">
                   <option value="">— Choose a course —</option>
                   {courses.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
                 </select>
@@ -1029,7 +1029,7 @@ function AdminFees() {
       )}
 
       {/* ── View Student Fees ───────────────────────────────── */}
-      <div className="bg-white rounded-xl shadow">
+      <div className="card">
         {/* Header + mode tabs */}
         <div className="flex items-center justify-between px-5 pt-4 pb-0">
           <h3 className="text-base font-semibold text-gray-700">🔍 View Student Fees</h3>
@@ -1060,11 +1060,11 @@ function AdminFees() {
             <div className="space-y-3">
               {/* Course selector */}
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">Select Course</label>
+                <label className="form-label">Select Course</label>
                 <select
                   value={selectedCourse}
                   onChange={(e) => { setSelectedCourse(e.target.value); setViewStudent(null); setFees([]); setSummary(null) }}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                  className="inp">
                   <option value="">— Choose a course —</option>
                   {courses.map((c) => (
                     <option key={c.id} value={c.name}>{c.name}</option>
@@ -1148,7 +1148,7 @@ function AdminFees() {
       )}
 
       {/* Fees Table */}
-      <div className="bg-white rounded-xl shadow overflow-hidden">
+      <div className="card overflow-hidden">
         {loading ? (
           <div className="p-6 flex items-center gap-3 text-gray-500">
             <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
@@ -1179,26 +1179,26 @@ function AdminFees() {
                 </div>
                 <form onSubmit={handleUpdateFee} className="space-y-3">
                   <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">Total Amount (Rs.) *</label>
+                    <label className="form-label">Total Amount (Rs.) *</label>
                     <input type="number" value={editForm.amount} min="0.01" step="0.01"
                       onChange={e => setEditForm(f => ({ ...f, amount: e.target.value }))}
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                      className="inp" />
                     {editingFee.paid > 0 && (
                       <p className="text-xs text-gray-400 mt-0.5">Already paid: {formatCurrency(editingFee.paid)} — amount cannot go below this</p>
                     )}
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">Description</label>
+                    <label className="form-label">Description</label>
                     <input type="text" value={editForm.description}
                       onChange={e => setEditForm(f => ({ ...f, description: e.target.value }))}
                       placeholder="e.g. Term 1 Fees"
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                      className="inp" />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">Due Date</label>
+                    <label className="form-label">Due Date</label>
                     <input type="date" value={editForm.due_date}
                       onChange={e => setEditForm(f => ({ ...f, due_date: e.target.value }))}
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                      className="inp" />
                   </div>
                   {error && <p className="text-red-600 text-sm">{error}</p>}
                   <div className="flex gap-2 pt-1">
@@ -1343,12 +1343,12 @@ function AdminFees() {
 
 // ── Shared summary card ──────────────────────────────────────
 function SummaryCard({ label, value, color }) {
-  const border = { blue: "border-blue-500", green: "border-green-500", red: "border-red-500" }[color]
-  const text = { blue: "text-gray-800", green: "text-green-600", red: "text-red-600" }[color]
+  const border = { blue: "border-primary-500", green: "border-green-500", red: "border-red-500" }[color]
+  const text = { blue: "text-slate-800", green: "text-green-600", red: "text-red-600" }[color]
   return (
-    <div className={`bg-white rounded-xl shadow p-5 border-l-4 ${border}`}>
-      <p className="text-sm text-gray-500">{label}</p>
-      <p className={`text-2xl font-bold ${text}`}>{value}</p>
+    <div className={`card p-5 border-l-4 ${border}`}>
+      <p className="text-xs text-slate-500 font-medium">{label}</p>
+      <p className={`text-2xl font-bold mt-1 ${text}`}>{value}</p>
     </div>
   )
 }
@@ -1363,7 +1363,7 @@ export default function Fees() {
   return (
     <div className="flex min-h-screen">
       <Sidebar />
-      <main className="flex-1 p-4 md:p-6 pt-16 md:pt-6 bg-gray-50 min-h-screen">
+      <main className="page-main">
         {isAdmin ? <AdminFees /> : <StudentFees studentId={user?.student_id} studentName={user?.name} studentCode={user?.student_code} course={user?.course} parentPhone={user?.parent_phone} />}
       </main>
     </div>

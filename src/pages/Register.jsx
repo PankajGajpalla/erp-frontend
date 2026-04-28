@@ -1,5 +1,6 @@
 import { useState } from "react"
 import { useNavigate, Link } from "react-router-dom"
+import { Alert, Spinner } from "../components/UI"
 import { registerAPI } from "../api"
 
 export default function Register() {
@@ -26,38 +27,23 @@ export default function Register() {
     setError("")
     setSuccess("")
 
-    // ✅ Validate all fields
     if (!form.student_id || !form.username || !form.password || !form.confirmPassword) {
-      setError("All fields are required")
-      return
+      setError("All fields are required"); return
     }
-
-    // ✅ Validate student ID is positive
     if (parseInt(form.student_id) <= 0) {
-      setError("Please enter a valid Student ID")
-      return
+      setError("Please enter a valid Student ID"); return
     }
-
-    // ✅ Validate username length
     if (form.username.trim().length < 3) {
-      setError("Username must be at least 3 characters")
-      return
+      setError("Username must be at least 3 characters"); return
     }
-
-    // ✅ Validate password length
     if (form.password.length < 6) {
-      setError("Password must be at least 6 characters")
-      return
+      setError("Password must be at least 6 characters"); return
     }
-
-    // ✅ Validate passwords match
     if (form.password !== form.confirmPassword) {
-      setError("Passwords do not match")
-      return
+      setError("Passwords do not match"); return
     }
 
     setLoading(true)
-
     try {
       const res = await registerAPI({
         student_id: parseInt(form.student_id),
@@ -74,139 +60,78 @@ export default function Register() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-gray-100 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-primary-50 to-slate-100 flex items-center justify-center p-4">
       <div className="bg-white p-8 rounded-2xl shadow-lg w-full max-w-sm">
 
-        {/* Header */}
         <div className="text-center mb-6">
-          <div className="w-16 h-16 bg-green-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
+          <div className="w-16 h-16 bg-emerald-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
             <span className="text-3xl">🎓</span>
           </div>
-          <h2 className="text-2xl font-bold text-gray-800">Student Register</h2>
-          <p className="text-gray-400 text-sm mt-1">
-            Ask your admin for your Student ID first
-          </p>
+          <h2 className="text-2xl font-bold text-slate-800">Student Register</h2>
+          <p className="text-slate-400 text-sm mt-1">Ask your admin for your Student ID first</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
 
-          {/* Student ID */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Student ID
-            </label>
-            <input
-              type="number"
-              name="student_id"
-              placeholder="Given by your admin"
-              value={form.student_id}
-              onChange={handleChange}
-              min="1"
-              className="w-full border border-gray-300 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
+            <label className="form-label text-sm">Student ID</label>
+            <input type="number" name="student_id" placeholder="Given by your admin"
+              value={form.student_id} onChange={handleChange} min="1" className="inp" />
           </div>
 
-          {/* Username */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Username
-            </label>
-            <input
-              type="text"
-              name="username"
-              placeholder="Choose a username (min 3 chars)"
-              value={form.username}
-              onChange={handleChange}
-              autoComplete="username"
-              className="w-full border border-gray-300 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
+            <label className="form-label text-sm">Username</label>
+            <input type="text" name="username" placeholder="Choose a username (min 3 chars)"
+              value={form.username} onChange={handleChange} autoComplete="username" className="inp" />
           </div>
 
-          {/* Password */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Password
-            </label>
+            <label className="form-label text-sm">Password</label>
             <div className="relative">
               <input
                 type={showPassword ? "text" : "password"}
-                name="password"
-                placeholder="Min 6 characters"
-                value={form.password}
-                onChange={handleChange}
-                autoComplete="new-password"
-                className="w-full border border-gray-300 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent pr-12"
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-sm"
-              >
+                name="password" placeholder="Min 6 characters"
+                value={form.password} onChange={handleChange}
+                autoComplete="new-password" className="inp pr-14" />
+              <button type="button" onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-sm">
                 {showPassword ? "Hide" : "Show"}
               </button>
             </div>
           </div>
 
-          {/* Confirm Password */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Confirm Password
-            </label>
+            <label className="form-label text-sm">Confirm Password</label>
             <input
               type={showPassword ? "text" : "password"}
-              name="confirmPassword"
-              placeholder="Re-enter your password"
-              value={form.confirmPassword}
-              onChange={handleChange}
+              name="confirmPassword" placeholder="Re-enter your password"
+              value={form.confirmPassword} onChange={handleChange}
               autoComplete="new-password"
-              className={`w-full border rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent
-                ${form.confirmPassword && form.password !== form.confirmPassword
-                  ? "border-red-400"
-                  : "border-gray-300"}`}
-            />
-            {/* ✅ Live password match indicator */}
+              className={`inp ${form.confirmPassword && form.password !== form.confirmPassword ? "border-red-400 focus:ring-red-400" : ""}`} />
             {form.confirmPassword && (
-              <p className={`text-xs mt-1 ${form.password === form.confirmPassword ? "text-green-500" : "text-red-500"}`}>
+              <p className={`text-xs mt-1 ${form.password === form.confirmPassword ? "text-emerald-500" : "text-red-500"}`}>
                 {form.password === form.confirmPassword ? "✅ Passwords match" : "❌ Passwords don't match"}
               </p>
             )}
           </div>
 
-          {/* Error / Success */}
-          {error && (
-            <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-2">
-              <p className="text-red-600 text-sm">{error}</p>
-            </div>
-          )}
-          {success && (
-            <div className="bg-green-50 border border-green-200 rounded-lg px-4 py-2">
-              <p className="text-green-600 text-sm">{success}</p>
-            </div>
-          )}
+          {error && <Alert type="error" message={error} />}
+          {success && <Alert type="success" message={success} />}
 
-          {/* Submit */}
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-green-600 text-white py-2.5 rounded-lg hover:bg-green-700 transition font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-          >
+          <button type="submit" disabled={loading}
+            className="w-full btn-success py-2.5 disabled:opacity-50">
             {loading ? (
               <span className="flex items-center justify-center gap-2">
-                <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
-                </svg>
+                <Spinner size="sm" />
                 Registering...
               </span>
             ) : "Create Account"}
           </button>
         </form>
 
-        <p className="text-center text-sm text-gray-500 mt-6">
+        <p className="text-center text-sm text-slate-500 mt-6">
           Already have an account?{" "}
-          <Link to="/login" className="text-blue-600 hover:underline font-medium">
-            Login here
-          </Link>
+          <Link to="/login" className="text-primary-600 hover:underline font-medium">Login here</Link>
         </p>
 
       </div>

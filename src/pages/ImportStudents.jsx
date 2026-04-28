@@ -239,20 +239,20 @@ export default function ImportStudents() {
   return (
     <div className="flex min-h-screen">
       <Sidebar />
-      <main className="flex-1 p-4 md:p-6 pt-16 md:pt-6 bg-gray-50 min-h-screen">
+      <main className="page-main">
 
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-bold text-gray-800">Import Students</h2>
+          <h2 className="text-xl font-bold text-slate-800">Import Students</h2>
           <button
             onClick={downloadTemplate}
-            className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition text-sm font-medium"
+            className="btn-success"
           >
             Download Template
           </button>
         </div>
 
         {/* Column info */}
-        <div className="bg-white rounded-xl shadow p-5 mb-5">
+        <div className="card p-5 mb-5">
           <p className="text-sm font-semibold text-gray-700 mb-3">Required columns in your Excel file:</p>
           <div className="flex flex-wrap gap-2 mb-3">
             {REQUIRED_COLS.map((col) => (
@@ -274,7 +274,7 @@ export default function ImportStudents() {
         </div>
 
         {/* Upload Box */}
-        <div className="bg-white rounded-xl shadow p-6 mb-5">
+        <div className="card p-6 mb-5">
           <div
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
@@ -320,24 +320,24 @@ export default function ImportStudents() {
         {/* Import result */}
         {result && (
           <div className="grid grid-cols-3 gap-4 mb-5">
-            <div className="bg-white rounded-xl shadow p-5 border-l-4 border-green-500">
-              <p className="text-sm text-gray-500">✅ Imported</p>
-              <p className="text-3xl font-bold text-green-600">{result.imported}</p>
+            <div className="card p-5 border-l-4 border-green-500">
+              <p className="text-xs text-slate-500 font-medium">Imported</p>
+              <p className="text-3xl font-bold text-green-600 mt-1">{result.imported}</p>
             </div>
-            <div className="bg-white rounded-xl shadow p-5 border-l-4 border-yellow-500">
-              <p className="text-sm text-gray-500">⚠️ Skipped (duplicate phone/email)</p>
-              <p className="text-3xl font-bold text-yellow-600">{result.skipped}</p>
+            <div className="card p-5 border-l-4 border-yellow-500">
+              <p className="text-xs text-slate-500 font-medium">Skipped (duplicate)</p>
+              <p className="text-3xl font-bold text-yellow-600 mt-1">{result.skipped}</p>
             </div>
-            <div className="bg-white rounded-xl shadow p-5 border-l-4 border-red-400">
-              <p className="text-sm text-gray-500">❌ Skipped (invalid data)</p>
-              <p className="text-3xl font-bold text-red-500">{result.skipped_errors ?? 0}</p>
+            <div className="card p-5 border-l-4 border-red-400">
+              <p className="text-xs text-slate-500 font-medium">Skipped (invalid)</p>
+              <p className="text-3xl font-bold text-red-500 mt-1">{result.skipped_errors ?? 0}</p>
             </div>
           </div>
         )}
 
         {/* Preview Table */}
         {preview.length > 0 && (
-          <div className="bg-white rounded-xl shadow overflow-hidden">
+          <div className="card overflow-hidden">
             <div className="p-5 flex justify-between items-center border-b flex-wrap gap-3">
               <div>
                 <h3 className="text-lg font-semibold text-gray-700">

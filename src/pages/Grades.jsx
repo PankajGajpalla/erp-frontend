@@ -146,7 +146,7 @@ function AddGrades() {
   return (
     <div className="space-y-5">
       {/* Steps header */}
-      <div className="bg-white rounded-xl shadow p-4 flex gap-6 flex-wrap">
+      <div className="card p-4 flex gap-6 flex-wrap">
         <StepBadge n={1} label="Test Details"  active={step === 1} done={step > 1} />
         <span className="text-gray-300 self-center">—</span>
         <StepBadge n={2} label="Load Students" active={step === 1} done={step > 1} />
@@ -155,29 +155,29 @@ function AddGrades() {
       </div>
 
       {/* Step 1 & 2: Test details */}
-      <div className="bg-white rounded-xl shadow p-6">
+      <div className="card p-6">
         <h3 className="text-base font-semibold text-gray-700 mb-4 pb-2 border-b">Test Details</h3>
         <form onSubmit={handleLoadStudents}>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
             <div className="md:col-span-2">
-              <label className="block text-xs font-medium text-gray-600 mb-1">Test Title *</label>
+              <label className="form-label">Test Title *</label>
               <input type="text" value={testTitle} onChange={(e) => setTestTitle(e.target.value)}
                 placeholder="e.g. Unit Test 1, Mid Term Exam, Final Exam"
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                className="inp" />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Course *</label>
+              <label className="form-label">Course *</label>
               <select value={selectedCourse?.id || ""} onChange={handleCourseChange}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
+                className="inp">
                 <option value="">Select course</option>
                 {courses.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Subject *</label>
+              <label className="form-label">Subject *</label>
               <select value={selectedSubject?.id || ""} onChange={handleSubjectChange}
                 disabled={!selectedCourse || loadingSubjects}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white disabled:opacity-50">
+                className="inp">
                 <option value="">{loadingSubjects ? "Loading subjects..." : "Select subject"}</option>
                 {subjects.map((s) => <option key={s.id} value={s.id}>{s.name}{s.teacher_name ? ` — ${s.teacher_name}` : ""}</option>)}
               </select>
@@ -186,16 +186,16 @@ function AddGrades() {
               )}
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Total Marks *</label>
+              <label className="form-label">Total Marks *</label>
               <input type="number" value={totalMarks} onChange={(e) => setTotalMarks(e.target.value)}
                 placeholder="e.g. 100" min="1"
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                className="inp" />
             </div>
           </div>
           {error   && <div className="mb-3 bg-red-50 border border-red-200 rounded-lg px-4 py-2"><p className="text-red-600 text-sm">{error}</p></div>}
           {success && <div className="mb-3 bg-green-50 border border-green-200 rounded-lg px-4 py-2"><p className="text-green-600 text-sm">{success}</p></div>}
           <button type="submit" disabled={loadingStudents}
-            className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition font-medium disabled:opacity-50">
+            className="btn-primary">
             {loadingStudents ? "Loading students..." : "Load Students →"}
           </button>
         </form>
@@ -203,7 +203,7 @@ function AddGrades() {
 
       {/* Step 3: Marks entry */}
       {students.length > 0 && (
-        <div className="bg-white rounded-xl shadow overflow-hidden">
+        <div className="card overflow-hidden">
           <div className="p-5 border-b bg-blue-50">
             <div className="flex flex-wrap gap-x-6 gap-y-1 items-center">
               <div><p className="text-xs text-gray-500 uppercase tracking-wide">Test</p><p className="font-bold text-gray-800">{testTitle}</p></div>
@@ -278,7 +278,7 @@ function AddGrades() {
               <button onClick={() => { setStudents([]); setMarks({}) }}
                 className="text-sm text-gray-500 hover:text-gray-700 underline">← Back to test details</button>
               <button onClick={handleSave} disabled={saving || invalidCount > 0}
-                className="bg-green-600 text-white px-8 py-2.5 rounded-lg hover:bg-green-700 transition font-medium disabled:opacity-50">
+                className="btn-success">
                 {saving ? "Saving..." : `Save Grades for ${students.length} Students`}
               </button>
             </div>
@@ -438,7 +438,7 @@ function ViewPerformance() {
     <div className="space-y-5">
 
       {/* ── Student selector ── */}
-      <div className="bg-white rounded-xl shadow overflow-hidden">
+      <div className="card overflow-hidden">
         <div className="flex items-center justify-between px-5 pt-4 pb-0">
           <h3 className="text-base font-semibold text-gray-700">Find Student</h3>
           <div className="flex border rounded-lg overflow-hidden text-sm">
@@ -468,10 +468,10 @@ function ViewPerformance() {
           ) : (
             <div className="space-y-3">
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">Select Course</label>
+                <label className="form-label">Select Course</label>
                 <select value={selectedCourse}
                   onChange={(e) => { setSelectedCourse(e.target.value); setStudent(null); setGrades([]) }}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
+                  className="inp">
                   <option value="">— Choose a course —</option>
                   {courses.map((c) => <option key={c.id} value={c.name}>{c.name}</option>)}
                 </select>
@@ -580,20 +580,20 @@ function ViewPerformance() {
           <form onSubmit={handleAddGrade}>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
               <div className="sm:col-span-2">
-                <label className="block text-xs font-medium text-gray-600 mb-1">Test Title *</label>
+                <label className="form-label">Test Title *</label>
                 <input type="text" value={addForm.testTitle}
                   onChange={e => setAddForm(f => ({ ...f, testTitle: e.target.value }))}
                   placeholder="e.g. Unit Test 1, Mid Term, Final Exam"
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                  className="inp" />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">Subject *</label>
+                <label className="form-label">Subject *</label>
                 {loadingSubjects ? (
                   <div className="border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-400">Loading...</div>
                 ) : subjects.length > 0 ? (
                   <select value={addForm.subjectId}
                     onChange={e => setAddForm(f => ({ ...f, subjectId: e.target.value }))}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
+                    className="inp">
                     <option value="">Select subject</option>
                     {subjects.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                   </select>
@@ -601,25 +601,25 @@ function ViewPerformance() {
                   <input type="text" value={addForm.subjectId}
                     onChange={e => setAddForm(f => ({ ...f, subjectId: e.target.value }))}
                     placeholder="Type subject name"
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                    className="inp" />
                 )}
                 {!loadingSubjects && subjects.length === 0 && student?.course && (
                   <p className="text-xs text-orange-500 mt-1">No subjects for "{student.course}" — type manually</p>
                 )}
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">Total Marks *</label>
+                <label className="form-label">Total Marks *</label>
                 <input type="number" value={addForm.totalMarks} min="1"
                   onChange={e => setAddForm(f => ({ ...f, totalMarks: e.target.value }))}
                   placeholder="e.g. 100"
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                  className="inp" />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">Marks Obtained *</label>
+                <label className="form-label">Marks Obtained *</label>
                 <input type="number" value={addForm.marks} min="0" max={addForm.totalMarks || undefined}
                   onChange={e => setAddForm(f => ({ ...f, marks: e.target.value }))}
                   placeholder="e.g. 75"
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                  className="inp" />
                 {addForm.marks && addForm.totalMarks && parseFloat(addForm.marks) > parseFloat(addForm.totalMarks) && (
                   <p className="text-xs text-red-500 mt-0.5">Exceeds total marks!</p>
                 )}
@@ -673,7 +673,7 @@ function ViewPerformance() {
               const sPct   = sMax > 0 ? ((sTotal / sMax) * 100).toFixed(1) : 0
               const sGrade = overallGrade(parseFloat(sPct))
               return (
-                <div key={subject} className="bg-white rounded-xl shadow overflow-hidden">
+                <div key={subject} className="card overflow-hidden">
                   <div className="flex items-center justify-between px-5 py-4 border-b bg-gray-50">
                     <div>
                       <p className="font-semibold text-gray-800">{subject}</p>
@@ -799,7 +799,7 @@ function StudentGrades({ studentId }) {
           const sPct   = sMax > 0 ? ((sTotal / sMax) * 100).toFixed(1) : 0
           const sGrade = overallGrade(parseFloat(sPct))
           return (
-            <div key={subject} className="bg-white rounded-xl shadow overflow-hidden">
+            <div key={subject} className="card overflow-hidden">
               <div className="flex items-center justify-between px-5 py-4 border-b bg-gray-50">
                 <div>
                   <p className="font-semibold text-gray-800">{subject}</p>
@@ -862,19 +862,20 @@ export default function Grades() {
   return (
     <div className="flex min-h-screen">
       <Sidebar />
-      <main className="flex-1 p-4 md:p-6 pt-16 md:pt-6 bg-gray-50 min-h-screen">
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-bold text-gray-800">{isManagerView ? "Grades" : "My Grades"}</h2>
+      <main className="page-main">
+        <div className="flex items-center justify-between mb-5">
+          <h2 className="text-xl font-bold text-slate-800">{isManagerView ? "Grades" : "My Grades"}</h2>
         </div>
 
         {isManagerView ? (
           <>
             {/* Tabs */}
-            <div className="bg-white rounded-xl shadow mb-5">
-              <div className="flex border-b">
-                {[{ key: "view", label: "📊 View Performance" }, { key: "add", label: "➕ Add Grades" }].map((tab) => (
+            <div className="mb-5">
+              <div className="flex gap-1 bg-slate-100 p-1 rounded-xl w-fit">
+                {[{ key: "view", label: "View Performance" }, { key: "add", label: "Add Grades" }].map((tab) => (
                   <button key={tab.key} onClick={() => setActiveTab(tab.key)}
-                    className={`px-6 py-3 text-sm font-medium transition border-b-2 ${activeTab === tab.key ? "border-blue-600 text-blue-600" : "border-transparent text-gray-500 hover:text-gray-700"}`}>
+                    className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all
+                      ${activeTab === tab.key ? "bg-white text-primary-700 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}>
                     {tab.label}
                   </button>
                 ))}

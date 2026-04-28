@@ -158,7 +158,7 @@ function ExamSection({ title, exams, courses, isAdmin, onEdit, onDelete, deleteC
         </span>
       </h3>
       {exams.length === 0 ? (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-10 text-center">
+        <div className="card p-10 text-center">
           <p className="text-gray-400 text-sm">{emptyMsg}</p>
         </div>
       ) : (
@@ -222,7 +222,7 @@ function EditModal({ exam, courses, onClose, onSave, saving }) {
             <select
               value={editForm.course_id}
               onChange={(e) => setEditForm({ ...editForm, course_id: e.target.value })}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="inp"
             >
               <option value="">— Select Course —</option>
               {courses.map((c) => (
@@ -237,7 +237,7 @@ function EditModal({ exam, courses, onClose, onSave, saving }) {
                 type="text"
                 value={editForm.title}
                 onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="inp"
               />
             </div>
             <div>
@@ -246,7 +246,7 @@ function EditModal({ exam, courses, onClose, onSave, saving }) {
                 type="text"
                 value={editForm.subject}
                 onChange={(e) => setEditForm({ ...editForm, subject: e.target.value })}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="inp"
               />
             </div>
           </div>
@@ -257,7 +257,7 @@ function EditModal({ exam, courses, onClose, onSave, saving }) {
                 type="date"
                 value={editForm.exam_date}
                 onChange={(e) => setEditForm({ ...editForm, exam_date: e.target.value })}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="inp"
               />
             </div>
             <div>
@@ -267,7 +267,7 @@ function EditModal({ exam, courses, onClose, onSave, saving }) {
                 placeholder="e.g. 10:00 AM"
                 value={editForm.exam_time}
                 onChange={(e) => setEditForm({ ...editForm, exam_time: e.target.value })}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="inp"
               />
             </div>
           </div>
@@ -279,7 +279,7 @@ function EditModal({ exam, courses, onClose, onSave, saving }) {
                 placeholder="e.g. 2 Hours"
                 value={editForm.duration}
                 onChange={(e) => setEditForm({ ...editForm, duration: e.target.value })}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="inp"
               />
             </div>
             <div>
@@ -289,7 +289,7 @@ function EditModal({ exam, courses, onClose, onSave, saving }) {
                 min="0"
                 value={editForm.total_marks}
                 onChange={(e) => setEditForm({ ...editForm, total_marks: e.target.value })}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="inp"
               />
             </div>
           </div>
@@ -300,7 +300,7 @@ function EditModal({ exam, courses, onClose, onSave, saving }) {
               onChange={(e) => setEditForm({ ...editForm, syllabus: e.target.value })}
               rows={3}
               placeholder="Topics covered..."
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+              className="inp resize-none"
             />
           </div>
           {localError && <p className="text-red-600 text-sm">{localError}</p>}
@@ -507,9 +507,9 @@ export default function ExamSchedule() {
     return (
       <div className="flex min-h-screen">
         <Sidebar />
-        <main className="flex-1 p-4 md:p-6 pt-16 md:pt-6 bg-gray-50 min-h-screen">
+        <main className="page-main">
           <div className="mb-6">
-            <h2 className="text-2xl font-bold text-gray-800">📅 Exam Schedule</h2>
+            <h2 className="text-xl font-bold text-slate-800">Exam Schedule</h2>
             <p className="text-sm text-gray-500 mt-1">Your upcoming and past exams</p>
           </div>
 
@@ -582,14 +582,14 @@ export default function ExamSchedule() {
     return (
       <div className="flex min-h-screen">
         <Sidebar />
-        <main className="flex-1 p-4 md:p-6 pt-16 md:pt-6 bg-gray-50 min-h-screen">
+        <main className="page-main">
           <div className="mb-6">
-            <h2 className="text-2xl font-bold text-gray-800">📅 Exam Schedule</h2>
+            <h2 className="text-xl font-bold text-slate-800">Exam Schedule</h2>
             <p className="text-sm text-gray-500 mt-1">View exam schedules by course</p>
           </div>
 
           {/* Course Filter */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 mb-6">
+          <div className="card p-5 mb-6">
             <label className="block text-sm font-semibold text-gray-700 mb-2">Filter by Course</label>
             {coursesLoading ? (
               <p className="text-sm text-gray-400">Loading courses...</p>
@@ -597,7 +597,7 @@ export default function ExamSchedule() {
               <select
                 value={selectedCourseId}
                 onChange={(e) => setSelectedCourseId(e.target.value)}
-                className="border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white w-full max-w-xs"
+                className="inp max-w-xs"
               >
                 <option value="">All Courses</option>
                 {courses.map((c) => (
@@ -653,12 +653,12 @@ export default function ExamSchedule() {
   return (
     <div className="flex min-h-screen">
       <Sidebar />
-      <main className="flex-1 p-4 md:p-6 pt-16 md:pt-6 bg-gray-50 min-h-screen">
+      <main className="page-main">
 
         {/* Header */}
         <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
           <div>
-            <h2 className="text-2xl font-bold text-gray-800">📅 Exam Schedule</h2>
+            <h2 className="text-xl font-bold text-slate-800">Exam Schedule</h2>
             <p className="text-sm text-gray-500 mt-1">Manage exam schedules across all courses</p>
           </div>
           <button
@@ -684,7 +684,7 @@ export default function ExamSchedule() {
 
         {/* Add Exam Form */}
         {showAddForm && (
-          <div className="bg-white rounded-xl shadow-sm border border-blue-100 p-6 mb-6">
+          <div className="card p-6 mb-6 border-l-4 border-primary-400">
             <h3 className="text-base font-bold text-gray-800 mb-4">Add New Exam</h3>
             <form onSubmit={handleAdd} className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -696,7 +696,7 @@ export default function ExamSchedule() {
                     <select
                       value={form.course_id}
                       onChange={(e) => setForm({ ...form, course_id: e.target.value })}
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="inp"
                     >
                       <option value="">— Select Course —</option>
                       {courses.map((c) => (
@@ -712,7 +712,7 @@ export default function ExamSchedule() {
                     placeholder="e.g. Mid-Term Exam"
                     value={form.title}
                     onChange={(e) => setForm({ ...form, title: e.target.value })}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="inp"
                   />
                 </div>
                 <div>
@@ -722,7 +722,7 @@ export default function ExamSchedule() {
                     placeholder="e.g. Mathematics"
                     value={form.subject}
                     onChange={(e) => setForm({ ...form, subject: e.target.value })}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="inp"
                   />
                 </div>
                 <div>
@@ -731,7 +731,7 @@ export default function ExamSchedule() {
                     type="date"
                     value={form.exam_date}
                     onChange={(e) => setForm({ ...form, exam_date: e.target.value })}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="inp"
                   />
                 </div>
                 <div>
@@ -741,7 +741,7 @@ export default function ExamSchedule() {
                     placeholder="e.g. 10:00 AM"
                     value={form.exam_time}
                     onChange={(e) => setForm({ ...form, exam_time: e.target.value })}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="inp"
                   />
                 </div>
                 <div>
@@ -751,7 +751,7 @@ export default function ExamSchedule() {
                     placeholder="e.g. 2 Hours"
                     value={form.duration}
                     onChange={(e) => setForm({ ...form, duration: e.target.value })}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="inp"
                   />
                 </div>
                 <div>
@@ -762,7 +762,7 @@ export default function ExamSchedule() {
                     placeholder="e.g. 100"
                     value={form.total_marks}
                     onChange={(e) => setForm({ ...form, total_marks: e.target.value })}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="inp"
                   />
                 </div>
                 <div className="md:col-span-2">
@@ -772,7 +772,7 @@ export default function ExamSchedule() {
                     value={form.syllabus}
                     onChange={(e) => setForm({ ...form, syllabus: e.target.value })}
                     rows={2}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                    className="inp resize-none"
                   />
                 </div>
               </div>
@@ -780,14 +780,14 @@ export default function ExamSchedule() {
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="bg-blue-600 text-white px-6 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition disabled:opacity-50"
+                  className="btn-primary"
                 >
                   {submitting ? "Adding..." : "Add Exam"}
                 </button>
                 <button
                   type="button"
                   onClick={() => { setShowAddForm(false); setForm(EMPTY_FORM); setError("") }}
-                  className="bg-gray-100 text-gray-700 px-5 py-2 rounded-lg text-sm font-medium hover:bg-gray-200 transition"
+                  className="btn-ghost"
                 >
                   Cancel
                 </button>
@@ -797,7 +797,7 @@ export default function ExamSchedule() {
         )}
 
         {/* Course Filter */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 mb-6">
+        <div className="card p-5 mb-6">
           <div className="flex items-center gap-4 flex-wrap">
             <label className="text-sm font-semibold text-gray-700">Filter by Course:</label>
             {coursesLoading ? (
@@ -806,7 +806,7 @@ export default function ExamSchedule() {
               <select
                 value={selectedCourseId}
                 onChange={(e) => { setSelectedCourseId(e.target.value); setDeleteConfirmId(null) }}
-                className="border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white min-w-[200px]"
+                className="inp min-w-[200px]"
               >
                 <option value="">All Courses</option>
                 {courses.map((c) => (

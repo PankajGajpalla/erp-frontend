@@ -206,10 +206,10 @@ export default function AdminAccounts() {
   return (
     <div className="flex min-h-screen">
       <Sidebar />
-      <main className="flex-1 p-4 md:p-6 pt-16 md:pt-6 bg-gray-50 min-h-screen">
+      <main className="page-main">
 
-        <h2 className="text-2xl font-bold text-gray-800 mb-2">⚙️ Admin Accounts</h2>
-        <p className="text-sm text-gray-500 mb-6">Manage administrator login credentials. Each admin has full access to the ERP.</p>
+        <h2 className="text-xl font-bold text-slate-800 mb-1">Admin Accounts</h2>
+        <p className="text-sm text-slate-500 mb-6">Manage administrator login credentials. Each admin has full access to the ERP.</p>
 
         {error && (
           <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-5 text-red-600 text-sm">{error}</div>
@@ -219,38 +219,38 @@ export default function AdminAccounts() {
         )}
 
         {/* ── Create New Admin ── */}
-        <div className="bg-white rounded-xl shadow-md p-6 mb-6">
-          <h3 className="text-base font-semibold text-gray-700 mb-4">➕ Create New Admin Account</h3>
+        <div className="card p-6 mb-6">
+          <h3 className="text-base font-semibold text-slate-700 mb-4">➕ Create New Admin Account</h3>
           <form onSubmit={handleCreate} className="flex flex-wrap gap-3 items-end">
             <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1">Username <span className="text-red-500">*</span></label>
+              <label className="block text-xs font-medium text-slate-500 mb-1">Username <span className="text-red-500">*</span></label>
               <input
                 type="text"
                 placeholder="Min 3 characters"
                 value={createForm.username}
                 onChange={(e) => setCreateForm({ ...createForm, username: e.target.value })}
-                className="border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-52"
+                className="inp w-52"
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1">Password <span className="text-red-500">*</span></label>
+              <label className="block text-xs font-medium text-slate-500 mb-1">Password <span className="text-red-500">*</span></label>
               <div className="relative">
                 <input
                   type={createForm.showPass ? "text" : "password"}
                   placeholder="Min 6 characters"
                   value={createForm.password}
                   onChange={(e) => setCreateForm({ ...createForm, password: e.target.value })}
-                  className="border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-52 pr-14"
+                  className="inp w-52 pr-14"
                 />
                 <button type="button"
                   onClick={() => setCreateForm(f => ({ ...f, showPass: !f.showPass }))}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400 hover:text-gray-600">
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 hover:text-slate-600">
                   {createForm.showPass ? "Hide" : "Show"}
                 </button>
               </div>
             </div>
             <button type="submit" disabled={creating}
-              className="bg-blue-600 text-white px-6 py-2 rounded-lg text-sm hover:bg-blue-700 transition disabled:opacity-50 font-medium">
+              className="btn-primary">
               {creating ? "Creating..." : "Create Admin"}
             </button>
           </form>
@@ -260,19 +260,19 @@ export default function AdminAccounts() {
         </div>
 
         {/* ── Admin Accounts List ── */}
-        <div className="bg-white rounded-xl shadow-md overflow-hidden">
+        <div className="card overflow-hidden">
           <div className="px-6 py-4 border-b flex items-center justify-between">
-            <h3 className="text-base font-semibold text-gray-700">All Admin Accounts</h3>
-            <span className="text-xs text-gray-400">{admins.length} account{admins.length !== 1 ? "s" : ""}</span>
+            <h3 className="text-base font-semibold text-slate-700">All Admin Accounts</h3>
+            <span className="text-xs text-slate-400">{admins.length} account{admins.length !== 1 ? "s" : ""}</span>
           </div>
 
           {loading ? (
-            <div className="p-10 flex items-center gap-3 text-gray-400 justify-center">
+            <div className="p-10 flex items-center gap-3 text-slate-400 justify-center">
               <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
               Loading...
             </div>
           ) : admins.length === 0 ? (
-            <div className="p-12 text-center text-gray-400">No admin accounts found.</div>
+            <div className="p-12 text-center text-slate-400">No admin accounts found.</div>
           ) : (
             <div className="overflow-x-auto">
             <table className="w-full text-sm min-w-[500px]">
@@ -286,15 +286,15 @@ export default function AdminAccounts() {
               </thead>
               <tbody>
                 {admins.map((admin) => (
-                  <tr key={admin.id} className="border-t hover:bg-gray-50 transition">
-                    <td className="px-6 py-4 text-gray-400 text-xs font-mono">{admin.id}</td>
+                  <tr key={admin.id} className="border-t hover:bg-slate-50 transition">
+                    <td className="px-6 py-4 text-slate-400 text-xs font-mono">{admin.id}</td>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-2">
                         <span className="w-8 h-8 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-sm font-bold flex-shrink-0">
                           {admin.username.charAt(0).toUpperCase()}
                         </span>
                         <div>
-                          <p className="font-medium text-gray-800">{admin.username}</p>
+                          <p className="font-medium text-slate-800">{admin.username}</p>
                           {isSelf(admin) && (
                             <span className="text-xs text-blue-500 font-medium">You</span>
                           )}
@@ -313,7 +313,7 @@ export default function AdminAccounts() {
                             {deleting ? "..." : "Yes, Delete"}
                           </button>
                           <button onClick={() => setDeleteConfirmId(null)}
-                            className="bg-gray-200 hover:bg-gray-300 text-gray-700 px-3 py-1 rounded text-xs transition">
+                            className="bg-gray-200 hover:bg-gray-300 text-slate-700 px-3 py-1 rounded text-xs transition">
                             Cancel
                           </button>
                         </div>
@@ -330,7 +330,7 @@ export default function AdminAccounts() {
                             </button>
                           )}
                           {isSelf(admin) && (
-                            <span className="text-xs text-gray-400 italic self-center">Cannot delete own account</span>
+                            <span className="text-xs text-slate-400 italic self-center">Cannot delete own account</span>
                           )}
                         </div>
                       )}
@@ -347,10 +347,10 @@ export default function AdminAccounts() {
         <div className="mt-8">
           <button
             onClick={() => setStaffOpen(v => !v)}
-            className="w-full flex items-center justify-between bg-white rounded-xl shadow-md px-6 py-4 text-left hover:bg-gray-50 transition"
+            className="card w-full flex items-center justify-between px-6 py-4 text-left hover:bg-slate-50 transition"
           >
-            <span className="text-base font-semibold text-gray-700">👥 Staff Accounts</span>
-            <span className="text-gray-400 text-sm">{staffOpen ? "▲ Collapse" : "▼ Expand"}</span>
+            <span className="text-base font-semibold text-slate-700">👥 Staff Accounts</span>
+            <span className="text-slate-400 text-sm">{staffOpen ? "▲ Collapse" : "▼ Expand"}</span>
           </button>
 
           {staffOpen && (
@@ -363,38 +363,38 @@ export default function AdminAccounts() {
               )}
 
               {/* Create Staff */}
-              <div className="bg-white rounded-xl shadow-md p-6">
-                <h3 className="text-base font-semibold text-gray-700 mb-4">➕ Create New Staff Account</h3>
+              <div className="card p-6">
+                <h3 className="text-base font-semibold text-slate-700 mb-4">➕ Create New Staff Account</h3>
                 <form onSubmit={handleStaffCreate} className="flex flex-wrap gap-3 items-end">
                   <div>
-                    <label className="block text-xs font-medium text-gray-500 mb-1">Username <span className="text-red-500">*</span></label>
+                    <label className="block text-xs font-medium text-slate-500 mb-1">Username <span className="text-red-500">*</span></label>
                     <input
                       type="text"
                       placeholder="Min 3 characters"
                       value={staffCreateForm.username}
                       onChange={(e) => setStaffCreateForm({ ...staffCreateForm, username: e.target.value })}
-                      className="border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-52"
+                      className="inp w-52"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-gray-500 mb-1">Password <span className="text-red-500">*</span></label>
+                    <label className="block text-xs font-medium text-slate-500 mb-1">Password <span className="text-red-500">*</span></label>
                     <div className="relative">
                       <input
                         type={staffCreateForm.showPass ? "text" : "password"}
                         placeholder="Min 6 characters"
                         value={staffCreateForm.password}
                         onChange={(e) => setStaffCreateForm({ ...staffCreateForm, password: e.target.value })}
-                        className="border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-52 pr-14"
+                        className="inp w-52 pr-14"
                       />
                       <button type="button"
                         onClick={() => setStaffCreateForm(f => ({ ...f, showPass: !f.showPass }))}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400 hover:text-gray-600">
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 hover:text-slate-600">
                         {staffCreateForm.showPass ? "Hide" : "Show"}
                       </button>
                     </div>
                   </div>
                   <button type="submit" disabled={staffCreating}
-                    className="bg-indigo-600 text-white px-6 py-2 rounded-lg text-sm hover:bg-indigo-700 transition disabled:opacity-50 font-medium">
+                    className="btn-primary">
                     {staffCreating ? "Creating..." : "Create Staff"}
                   </button>
                 </form>
@@ -404,19 +404,19 @@ export default function AdminAccounts() {
               </div>
 
               {/* Staff List */}
-              <div className="bg-white rounded-xl shadow-md overflow-hidden">
+              <div className="card overflow-hidden">
                 <div className="px-6 py-4 border-b flex items-center justify-between">
-                  <h3 className="text-base font-semibold text-gray-700">All Staff Accounts</h3>
-                  <span className="text-xs text-gray-400">{staffList.length} account{staffList.length !== 1 ? "s" : ""}</span>
+                  <h3 className="text-base font-semibold text-slate-700">All Staff Accounts</h3>
+                  <span className="text-xs text-slate-400">{staffList.length} account{staffList.length !== 1 ? "s" : ""}</span>
                 </div>
 
                 {staffLoading ? (
-                  <div className="p-10 flex items-center gap-3 text-gray-400 justify-center">
+                  <div className="p-10 flex items-center gap-3 text-slate-400 justify-center">
                     <div className="w-5 h-5 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
                     Loading...
                   </div>
                 ) : staffList.length === 0 ? (
-                  <div className="p-12 text-center text-gray-400">No staff accounts found.</div>
+                  <div className="p-12 text-center text-slate-400">No staff accounts found.</div>
                 ) : (
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm min-w-[500px]">
@@ -430,14 +430,14 @@ export default function AdminAccounts() {
                       </thead>
                       <tbody>
                         {staffList.map((s) => (
-                          <tr key={s.id} className="border-t hover:bg-gray-50 transition">
-                            <td className="px-6 py-4 text-gray-400 text-xs font-mono">{s.id}</td>
+                          <tr key={s.id} className="border-t hover:bg-slate-50 transition">
+                            <td className="px-6 py-4 text-slate-400 text-xs font-mono">{s.id}</td>
                             <td className="px-6 py-4">
                               <div className="flex items-center gap-2">
                                 <span className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center text-sm font-bold flex-shrink-0">
                                   {s.username.charAt(0).toUpperCase()}
                                 </span>
-                                <p className="font-medium text-gray-800">{s.username}</p>
+                                <p className="font-medium text-slate-800">{s.username}</p>
                               </div>
                             </td>
                             <td className="px-6 py-4">
@@ -452,7 +452,7 @@ export default function AdminAccounts() {
                                     {staffDeleting ? "..." : "Yes, Delete"}
                                   </button>
                                   <button onClick={() => setStaffDeleteConfirmId(null)}
-                                    className="bg-gray-200 hover:bg-gray-300 text-gray-700 px-3 py-1 rounded text-xs transition">
+                                    className="bg-gray-200 hover:bg-gray-300 text-slate-700 px-3 py-1 rounded text-xs transition">
                                     Cancel
                                   </button>
                                 </div>
@@ -486,31 +486,31 @@ export default function AdminAccounts() {
             <div className="bg-white rounded-xl shadow-2xl w-full max-w-md">
               <div className="flex items-start justify-between px-6 pt-6 pb-4 border-b">
                 <div>
-                  <h3 className="text-lg font-bold text-gray-800">✏️ Edit Staff Account</h3>
-                  <p className="text-sm text-gray-500 mt-0.5">
-                    Editing: <span className="font-semibold text-gray-700">{staffEditModal.username}</span>
+                  <h3 className="text-lg font-bold text-slate-800">✏️ Edit Staff Account</h3>
+                  <p className="text-sm text-slate-500 mt-0.5">
+                    Editing: <span className="font-semibold text-slate-700">{staffEditModal.username}</span>
                   </p>
                 </div>
                 <button onClick={() => setStaffEditModal(null)}
-                  className="text-gray-400 hover:text-gray-600 text-2xl font-bold leading-none">×</button>
+                  className="text-slate-400 hover:text-slate-600 text-2xl font-bold leading-none">×</button>
               </div>
 
               <form onSubmit={handleStaffUpdate} className="px-6 py-5 space-y-4">
                 <div>
-                  <label className="block text-xs font-semibold text-gray-600 mb-1">
+                  <label className="block text-xs font-semibold text-slate-600 mb-1">
                     Username <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
                     value={staffEditForm.username}
                     onChange={(e) => setStaffEditForm({ ...staffEditForm, username: e.target.value })}
-                    className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="inp"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-gray-600 mb-1">
-                    New Password <span className="text-gray-400 font-normal">(leave blank to keep current)</span>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1">
+                    New Password <span className="text-slate-400 font-normal">(leave blank to keep current)</span>
                   </label>
                   <div className="relative">
                     <input
@@ -518,15 +518,15 @@ export default function AdminAccounts() {
                       placeholder="Leave blank to keep unchanged"
                       value={staffEditForm.password}
                       onChange={(e) => setStaffEditForm({ ...staffEditForm, password: e.target.value })}
-                      className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 pr-14"
+                      className="inp pr-14"
                     />
                     <button type="button"
                       onClick={() => setStaffEditForm(f => ({ ...f, showPass: !f.showPass }))}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400 hover:text-gray-600">
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 hover:text-slate-600">
                       {staffEditForm.showPass ? "Hide" : "Show"}
                     </button>
                   </div>
-                  <p className="text-xs text-gray-400 mt-1">Minimum 6 characters if changing</p>
+                  <p className="text-xs text-slate-400 mt-1">Minimum 6 characters if changing</p>
                 </div>
 
                 {staffEditError && (
@@ -538,11 +538,11 @@ export default function AdminAccounts() {
 
                 <div className="flex gap-3 pt-1">
                   <button type="submit" disabled={staffSaving}
-                    className="flex-1 bg-indigo-600 text-white py-2 rounded-lg hover:bg-indigo-700 text-sm font-medium transition disabled:opacity-50">
+                    className="btn-primary flex-1">
                     {staffSaving ? "Saving..." : "Save Changes"}
                   </button>
                   <button type="button" onClick={() => setStaffEditModal(null)}
-                    className="flex-1 bg-gray-200 text-gray-700 py-2 rounded-lg hover:bg-gray-300 text-sm transition">
+                    className="btn-ghost flex-1">
                     Close
                   </button>
                 </div>
@@ -559,32 +559,32 @@ export default function AdminAccounts() {
               {/* Header */}
               <div className="flex items-start justify-between px-6 pt-6 pb-4 border-b">
                 <div>
-                  <h3 className="text-lg font-bold text-gray-800">✏️ Edit Admin Account</h3>
-                  <p className="text-sm text-gray-500 mt-0.5">
-                    Editing: <span className="font-semibold text-gray-700">{editModal.username}</span>
+                  <h3 className="text-lg font-bold text-slate-800">✏️ Edit Admin Account</h3>
+                  <p className="text-sm text-slate-500 mt-0.5">
+                    Editing: <span className="font-semibold text-slate-700">{editModal.username}</span>
                     {isSelf(editModal) && <span className="ml-2 text-xs text-blue-500">(You)</span>}
                   </p>
                 </div>
                 <button onClick={() => setEditModal(null)}
-                  className="text-gray-400 hover:text-gray-600 text-2xl font-bold leading-none">×</button>
+                  className="text-slate-400 hover:text-slate-600 text-2xl font-bold leading-none">×</button>
               </div>
 
               <form onSubmit={handleUpdate} className="px-6 py-5 space-y-4">
                 <div>
-                  <label className="block text-xs font-semibold text-gray-600 mb-1">
+                  <label className="block text-xs font-semibold text-slate-600 mb-1">
                     Username <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
                     value={editForm.username}
                     onChange={(e) => setEditForm({ ...editForm, username: e.target.value })}
-                    className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="inp"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-gray-600 mb-1">
-                    New Password <span className="text-gray-400 font-normal">(leave blank to keep current)</span>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1">
+                    New Password <span className="text-slate-400 font-normal">(leave blank to keep current)</span>
                   </label>
                   <div className="relative">
                     <input
@@ -592,15 +592,15 @@ export default function AdminAccounts() {
                       placeholder="Leave blank to keep unchanged"
                       value={editForm.password}
                       onChange={(e) => setEditForm({ ...editForm, password: e.target.value })}
-                      className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 pr-14"
+                      className="inp pr-14"
                     />
                     <button type="button"
                       onClick={() => setEditForm(f => ({ ...f, showPass: !f.showPass }))}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400 hover:text-gray-600">
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 hover:text-slate-600">
                       {editForm.showPass ? "Hide" : "Show"}
                     </button>
                   </div>
-                  <p className="text-xs text-gray-400 mt-1">Minimum 6 characters if changing</p>
+                  <p className="text-xs text-slate-400 mt-1">Minimum 6 characters if changing</p>
                 </div>
 
                 {editError && (
@@ -612,11 +612,11 @@ export default function AdminAccounts() {
 
                 <div className="flex gap-3 pt-1">
                   <button type="submit" disabled={saving}
-                    className="flex-1 bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 text-sm font-medium transition disabled:opacity-50">
+                    className="btn-primary flex-1">
                     {saving ? "Saving..." : "Save Changes"}
                   </button>
                   <button type="button" onClick={() => setEditModal(null)}
-                    className="flex-1 bg-gray-200 text-gray-700 py-2 rounded-lg hover:bg-gray-300 text-sm transition">
+                    className="btn-ghost flex-1">
                     Close
                   </button>
                 </div>

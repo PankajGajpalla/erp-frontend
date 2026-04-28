@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react"
 import Sidebar from "../components/Sidebar"
 import { useAuth } from "../context/AuthContext"
+import { LoadingState, Alert, EmptyState } from "../components/UI"
 import { getNoticesAPI, addNoticeAPI, deleteNoticeAPI, getCoursesAPI, markNoticeReadAPI } from "../api"
 
 export default function Notices() {
@@ -31,7 +32,6 @@ export default function Notices() {
     }
   }, [])
 
-  // ✅ Auto clear success after 3 seconds
   useEffect(() => {
     if (success) {
       const timer = setTimeout(() => setSuccess(""), 3000)
@@ -81,13 +81,8 @@ export default function Notices() {
         date: form.date,
         course: form.course || null
       })
-      setSuccess("✅ Notice posted!")
-      setForm({
-        title: "",
-        content: "",
-        date: new Date().toISOString().split("T")[0],
-        course: ""
-      })
+      setSuccess("Notice posted!")
+      setForm({ title: "", content: "", date: new Date().toISOString().split("T")[0], course: "" })
       fetchNotices()
     } catch (err) {
       setError(err.response?.data?.detail || "Failed to add notice")
@@ -99,7 +94,7 @@ export default function Notices() {
   async function handleDelete(id) {
     try {
       await deleteNoticeAPI(id)
-      setSuccess("✅ Notice deleted!")
+      setSuccess("Notice deleted!")
       setDeleteConfirmId(null)
       fetchNotices()
     } catch (err) {
@@ -111,25 +106,25 @@ export default function Notices() {
   return (
     <div className="flex min-h-screen">
       <Sidebar />
-      <main className="flex-1 p-4 md:p-6 pt-16 md:pt-6 bg-gray-50 min-h-screen">
+      <main className="page-main">
 
-        <h2 className="text-2xl font-bold text-gray-800 mb-6">📢 Notices</h2>
+        <h2 className="text-2xl font-bold text-slate-800 mb-6">📢 Notices</h2>
 
         {/* Admin: Add Notice */}
         {isAdmin && (
-          <div className="bg-white rounded-xl shadow p-6 mb-6">
-            <h3 className="text-lg font-semibold text-gray-700 mb-4">Post a Notice</h3>
+          <div className="card p-6 mb-6">
+            <h3 className="section-title mb-4">Post a Notice</h3>
             <form onSubmit={handleAdd} className="space-y-3">
               <div className="flex flex-wrap gap-3">
                 <input type="text" placeholder="Notice Title *" value={form.title}
                   onChange={(e) => setForm({ ...form, title: e.target.value })}
-                  className="flex-1 border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                  className="inp flex-1" />
                 <input type="date" value={form.date}
                   onChange={(e) => setForm({ ...form, date: e.target.value })}
-                  className="border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                  className="inp w-auto" />
                 <select value={form.course}
                   onChange={(e) => setForm({ ...form, course: e.target.value })}
-                  className="border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                  className="inp w-auto bg-white">
                   <option value="">— All Students —</option>
                   {courses.map((c) => (
                     <option key={c.id} value={c.name}>{c.name}</option>
@@ -138,98 +133,64 @@ export default function Notices() {
               </div>
               <textarea placeholder="Notice content..." value={form.content}
                 onChange={(e) => setForm({ ...form, content: e.target.value })}
-                rows={4}
-                className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
-              <button type="submit" disabled={submitting}
-                className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition disabled:opacity-50">
+                rows={4} className="inp resize-none" />
+              <button type="submit" disabled={submitting} className="btn-primary">
                 {submitting ? "Posting..." : "Post Notice"}
               </button>
             </form>
-            {error && (
-              <div className="mt-3 bg-red-50 border border-red-200 rounded-lg px-4 py-2">
-                <p className="text-red-600 text-sm">{error}</p>
-              </div>
-            )}
-            {success && (
-              <div className="mt-3 bg-green-50 border border-green-200 rounded-lg px-4 py-2">
-                <p className="text-green-600 text-sm">{success}</p>
-              </div>
-            )}
+            {error && <Alert type="error" message={error} className="mt-3" />}
+            {success && <Alert type="success" message={success} className="mt-3" />}
           </div>
         )}
 
         {/* Search & Filter */}
-        <div className="bg-white rounded-xl shadow p-4 mb-6">
+        <div className="card p-4 mb-6">
           <div className="flex flex-wrap gap-3 items-center">
-            <input type="text" placeholder="🔍 Search by title or content..."
+            <input type="text" placeholder="Search by title or content..."
               value={search} onChange={(e) => setSearch(e.target.value)}
-              className="flex-1 border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              className="inp flex-1" />
             <input type="date" value={dateFilter}
               onChange={(e) => setDateFilter(e.target.value)}
-              className="border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-            <button onClick={() => { setSearch(""); setDateFilter("") }}
-              className="bg-gray-200 text-gray-600 px-4 py-2 rounded-lg text-sm hover:bg-gray-300 transition">
-              Clear
-            </button>
-            <p className="text-sm text-gray-400">
-              Showing {filtered.length} of {notices.length} notices
-            </p>
+              className="inp w-auto" />
+            <button onClick={() => { setSearch(""); setDateFilter("") }} className="btn-ghost">Clear</button>
+            <p className="text-sm text-slate-400">Showing {filtered.length} of {notices.length} notices</p>
           </div>
         </div>
 
         {/* Notices List */}
         {loading ? (
-          <div className="flex items-center gap-3 text-gray-500">
-            <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-            Loading notices...
-          </div>
+          <LoadingState message="Loading notices…" />
         ) : filtered.length === 0 ? (
-          <div className="bg-white rounded-xl shadow p-12 text-center">
-            <p className="text-4xl mb-3">📢</p>
-            <p className="text-gray-400">
-              {notices.length === 0 ? "No notices posted yet." : "No notices match the search."}
-            </p>
-          </div>
+          <EmptyState icon="📢" title={notices.length === 0 ? "No notices posted yet." : "No notices match the search."} />
         ) : (
           <div className="space-y-4">
             {filtered.map((n) => (
-              <div key={n.id} className="bg-white rounded-xl shadow p-6 border-l-4 border-blue-500">
+              <div key={n.id} className="card border-l-4 border-primary-500 p-6">
                 <div className="flex justify-between items-start">
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-2 flex-wrap">
-                      <h3 className="text-lg font-bold text-gray-800">{n.title}</h3>
-                      <span className="text-xs text-gray-400 bg-gray-100 px-2 py-1 rounded-full">
-                        📅 {n.date}
-                      </span>
+                      <h3 className="text-base font-bold text-slate-800">{n.title}</h3>
+                      <span className="badge-gray">📅 {n.date}</span>
                       {n.course
-                        ? <span className="text-xs text-indigo-700 bg-indigo-100 px-2 py-1 rounded-full font-medium">🎓 {n.course}</span>
-                        : <span className="text-xs text-green-700 bg-green-100 px-2 py-1 rounded-full font-medium">🌐 Everyone</span>
+                        ? <span className="badge-blue">🎓 {n.course}</span>
+                        : <span className="badge-green">🌐 Everyone</span>
                       }
                       {isAdmin && n.read_count > 0 && (
-                        <span className="bg-gray-100 text-gray-500 text-xs px-2 py-0.5 rounded-full">👁 {n.read_count} read</span>
+                        <span className="badge-gray">👁 {n.read_count} read</span>
                       )}
                     </div>
-                    <p className="text-gray-600 text-sm leading-relaxed">{n.content}</p>
+                    <p className="text-slate-600 text-sm leading-relaxed">{n.content}</p>
                   </div>
                   {isAdmin && (
                     <div className="ml-4 flex-shrink-0">
                       {deleteConfirmId === n.id ? (
                         <div className="flex gap-2 items-center">
                           <span className="text-xs text-red-600 font-medium">Sure?</span>
-                          <button onClick={() => handleDelete(n.id)}
-                            className="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded text-xs transition">
-                            Yes
-                          </button>
-                          <button onClick={() => setDeleteConfirmId(null)}
-                            className="bg-gray-300 hover:bg-gray-400 text-gray-700 px-2 py-1 rounded text-xs transition">
-                            No
-                          </button>
+                          <button onClick={() => handleDelete(n.id)} className="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded text-xs transition">Yes</button>
+                          <button onClick={() => setDeleteConfirmId(null)} className="bg-slate-300 hover:bg-slate-400 text-slate-700 px-2 py-1 rounded text-xs transition">No</button>
                         </div>
                       ) : (
-                        <button onClick={() => setDeleteConfirmId(n.id)}
-                          className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded-lg text-xs transition">
-                          Delete
-                        </button>
+                        <button onClick={() => setDeleteConfirmId(n.id)} className="btn-danger text-xs px-3 py-1">Delete</button>
                       )}
                     </div>
                   )}

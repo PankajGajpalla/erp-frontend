@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react"
 import Sidebar from "../components/Sidebar"
+import { StatCard, LoadingState, Alert } from "../components/UI"
 import { getTeacherMeAPI } from "../api"
 
 export default function TeacherDashboard() {
@@ -25,24 +26,19 @@ export default function TeacherDashboard() {
   return (
     <div className="flex min-h-screen">
       <Sidebar />
-      <main className="flex-1 p-4 md:p-6 pt-16 md:pt-6 bg-gray-50 min-h-screen">
-        <h2 className="text-2xl font-bold text-gray-800 mb-6">🏠 Dashboard</h2>
+      <main className="page-main">
+        <h2 className="text-2xl font-bold text-slate-800 mb-6">🏠 Dashboard</h2>
 
         {loading ? (
-          <div className="flex items-center gap-3 text-gray-500">
-            <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-            Loading your profile...
-          </div>
+          <LoadingState message="Loading your profile…" />
         ) : error ? (
-          <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-red-600">
-            {error}
-          </div>
+          <Alert type="error" message={error} />
         ) : teacher ? (
           <div className="space-y-6">
 
             {/* Welcome Banner */}
-            <div className="bg-gradient-to-r from-blue-600 to-blue-700 rounded-2xl p-6 text-white flex items-center gap-6">
-              <div className="w-20 h-20 bg-white bg-opacity-20 rounded-full flex items-center justify-center text-4xl flex-shrink-0">
+            <div className="bg-gradient-to-r from-primary-600 to-primary-700 rounded-2xl p-6 text-white flex items-center gap-6">
+              <div className="w-20 h-20 bg-white/20 rounded-full flex items-center justify-center text-4xl flex-shrink-0">
                 👨‍🏫
               </div>
               <div>
@@ -54,13 +50,13 @@ export default function TeacherDashboard() {
             {/* Quick Actions */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {[
-                { label: "📋 Mark Attendance", to: "/teacher/attendance", color: "bg-green-50 hover:bg-green-100 border-green-200" },
-                { label: "🎓 My Students", to: "/teacher/students", color: "bg-blue-50 hover:bg-blue-100 border-blue-200" },
-                { label: "📝 Grades", to: "/teacher/grades", color: "bg-purple-50 hover:bg-purple-100 border-purple-200" },
-                { label: "📢 Notices", to: "/teacher/notices", color: "bg-yellow-50 hover:bg-yellow-100 border-yellow-200" },
+                { label: "📋 Mark Attendance", to: "/teacher/attendance", color: "bg-emerald-50 hover:bg-emerald-100 border-emerald-200 text-emerald-700" },
+                { label: "🎓 My Students",     to: "/teacher/students",   color: "bg-blue-50 hover:bg-blue-100 border-blue-200 text-blue-700" },
+                { label: "📝 Grades",          to: "/teacher/grades",     color: "bg-purple-50 hover:bg-purple-100 border-purple-200 text-purple-700" },
+                { label: "📢 Notices",         to: "/teacher/notices",    color: "bg-yellow-50 hover:bg-yellow-100 border-yellow-200 text-yellow-700" },
               ].map((item) => (
                 <a key={item.to} href={item.to}
-                  className={`border rounded-xl p-4 text-center font-medium text-gray-700 transition ${item.color}`}>
+                  className={`border rounded-xl p-4 text-center font-medium transition text-sm ${item.color}`}>
                   {item.label}
                 </a>
               ))}
@@ -68,47 +64,33 @@ export default function TeacherDashboard() {
 
             {/* Profile Details */}
             <div>
-              <h3 className="text-lg font-semibold text-gray-700 mb-4">My Profile</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                <div className="bg-white rounded-xl shadow p-6 border-l-4 border-blue-500">
-                  <p className="text-sm text-gray-500 mb-1">Full Name</p>
-                  <p className="text-xl font-bold text-gray-800">{teacher.name}</p>
-                </div>
-                <div className="bg-white rounded-xl shadow p-6 border-l-4 border-purple-500">
-                  <p className="text-sm text-gray-500 mb-1">Specialisation</p>
-                  <p className="text-xl font-bold text-gray-800">{teacher.subject || "—"}</p>
-                </div>
-                <div className="bg-white rounded-xl shadow p-6 border-l-4 border-green-500">
-                  <p className="text-sm text-gray-500 mb-1">Email</p>
-                  <p className="text-xl font-bold text-gray-800 break-words">{teacher.email}</p>
-                </div>
-                <div className="bg-white rounded-xl shadow p-6 border-l-4 border-yellow-500">
-                  <p className="text-sm text-gray-500 mb-1">Phone</p>
-                  <p className="text-xl font-bold text-gray-800">{teacher.phone || "—"}</p>
-                </div>
+              <h3 className="section-title mb-4">My Profile</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+                <StatCard label="Full Name"       value={teacher.name}            color="blue" />
+                <StatCard label="Specialisation"  value={teacher.subject || "—"}  color="purple" />
+                <StatCard label="Email"           value={teacher.email}           color="green" />
+                <StatCard label="Phone"           value={teacher.phone || "—"}    color="yellow" />
               </div>
             </div>
 
             {/* Assigned Subjects */}
             {teacher.subjects && teacher.subjects.length > 0 && (
               <div>
-                <h3 className="text-lg font-semibold text-gray-700 mb-3">Assigned Subjects</h3>
-                <div className="bg-white rounded-xl shadow overflow-hidden">
-                  <table className="w-full text-sm">
+                <h3 className="section-title mb-3">Assigned Subjects</h3>
+                <div className="card overflow-hidden">
+                  <table className="tbl">
                     <thead>
-                      <tr className="bg-gray-50 text-xs text-gray-500 border-b">
-                        <th className="text-left px-5 py-3 font-medium">Subject</th>
-                        <th className="text-left px-5 py-3 font-medium">Course</th>
+                      <tr>
+                        <th>Subject</th>
+                        <th>Course</th>
                       </tr>
                     </thead>
                     <tbody>
                       {teacher.subjects.map((s) => (
-                        <tr key={s.id} className="border-t hover:bg-gray-50 transition">
-                          <td className="px-5 py-3 font-medium text-gray-800">{s.name}</td>
-                          <td className="px-5 py-3">
-                            <span className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full text-xs font-medium">
-                              {s.course_name || "—"}
-                            </span>
+                        <tr key={s.id}>
+                          <td className="font-medium">{s.name}</td>
+                          <td>
+                            <span className="badge-blue">{s.course_name || "—"}</span>
                           </td>
                         </tr>
                       ))}
