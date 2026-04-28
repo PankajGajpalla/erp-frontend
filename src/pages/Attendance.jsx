@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react"
 import Sidebar from "../components/Sidebar"
 import { useAuth } from "../context/AuthContext"
-import { LoadingState, Alert, EmptyState } from "../components/UI"
+import { LoadingState, Alert, EmptyState, PaginationBar } from "../components/UI"
 import {
   getAttendanceAPI,
   getStudentAttendanceAPI,
@@ -15,7 +15,8 @@ import {
   checkAttendanceBulkAPI,
 } from "../api"
 
-const PAGE_SIZE = 20
+const PAGE_SIZE     = 20   // course-browse pagination
+const ATT_PAGE_SIZE = 30   // attendance records table pagination
 
 function PctBadge({ pct }) {
   const color = pct >= 75 ? "bg-emerald-100 text-emerald-700" : pct >= 50 ? "bg-yellow-100 text-yellow-700" : "bg-red-100 text-red-700"
@@ -70,6 +71,8 @@ export default function Attendance() {
   const [expandedAtt, setExpandedAtt]     = useState([])
   const [expandedLoading, setExpandedLoading] = useState(false)
 
+  const [attPage, setAttPage]             = useState(1)
+
   const [bulkCourse, setBulkCourse]       = useState("")
   const [bulkDate, setBulkDate]           = useState(new Date().toISOString().split("T")[0])
   const [bulkStudents, setBulkStudents]   = useState([])
@@ -100,6 +103,9 @@ export default function Attendance() {
       return matchStatus && matchDate
     })
   }, [attendance, statusFilter, dateFilter])
+
+  // Reset attendance-records page when filters or selected student change
+  useEffect(() => { setAttPage(1) }, [statusFilter, dateFilter, selectedStudent])
 
   async function loadCourses() {
     try {
@@ -770,30 +776,53 @@ export default function Attendance() {
             ) : filtered.length === 0 ? (
               <EmptyState icon="📋" title="No attendance records found." />
             ) : (
-              <table className="tbl">
-                <thead>
-                  <tr>
-                    {isAdmin && <th>Student ID</th>}
-                    <th>Date</th>
-                    {!isAdmin && <th>Subject</th>}
-                    <th>Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filtered.map((a) => (
-                    <tr key={a.id}>
-                      {isAdmin && <td>{a.student_id}</td>}
-                      <td>{a.date}</td>
-                      {!isAdmin && <td>{a.subject_name || a.subject_id || "—"}</td>}
-                      <td>
-                        <span className={`badge ${a.status === "present" ? "badge-green" : "badge-red"}`}>
-                          {a.status === "present" ? "✅ Present" : "❌ Absent"}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+              <>
+                {/* Header row with count */}
+                <div className="px-5 py-3 border-b border-slate-100 flex items-center justify-between text-xs text-slate-500">
+                  <span className="font-medium">
+                    {isAdmin && selectedStudent
+                      ? `${selectedStudent.name}'s Records`
+                      : "Attendance Records"}
+                  </span>
+                  <span>{filtered.length} record{filtered.length !== 1 ? "s" : ""}</span>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="tbl">
+                    <thead>
+                      <tr>
+                        {isAdmin && <th>Student ID</th>}
+                        <th>Date</th>
+                        {!isAdmin && <th>Subject</th>}
+                        <th>Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filtered
+                        .slice((attPage - 1) * ATT_PAGE_SIZE, attPage * ATT_PAGE_SIZE)
+                        .map((a) => (
+                          <tr key={a.id}>
+                            {isAdmin && <td className="font-mono text-xs text-slate-400">{a.student_id}</td>}
+                            <td className="font-medium">{a.date}</td>
+                            {!isAdmin && <td>{a.subject_name || a.subject_id || "—"}</td>}
+                            <td>
+                              <span className={`badge ${a.status === "present" ? "badge-green" : "badge-red"}`}>
+                                {a.status === "present" ? "✅ Present" : "❌ Absent"}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                <PaginationBar
+                  page={attPage}
+                  total={filtered.length}
+                  pageSize={ATT_PAGE_SIZE}
+                  onChange={setAttPage}
+                />
+              </>
             )}
           </div>
         )}

@@ -30,28 +30,38 @@ function AdminDashboard() {
   const [charts, setCharts]       = useState(null)
   const [overdue, setOverdue]     = useState([])
   const [loading, setLoading]     = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
   const [error, setError]         = useState("")
   const [showAllOverdue, setShowAllOverdue] = useState(false)
+  const [lastRefreshed, setLastRefreshed]   = useState(null)
 
-  useEffect(() => {
-    async function load() {
-      try {
-        const [sRes, oRes, cRes] = await Promise.all([
-          getDashboardSummaryAPI(),
-          getOverdueFeesAPI().catch(() => ({ data: [] })),
-          getDashboardChartsAPI().catch(() => ({ data: null })),
-        ])
-        setStats(sRes.data)
-        setOverdue(Array.isArray(oRes.data) ? oRes.data : [])
-        setCharts(cRes.data)
-      } catch (err) {
-        setError("Failed to load dashboard")
-        console.error(err)
-      } finally {
-        setLoading(false)
-      }
+  async function load(isRefresh = false) {
+    if (isRefresh) setRefreshing(true)
+    else setLoading(true)
+    try {
+      const [sRes, oRes, cRes] = await Promise.all([
+        getDashboardSummaryAPI(),
+        getOverdueFeesAPI().catch(() => ({ data: [] })),
+        getDashboardChartsAPI().catch(() => ({ data: null })),
+      ])
+      setStats(sRes.data)
+      setOverdue(Array.isArray(oRes.data) ? oRes.data : [])
+      setCharts(cRes.data)
+      setLastRefreshed(new Date())
+    } catch (err) {
+      setError("Failed to load dashboard")
+      console.error(err)
+    } finally {
+      setLoading(false)
+      setRefreshing(false)
     }
+  }
+
+  // Initial load + auto-refresh every 2 minutes
+  useEffect(() => {
     load()
+    const interval = setInterval(() => load(true), 2 * 60 * 1000)
+    return () => clearInterval(interval)
   }, [])
 
   if (loading) return <LoadingState message="Loading dashboard…" />
@@ -69,11 +79,31 @@ function AdminDashboard() {
 
   const visibleOverdue = showAllOverdue ? overdue : overdue.slice(0, 5)
 
+  const lastRefreshedLabel = lastRefreshed
+    ? lastRefreshed.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", second: "2-digit" })
+    : null
+
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold text-slate-800 mb-1">Admin Dashboard</h2>
-        <p className="text-slate-400 text-sm">Overview of ABS Foundation</p>
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <h2 className="text-2xl font-bold text-slate-800 mb-1">Admin Dashboard</h2>
+          <p className="text-slate-400 text-sm">Overview of ABS Foundation</p>
+        </div>
+        <div className="flex items-center gap-3 flex-shrink-0">
+          {lastRefreshedLabel && (
+            <span className="text-xs text-slate-400">Updated {lastRefreshedLabel}</span>
+          )}
+          <button
+            onClick={() => load(true)}
+            disabled={refreshing || loading}
+            className="btn-ghost disabled:opacity-50 gap-1.5"
+            title="Refresh dashboard data"
+          >
+            <span className={refreshing ? "animate-spin inline-block" : ""}>↻</span>
+            {refreshing ? "Refreshing…" : "Refresh"}
+          </button>
+        </div>
       </div>
 
       {/* Stats Cards */}
@@ -83,7 +113,12 @@ function AdminDashboard() {
         <StatCard label="Fees Collected"     value={formatCurrency(stats.total_paid)}  color="green" />
         <StatCard label="Fees Pending"       value={formatCurrency(stats.total_pending)} color="red" />
         <StatCard label="Total Teachers"     value={stats.total_teachers ?? "—"}       color="purple" />
-        <StatCard label="Today's Attendance" value={stats.attendance_today?.pct != null ? stats.attendance_today.pct.toFixed(1) + "%" : "—"} color="blue" />
+        <StatCard
+          label="Today's Attendance"
+          value={stats.attendance_today?.pct != null ? stats.attendance_today.pct.toFixed(1) + "%" : "—"}
+          sub={stats.attendance_today?.present != null ? `${stats.attendance_today.present}P / ${stats.attendance_today.absent}A` : null}
+          color="blue"
+        />
       </div>
 
       {/* Row 1 — Fee pie + Students by course */}
