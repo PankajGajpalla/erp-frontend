@@ -23,6 +23,8 @@ import ExamSchedule from "./pages/ExamSchedule"
 import AuditLog from "./pages/AuditLog"
 import DataExport from "./pages/DataExport"
 import AttendanceReport from "./pages/AttendanceReport"
+import GrievanceManagement from "./pages/GrievanceManagement"
+import StudentGrievance from "./pages/StudentGrievance"
 
 // ─── Loading Spinner ─────────────────────────────────────────
 function LoadingScreen() {
@@ -143,6 +145,7 @@ export default function App() {
         <Route path="/audit-log"           element={<AdminRoute><AuditLog /></AdminRoute>} />
         <Route path="/data-export"         element={<AdminRoute><DataExport /></AdminRoute>} />
         <Route path="/attendance-report"   element={<AdminRoute><AttendanceReport /></AdminRoute>} />
+        <Route path="/grievances"           element={<AdminRoute><GrievanceManagement /></AdminRoute>} />
 
         {/* Teacher routes */}
         <Route path="/teacher" element={<TeacherRoute><TeacherDashboard /></TeacherRoute>} />
@@ -163,6 +166,7 @@ export default function App() {
         <Route path="/staff/exam-schedule" element={<StaffRoute><ExamSchedule /></StaffRoute>} />
         <Route path="/staff/import"             element={<StaffRoute><ImportStudents /></StaffRoute>} />
         <Route path="/staff/attendance-report"  element={<StaffRoute><AttendanceReport /></StaffRoute>} />
+        <Route path="/staff/grievances"         element={<StaffRoute><GrievanceManagement /></StaffRoute>} />
 
         {/* Student routes */}
         <Route path="/student/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
@@ -171,7 +175,8 @@ export default function App() {
         <Route path="/student/grades" element={<ProtectedRoute><Grades /></ProtectedRoute>} />
         <Route path="/student/timetable" element={<ProtectedRoute><Timetable /></ProtectedRoute>} />
         <Route path="/student/exam-schedule" element={<ProtectedRoute><ExamSchedule /></ProtectedRoute>} />
-        <Route path="/student/notices" element={<ProtectedRoute><Notices /></ProtectedRoute>} />
+        <Route path="/student/notices"     element={<ProtectedRoute><Notices /></ProtectedRoute>} />
+        <Route path="/student/grievances"  element={<ProtectedRoute><StudentGrievance /></ProtectedRoute>} />
 
         {/* 404 */}
         <Route path="*" element={<NotFound />} />

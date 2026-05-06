@@ -149,3 +149,12 @@ export const getStaffAPI = () => API.get("/staff")
 export const updateStaffAPI = (id, data) => API.put(`/staff/${id}`, data)
 export const deleteStaffAPI = (id) => API.delete(`/staff/${id}`)
 export const getStaffDashboardAPI = () => API.get("/dashboard/staff-summary")
+
+
+// ─── Grievances ───────────────────────────────────────────────
+export const submitGrievanceAPI   = (data)            => API.post("/grievances", data)
+export const getMyGrievancesAPI   = ()                => API.get("/grievances/my")
+export const getAllGrievancesAPI   = (status = "")    => API.get("/grievances", { params: status ? { status } : {} })
+export const replyGrievanceAPI    = (id, data)        => API.put(`/grievances/${id}/reply`, data)
+export const resolveGrievanceAPI  = (id)              => API.patch(`/grievances/${id}/resolve`)
+export const reopenGrievanceAPI   = (id)              => API.patch(`/grievances/${id}/reopen`)
