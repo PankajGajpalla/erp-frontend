@@ -116,6 +116,7 @@ export default function Sidebar() {
     { to: "/staff/timetable",    label: "🗓️ Timetable" },
     { to: "/staff/exam-schedule", label: "📅 Exam Schedule" },
     { to: "/staff/import",       label: "📥 Import Students" },
+    { to: "/staff/courses",      label: "📚 Courses" },
     { to: "/staff/grievances",   label: "📩 Grievances" },
   ]
 

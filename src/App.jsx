@@ -139,7 +139,8 @@ export default function App() {
         <Route path="/timetable" element={<AdminRoute><Timetable /></AdminRoute>} />
         <Route path="/notices" element={<AdminRoute><Notices /></AdminRoute>} />
         <Route path="/import" element={<AdminRoute><ImportStudents /></AdminRoute>} />
-        <Route path="/courses" element={<AdminRoute><Courses /></AdminRoute>} />
+        <Route path="/courses"       element={<AdminRoute><Courses /></AdminRoute>} />
+        <Route path="/staff/courses" element={<StaffRoute><Courses /></StaffRoute>} />
         <Route path="/admin-accounts" element={<AdminRoute><AdminAccounts /></AdminRoute>} />
         <Route path="/exam-schedule"  element={<AdminRoute><ExamSchedule /></AdminRoute>} />
         <Route path="/audit-log"           element={<AdminRoute><AuditLog /></AdminRoute>} />
