@@ -50,6 +50,7 @@ function AddGrades() {
   const [subjects, setSubjects] = useState([])
 
   const [testTitle, setTestTitle]           = useState("")
+  const [testDate, setTestDate]             = useState(new Date().toISOString().split("T")[0])
   const [selectedCourse, setSelectedCourse] = useState(null)
   const [selectedSubject, setSelectedSubject] = useState(null)
   const [totalMarks, setTotalMarks]         = useState("")
@@ -127,14 +128,14 @@ function AddGrades() {
     let saved = 0, failed = 0
     for (const s of students) {
       try {
-        await addGradeAPI({ student_id: s.id, subject: selectedSubject.name, marks: parseFloat(marks[s.id]), total_marks: parseFloat(totalMarks), test_title: testTitle.trim() })
+        await addGradeAPI({ student_id: s.id, subject: selectedSubject.name, marks: parseFloat(marks[s.id]), total_marks: parseFloat(totalMarks), test_title: testTitle.trim(), test_date: testDate.split("-").reverse().join("-") })
         saved++; setSaveProgress(Math.round((saved / students.length) * 100))
       } catch { failed++ }
     }
     setSaving(false); setSaveProgress(0)
     if (failed === 0) {
       setSuccess(`Grades saved for ${saved} students — ${testTitle} / ${selectedSubject.name}`)
-      setStudents([]); setMarks({}); setTestTitle(""); setSelectedCourse(null); setSelectedSubject(null); setSubjects([]); setTotalMarks("")
+      setStudents([]); setMarks({}); setTestTitle(""); setTestDate(new Date().toISOString().split("T")[0]); setSelectedCourse(null); setSelectedSubject(null); setSubjects([]); setTotalMarks("")
     } else {
       setError(`${saved} saved, ${failed} failed. Check and retry.`)
     }
@@ -159,10 +160,15 @@ function AddGrades() {
         <h3 className="text-base font-semibold text-gray-700 mb-4 pb-2 border-b">Test Details</h3>
         <form onSubmit={handleLoadStudents}>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-            <div className="md:col-span-2">
+            <div>
               <label className="form-label">Test Title *</label>
               <input type="text" value={testTitle} onChange={(e) => setTestTitle(e.target.value)}
                 placeholder="e.g. Unit Test 1, Mid Term Exam, Final Exam"
+                className="inp" />
+            </div>
+            <div>
+              <label className="form-label">Test Date *</label>
+              <input type="date" value={testDate} onChange={(e) => setTestDate(e.target.value)}
                 className="inp" />
             </div>
             <div>
@@ -207,6 +213,7 @@ function AddGrades() {
           <div className="p-5 border-b bg-blue-50">
             <div className="flex flex-wrap gap-x-6 gap-y-1 items-center">
               <div><p className="text-xs text-gray-500 uppercase tracking-wide">Test</p><p className="font-bold text-gray-800">{testTitle}</p></div>
+              <div><p className="text-xs text-gray-500 uppercase tracking-wide">Date</p><p className="font-semibold text-gray-700">{testDate.split("-").reverse().join("-")}</p></div>
               <div><p className="text-xs text-gray-500 uppercase tracking-wide">Course</p><p className="font-semibold text-gray-700">{selectedCourse?.name}</p></div>
               <div><p className="text-xs text-gray-500 uppercase tracking-wide">Subject</p><p className="font-semibold text-gray-700">{selectedSubject?.name}</p></div>
               <div><p className="text-xs text-gray-500 uppercase tracking-wide">Total Marks</p><p className="font-semibold text-gray-700">{totalMarks}</p></div>
