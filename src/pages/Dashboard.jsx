@@ -115,8 +115,8 @@ function AdminDashboard() {
         <StatCard label="Total Teachers"     value={stats.total_teachers ?? "—"}       color="purple" />
         <StatCard
           label="Today's Attendance"
-          value={stats.attendance_today?.pct != null ? stats.attendance_today.pct.toFixed(1) + "%" : "—"}
-          sub={stats.attendance_today?.present != null ? `${stats.attendance_today.present}P / ${stats.attendance_today.absent}A` : null}
+          value={stats.attendance_today_pct?.pct != null ? stats.attendance_today_pct.pct.toFixed(1) + "%" : "—"}
+          sub={stats.attendance_today_pct?.present != null ? `${stats.attendance_today_pct.present}P / ${stats.attendance_today_pct.absent}A` : null}
           color="blue"
         />
       </div>
