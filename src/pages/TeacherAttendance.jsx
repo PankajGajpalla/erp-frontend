@@ -94,8 +94,8 @@ function MarkAttendance() {
     }
   }
 
-  function toggleAttendance(id) {
-    setAttendance((prev) => ({ ...prev, [id]: prev[id] === "present" ? "absent" : "present" }))
+  function setStatus(id, status) {
+    setAttendance((prev) => ({ ...prev, [id]: status }))
   }
 
   function markAll(status) {
@@ -106,6 +106,7 @@ function MarkAttendance() {
 
   async function handleSubmit() {
     const changed = students.filter((s) => {
+      if (attendance[s.id] === "skip") return false   // skip = don't submit, no SMS
       const orig = originalStatus[s.id]
       return orig === undefined || orig !== attendance[s.id]
     })
@@ -138,12 +139,15 @@ function MarkAttendance() {
 
   const presentCount  = students.filter((s) => attendance[s.id] === "present").length
   const absentCount   = students.filter((s) => attendance[s.id] === "absent").length
-  const newCount      = students.filter((s) => originalStatus[s.id] === undefined).length
+  const skipCount     = students.filter((s) => attendance[s.id] === "skip").length
+  const newCount      = students.filter((s) => originalStatus[s.id] === undefined && attendance[s.id] !== "skip").length
   const editedCount   = students.filter((s) => {
+    if (attendance[s.id] === "skip") return false
     const orig = originalStatus[s.id]
     return orig !== undefined && orig !== attendance[s.id]
   }).length
   const unchangedCount = students.filter((s) => {
+    if (attendance[s.id] === "skip") return false
     const orig = originalStatus[s.id]
     return orig !== undefined && orig === attendance[s.id]
   }).length
@@ -192,6 +196,7 @@ function MarkAttendance() {
               <p className="text-sm text-slate-400 mt-1 flex flex-wrap gap-3">
                 <span className="text-green-600 font-medium">✓ {presentCount} present</span>
                 <span className="text-red-500 font-medium">✗ {absentCount} absent</span>
+                {skipCount > 0 && <span className="text-slate-400 font-medium">— {skipCount} skipped</span>}
                 {alreadyMarkedCount > 0 && (
                   <span className="text-blue-500">
                     · {alreadyMarkedCount} already marked
@@ -208,57 +213,67 @@ function MarkAttendance() {
               </p>
             </div>
 
-            <div className="flex gap-2">
+            <div className="flex gap-2 flex-wrap">
               <button onClick={() => markAll("present")} className="btn-success text-xs px-3 py-1.5">All Present</button>
               <button onClick={() => markAll("absent")}  className="btn-danger text-xs px-3 py-1.5">All Absent</button>
+              <button onClick={() => markAll("skip")} className="text-xs px-3 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-600 rounded-lg font-medium transition">Clear All</button>
             </div>
           </div>
 
           {/* ── Mobile card list (shown on small screens) ── */}
           <div className="md:hidden divide-y divide-slate-100">
             {students.map((s) => {
-              const isPresent   = attendance[s.id] === "present"
+              const status      = attendance[s.id]
+              const isPresent   = status === "present"
+              const isAbsent    = status === "absent"
+              const isSkipped   = status === "skip"
               const orig        = originalStatus[s.id]
               const isNew       = orig === undefined
-              const isEdited    = !isNew && orig !== attendance[s.id]
-              const isUnchanged = !isNew && !isEdited
+              const isEdited    = !isNew && !isSkipped && orig !== status
+              const isUnchanged = !isNew && !isSkipped && orig === status
 
               return (
                 <div key={s.id}
                   className={`flex items-center justify-between gap-3 px-4 py-3 transition
-                    ${isUnchanged
-                      ? (isPresent ? "bg-green-50/50" : "bg-red-50/50")
-                      : (isPresent ? "bg-green-50"    : "bg-red-50")}`}>
+                    ${isSkipped   ? "bg-slate-50"
+                      : isUnchanged
+                        ? (isPresent ? "bg-green-50/50" : "bg-red-50/50")
+                        : (isPresent ? "bg-green-50"    : "bg-red-50")}`}>
 
                   {/* Left: student info */}
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-1.5 flex-wrap">
-                      <p className="font-semibold text-slate-800 text-sm truncate">{s.name}</p>
+                      <p className={`font-semibold text-sm truncate ${isSkipped ? "text-slate-400" : "text-slate-800"}`}>{s.name}</p>
                       {s.is_additional && (
                         <span className="bg-indigo-100 text-indigo-600 px-1.5 py-0.5 rounded text-[10px] font-medium">+Add</span>
                       )}
-                      {isEdited && (
-                        <span className="badge badge-yellow text-[10px]">edited</span>
-                      )}
-                      {isUnchanged && (
-                        <span className="badge badge-blue text-[10px]">✓</span>
-                      )}
+                      {isEdited    && <span className="badge badge-yellow text-[10px]">edited</span>}
+                      {isUnchanged && <span className="badge badge-blue text-[10px]">✓</span>}
+                      {isSkipped   && <span className="text-[10px] text-slate-400 italic">skipped · no SMS</span>}
                     </div>
                     <p className="text-xs text-slate-400 font-mono mt-0.5">{s.student_code || `#${s.id}`}</p>
                   </div>
 
-                  {/* Right: status badge + big toggle button */}
-                  <div className="flex items-center gap-2 flex-shrink-0">
-                    <span className={`badge ${isPresent ? "badge-green" : "badge-red"}`}>
-                      {isPresent ? "P" : "A"}
-                    </span>
+                  {/* Right: 3-way segmented control */}
+                  <div className="flex items-center gap-1 flex-shrink-0">
                     <button
-                      onClick={() => toggleAttendance(s.id)}
-                      className={`min-w-[96px] py-2 px-3 rounded-lg text-sm font-semibold transition active:scale-95
-                        ${isPresent
-                          ? "bg-red-500 hover:bg-red-600 text-white"
-                          : "bg-emerald-500 hover:bg-emerald-600 text-white"}`}>
-                      {isPresent ? "Mark Absent" : "Mark Present"}
+                      onClick={() => setStatus(s.id, "present")}
+                      className={`px-2.5 py-2 rounded-lg text-xs font-bold transition active:scale-95
+                        ${isPresent ? "bg-emerald-500 text-white shadow-sm" : "bg-slate-100 text-slate-500 hover:bg-emerald-100 hover:text-emerald-700"}`}>
+                      P
+                    </button>
+                    <button
+                      onClick={() => setStatus(s.id, "absent")}
+                      className={`px-2.5 py-2 rounded-lg text-xs font-bold transition active:scale-95
+                        ${isAbsent ? "bg-red-500 text-white shadow-sm" : "bg-slate-100 text-slate-500 hover:bg-red-100 hover:text-red-700"}`}>
+                      A
+                    </button>
+                    <button
+                      onClick={() => setStatus(s.id, "skip")}
+                      title="Skip – no record saved, no SMS sent"
+                      className={`px-2.5 py-2 rounded-lg text-xs font-bold transition active:scale-95
+                        ${isSkipped ? "bg-slate-400 text-white shadow-sm" : "bg-slate-100 text-slate-400 hover:bg-slate-200"}`}>
+                      —
                     </button>
                   </div>
                 </div>
@@ -281,20 +296,25 @@ function MarkAttendance() {
               </thead>
               <tbody>
                 {students.map((s) => {
-                  const isPresent   = attendance[s.id] === "present"
+                  const status      = attendance[s.id]
+                  const isPresent   = status === "present"
+                  const isAbsent    = status === "absent"
+                  const isSkipped   = status === "skip"
                   const orig        = originalStatus[s.id]
                   const isNew       = orig === undefined
-                  const isEdited    = !isNew && orig !== attendance[s.id]
-                  const isUnchanged = !isNew && !isEdited
+                  const isEdited    = !isNew && !isSkipped && orig !== status
+                  const isUnchanged = !isNew && !isSkipped && orig === status
 
-                  const rowBg = isUnchanged
-                    ? (isPresent ? "bg-green-50/60" : "bg-red-50/60")
-                    : (isPresent ? "bg-green-50"    : "bg-red-50")
+                  const rowBg = isSkipped
+                    ? "bg-slate-50 opacity-70"
+                    : isUnchanged
+                      ? (isPresent ? "bg-green-50/60" : "bg-red-50/60")
+                      : (isPresent ? "bg-green-50"    : "bg-red-50")
 
                   return (
                     <tr key={s.id} className={`border-b border-slate-100 transition ${rowBg}`}>
                       <td className="text-slate-400 font-mono text-xs">{s.student_code || s.id}</td>
-                      <td className="font-medium text-slate-800">
+                      <td className={`font-medium ${isSkipped ? "text-slate-400" : "text-slate-800"}`}>
                         {s.name}
                         {s.is_additional && (
                           <span className="ml-2 bg-indigo-100 text-indigo-600 px-1.5 py-0.5 rounded text-xs font-medium">+Add</span>
@@ -306,26 +326,37 @@ function MarkAttendance() {
                         </span>
                       </td>
                       <td>
-                        <span className={`badge ${isPresent ? "badge-green" : "badge-red"}`}>
-                          {isPresent ? "Present" : "Absent"}
-                        </span>
+                        {isSkipped
+                          ? <span className="text-xs text-slate-400 italic">— skipped</span>
+                          : <span className={`badge ${isPresent ? "badge-green" : "badge-red"}`}>
+                              {isPresent ? "Present" : "Absent"}
+                            </span>
+                        }
                       </td>
                       <td>
-                        {isNew       && <span className="badge badge-gray">New</span>}
-                        {isUnchanged && <span className="badge badge-blue">✓ Marked</span>}
-                        {isEdited    && (
-                          <span className="badge badge-yellow">
-                            ✏️ Edited ({orig} → {attendance[s.id]})
-                          </span>
+                        {isSkipped   && <span className="text-xs text-slate-400 italic">no SMS sent</span>}
+                        {!isSkipped && isNew       && <span className="badge badge-gray">New</span>}
+                        {!isSkipped && isUnchanged && <span className="badge badge-blue">✓ Marked</span>}
+                        {!isSkipped && isEdited    && (
+                          <span className="badge badge-yellow">✏️ {orig} → {status}</span>
                         )}
                       </td>
                       <td>
-                        <button onClick={() => toggleAttendance(s.id)}
-                          className={`px-3 py-1 rounded-lg text-xs font-medium transition ${
-                            isPresent ? "bg-red-100 text-red-700 hover:bg-red-200" : "bg-green-100 text-green-700 hover:bg-green-200"
-                          }`}>
-                          Mark {isPresent ? "Absent" : "Present"}
-                        </button>
+                        <div className="flex gap-1">
+                          <button onClick={() => setStatus(s.id, "present")}
+                            className={`px-2.5 py-1 rounded-lg text-xs font-medium transition ${
+                              isPresent ? "bg-emerald-500 text-white" : "bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
+                            }`}>P</button>
+                          <button onClick={() => setStatus(s.id, "absent")}
+                            className={`px-2.5 py-1 rounded-lg text-xs font-medium transition ${
+                              isAbsent ? "bg-red-500 text-white" : "bg-red-50 text-red-700 hover:bg-red-100"
+                            }`}>A</button>
+                          <button onClick={() => setStatus(s.id, "skip")}
+                            title="Skip — no record saved, no SMS sent"
+                            className={`px-2.5 py-1 rounded-lg text-xs font-medium transition ${
+                              isSkipped ? "bg-slate-400 text-white" : "bg-slate-100 text-slate-500 hover:bg-slate-200"
+                            }`}>—</button>
+                        </div>
                       </td>
                     </tr>
                   )
@@ -342,7 +373,8 @@ function MarkAttendance() {
                 : <>Will submit <strong>{toSubmitCount}</strong> record{toSubmitCount !== 1 ? "s" : ""}
                     {newCount > 0      && <span className="ml-1 text-slate-600">({newCount} new{editedCount > 0 ? `, ${editedCount} edited` : ""})</span>}
                     {editedCount > 0 && newCount === 0 && <span className="ml-1 text-slate-600">({editedCount} edited)</span>}
-                    {unchangedCount > 0 && <span className="ml-1 text-slate-400">· {unchangedCount} unchanged skipped</span>}
+                    {unchangedCount > 0 && <span className="ml-1 text-slate-400">· {unchangedCount} unchanged</span>}
+                    {skipCount > 0 && <span className="ml-1 text-slate-400">· {skipCount} skipped (no SMS)</span>}
                   </>
               }
             </p>

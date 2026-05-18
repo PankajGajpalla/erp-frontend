@@ -271,8 +271,8 @@ export default function Attendance() {
   }
 
   async function handleBulkSubmit() {
-    const unmarked = bulkStudents.filter(s => !bulkOriginal[s.id])
-    if (unmarked.length === 0) { setBulkError("All students are already marked for this date"); return }
+    const unmarked = bulkStudents.filter(s => !bulkOriginal[s.id] && bulkAttendance[s.id] !== "skip")
+    if (unmarked.length === 0) { setBulkError("All students are already marked (or skipped) for this date"); return }
     setBulkError(""); setBulkSuccess(""); setBulkSubmitting(true)
     try {
       const records = unmarked.map(s => ({ student_id: s.id, date: bulkDate, status: bulkAttendance[s.id] || "present" }))
@@ -603,11 +603,13 @@ export default function Attendance() {
               <>
                 <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
                   <p className="text-sm text-slate-500 font-medium">{bulkStudents.length} students · {bulkDate}</p>
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 flex-wrap">
                     <button onClick={() => { const att = {}; bulkStudents.forEach(s => { att[s.id] = "present" }); setBulkAttendance(att) }}
                       className="bg-emerald-100 hover:bg-emerald-200 text-emerald-700 px-3 py-1.5 rounded-lg text-xs font-medium transition">All Present</button>
                     <button onClick={() => { const att = {}; bulkStudents.forEach(s => { att[s.id] = "absent" }); setBulkAttendance(att) }}
                       className="bg-red-100 hover:bg-red-200 text-red-700 px-3 py-1.5 rounded-lg text-xs font-medium transition">All Absent</button>
+                    <button onClick={() => { const att = {}; bulkStudents.forEach(s => { att[s.id] = "skip" }); setBulkAttendance(att) }}
+                      className="bg-slate-200 hover:bg-slate-300 text-slate-600 px-3 py-1.5 rounded-lg text-xs font-medium transition">Clear All</button>
                   </div>
                 </div>
 
@@ -625,12 +627,15 @@ export default function Attendance() {
                         const alreadyMarked = !!bulkOriginal[s.id]
                         const status = bulkAttendance[s.id] || "present"
                         return (
-                          <tr key={s.id} className={`border-t border-slate-100 ${alreadyMarked ? "bg-slate-50" : "hover:bg-slate-50"}`}>
+                          <tr key={s.id} className={`border-t border-slate-100 ${alreadyMarked ? "bg-slate-50" : status === "skip" ? "bg-slate-50 opacity-60" : "hover:bg-slate-50"}`}>
                             <td className="px-4 py-2 font-mono text-xs text-slate-400">{s.student_code || `#${s.id}`}</td>
                             <td className="px-4 py-2 text-slate-800">
-                              {s.name}
+                              <span className={status === "skip" ? "text-slate-400" : ""}>{s.name}</span>
                               {alreadyMarked && (
                                 <span className="ml-2 text-xs bg-slate-200 text-slate-500 px-1.5 py-0.5 rounded">Already Marked</span>
+                              )}
+                              {!alreadyMarked && status === "skip" && (
+                                <span className="ml-2 text-xs text-slate-400 italic">skipped · no SMS</span>
                               )}
                             </td>
                             <td className="px-4 py-2 text-center">
@@ -652,6 +657,13 @@ export default function Attendance() {
                                       ${status === "absent" ? "bg-red-500 text-white" : "bg-slate-100 text-slate-600 hover:bg-red-100"}`}>
                                     Absent
                                   </button>
+                                  <button
+                                    onClick={() => setBulkAttendance(prev => ({ ...prev, [s.id]: "skip" }))}
+                                    title="Skip — no record saved, no SMS sent"
+                                    className={`px-3 py-1 rounded text-xs font-medium transition
+                                      ${status === "skip" ? "bg-slate-400 text-white" : "bg-slate-100 text-slate-500 hover:bg-slate-200"}`}>
+                                    —
+                                  </button>
                                 </div>
                               )}
                             </td>
@@ -662,9 +674,9 @@ export default function Attendance() {
                   </table>
                 </div>
 
-                {bulkStudents.some(s => !bulkOriginal[s.id]) && (
+                {bulkStudents.some(s => !bulkOriginal[s.id] && bulkAttendance[s.id] !== "skip") && (
                   <button onClick={handleBulkSubmit} disabled={bulkSubmitting} className="btn-primary disabled:opacity-50">
-                    {bulkSubmitting ? "Submitting…" : `Submit Attendance (${bulkStudents.filter(s => !bulkOriginal[s.id]).length} students)`}
+                    {bulkSubmitting ? "Submitting…" : `Submit Attendance (${bulkStudents.filter(s => !bulkOriginal[s.id] && bulkAttendance[s.id] !== "skip").length} students)`}
                   </button>
                 )}
               </>
