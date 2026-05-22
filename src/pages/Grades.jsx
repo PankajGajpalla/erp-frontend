@@ -57,6 +57,7 @@ function AddGrades() {
 
   const [students, setStudents] = useState([])
   const [marks, setMarks]       = useState({})
+  const [absent, setAbsent]     = useState({})
 
   const [loadingSubjects, setLoadingSubjects] = useState(false)
   const [loadingStudents, setLoadingStudents] = useState(false)
@@ -108,41 +109,49 @@ function AddGrades() {
       const list = res.data.students
       if (list.length === 0) { setError(`No students found in "${selectedCourse.name}"`); return }
       setStudents(list)
-      const def = {}
-      list.forEach((s) => { def[s.id] = "" })
-      setMarks(def)
+      const def = {}, abs = {}
+      list.forEach((s) => { def[s.id] = ""; abs[s.id] = false })
+      setMarks(def); setAbsent(abs)
     } catch { setError("Failed to load students") }
     finally { setLoadingStudents(false) }
   }
 
+  function toggleAbsent(id) {
+    setAbsent((prev) => ({ ...prev, [id]: !prev[id] }))
+    if (!absent[id]) setMarks((prev) => ({ ...prev, [id]: "" }))
+  }
+
   async function handleSave() {
     setError(""); setSuccess("")
-    const missing = students.filter((s) => marks[s.id] === "" || marks[s.id] === undefined)
-    if (missing.length > 0) { setError(`Enter marks for all ${missing.length} remaining students`); return }
-    const invalid = students.filter((s) => parseFloat(marks[s.id]) > parseFloat(totalMarks))
+    const missing  = students.filter((s) => !absent[s.id] && (marks[s.id] === "" || marks[s.id] === undefined))
+    if (missing.length > 0) { setError(`Enter marks for all ${missing.length} remaining students (or mark them absent)`); return }
+    const invalid  = students.filter((s) => !absent[s.id] && parseFloat(marks[s.id]) > parseFloat(totalMarks))
     if (invalid.length > 0) { setError(`Marks exceed total (${totalMarks}) for: ${invalid.map((s) => s.name).join(", ")}`); return }
-    const negative = students.filter((s) => parseFloat(marks[s.id]) < 0)
+    const negative = students.filter((s) => !absent[s.id] && parseFloat(marks[s.id]) < 0)
     if (negative.length > 0) { setError("Marks cannot be negative"); return }
 
     setSaving(true); setSaveProgress(0)
-    let saved = 0, failed = 0
+    let saved = 0, failed = 0, skippedAbsent = 0
     for (const s of students) {
+      if (absent[s.id]) { skippedAbsent++; setSaveProgress(Math.round(((saved + skippedAbsent) / students.length) * 100)); continue }
       try {
         await addGradeAPI({ student_id: s.id, subject: selectedSubject.name, marks: parseFloat(marks[s.id]), total_marks: parseFloat(totalMarks), test_title: testTitle.trim(), test_date: testDate.split("-").reverse().join("-") })
-        saved++; setSaveProgress(Math.round((saved / students.length) * 100))
+        saved++; setSaveProgress(Math.round(((saved + skippedAbsent) / students.length) * 100))
       } catch { failed++ }
     }
     setSaving(false); setSaveProgress(0)
     if (failed === 0) {
-      setSuccess(`Grades saved for ${saved} students — ${testTitle} / ${selectedSubject.name}`)
-      setStudents([]); setMarks({}); setTestTitle(""); setTestDate(new Date().toISOString().split("T")[0]); setSelectedCourse(null); setSelectedSubject(null); setSubjects([]); setTotalMarks("")
+      const absentNote = skippedAbsent > 0 ? ` · ${skippedAbsent} absent skipped` : ""
+      setSuccess(`Grades saved for ${saved} students — ${testTitle} / ${selectedSubject.name}${absentNote}`)
+      setStudents([]); setMarks({}); setAbsent({}); setTestTitle(""); setTestDate(new Date().toISOString().split("T")[0]); setSelectedCourse(null); setSelectedSubject(null); setSubjects([]); setTotalMarks("")
     } else {
       setError(`${saved} saved, ${failed} failed. Check and retry.`)
     }
   }
 
-  const filledCount  = students.filter((s) => marks[s.id] !== "").length
-  const invalidCount = students.filter((s) => marks[s.id] !== "" && parseFloat(marks[s.id]) > parseFloat(totalMarks)).length
+  const filledCount  = students.filter((s) => !absent[s.id] && marks[s.id] !== "").length
+  const absentCount  = students.filter((s) => absent[s.id]).length
+  const invalidCount = students.filter((s) => !absent[s.id] && marks[s.id] !== "" && parseFloat(marks[s.id]) > parseFloat(totalMarks)).length
 
   return (
     <div className="space-y-5">
@@ -218,7 +227,8 @@ function AddGrades() {
               <div><p className="text-xs text-gray-500 uppercase tracking-wide">Subject</p><p className="font-semibold text-gray-700">{selectedSubject?.name}</p></div>
               <div><p className="text-xs text-gray-500 uppercase tracking-wide">Total Marks</p><p className="font-semibold text-gray-700">{totalMarks}</p></div>
               <div className="ml-auto text-right">
-                <p className="text-xs text-gray-500">{filledCount} / {students.length} filled</p>
+                <p className="text-xs text-gray-500">{filledCount} / {students.length - absentCount} filled</p>
+                {absentCount > 0 && <p className="text-xs text-orange-500 font-medium">{absentCount} absent</p>}
                 {invalidCount > 0 && <p className="text-xs text-red-600 font-medium">{invalidCount} exceed total!</p>}
               </div>
             </div>
@@ -234,38 +244,58 @@ function AddGrades() {
             </thead>
             <tbody>
               {students.map((s) => {
+                const isAbsent = absent[s.id]
                 const val = marks[s.id]
                 const num = parseFloat(val)
                 const tot = parseFloat(totalMarks)
-                const pct = val !== "" && !isNaN(num) ? ((num / tot) * 100).toFixed(1) : null
-                const isOver = val !== "" && num > tot
-                const isNeg  = val !== "" && num < 0
+                const pct = !isAbsent && val !== "" && !isNaN(num) ? ((num / tot) * 100).toFixed(1) : null
+                const isOver = !isAbsent && val !== "" && num > tot
+                const isNeg  = !isAbsent && val !== "" && num < 0
                 const letterGrade = pct !== null
                   ? (num / tot >= 0.9 ? "A+" : num / tot >= 0.8 ? "A" : num / tot >= 0.7 ? "B" : num / tot >= 0.6 ? "C" : num / tot >= 0.5 ? "D" : "F")
                   : null
                 return (
-                  <tr key={s.id} className={`border-t transition ${isOver || isNeg ? "bg-red-50" : "hover:bg-gray-50"}`}>
+                  <tr key={s.id} className={`border-t transition ${isAbsent ? "bg-orange-50/60 opacity-70" : isOver || isNeg ? "bg-red-50" : "hover:bg-gray-50"}`}>
                     <td className="px-5 py-3">
-                      <p className="font-medium text-gray-800">{s.name}</p>
+                      <p className={`font-medium ${isAbsent ? "text-gray-400 line-through" : "text-gray-800"}`}>{s.name}</p>
                       <p className="text-xs text-gray-400">{s.student_code || `#${s.id}`}</p>
                     </td>
                     <td className="px-5 py-3">
-                      <input type="number" placeholder="—" value={val} min="0" max={totalMarks}
-                        onChange={(e) => setMarks({ ...marks, [s.id]: e.target.value })}
-                        className={`border rounded-lg px-3 py-1.5 w-28 text-sm focus:outline-none focus:ring-2
-                          ${isOver || isNeg ? "border-red-400 focus:ring-red-300" : "border-gray-300 focus:ring-blue-500"}`} />
+                      {isAbsent ? (
+                        <div className="flex items-center gap-2">
+                          <span className="bg-orange-100 text-orange-700 px-3 py-1 rounded-lg text-sm font-semibold">Absent</span>
+                          <button onClick={() => toggleAbsent(s.id)}
+                            className="text-xs text-gray-400 hover:text-gray-600 underline">undo</button>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          <input type="number" placeholder="—" value={val} min="0" max={totalMarks}
+                            onChange={(e) => setMarks({ ...marks, [s.id]: e.target.value })}
+                            className={`border rounded-lg px-3 py-1.5 w-24 text-sm focus:outline-none focus:ring-2
+                              ${isOver || isNeg ? "border-red-400 focus:ring-red-300" : "border-gray-300 focus:ring-blue-500"}`} />
+                          <button onClick={() => toggleAbsent(s.id)}
+                            title="Mark student absent for this test — no grade saved, no SMS sent"
+                            className="text-xs text-orange-500 hover:text-orange-700 border border-orange-200 px-2 py-1 rounded-lg hover:bg-orange-50 transition whitespace-nowrap">
+                            Absent
+                          </button>
+                        </div>
+                      )}
                       {isOver && <p className="text-red-500 text-xs mt-0.5">Exceeds total!</p>}
                       {isNeg  && <p className="text-red-500 text-xs mt-0.5">Cannot be negative!</p>}
                     </td>
                     <td className="px-5 py-3">
-                      {pct !== null
-                        ? <span className={`font-semibold ${parseFloat(pct) >= 50 ? "text-green-600" : "text-red-600"}`}>{pct}%</span>
-                        : <span className="text-gray-300">—</span>}
+                      {isAbsent
+                        ? <span className="text-orange-400 text-xs font-medium">—</span>
+                        : pct !== null
+                          ? <span className={`font-semibold ${parseFloat(pct) >= 50 ? "text-green-600" : "text-red-600"}`}>{pct}%</span>
+                          : <span className="text-gray-300">—</span>}
                     </td>
                     <td className="px-5 py-3">
-                      {letterGrade
-                        ? <span className={`px-2 py-1 rounded-full text-xs font-bold ${gradeColor(letterGrade)}`}>{letterGrade}</span>
-                        : <span className="text-gray-300">—</span>}
+                      {isAbsent
+                        ? <span className="bg-orange-100 text-orange-600 px-2 py-1 rounded-full text-xs font-bold">AB</span>
+                        : letterGrade
+                          ? <span className={`px-2 py-1 rounded-full text-xs font-bold ${gradeColor(letterGrade)}`}>{letterGrade}</span>
+                          : <span className="text-gray-300">—</span>}
                     </td>
                   </tr>
                 )
@@ -286,7 +316,7 @@ function AddGrades() {
                 className="text-sm text-gray-500 hover:text-gray-700 underline">← Back to test details</button>
               <button onClick={handleSave} disabled={saving || invalidCount > 0}
                 className="btn-success">
-                {saving ? "Saving..." : `Save Grades for ${students.length} Students`}
+                {saving ? "Saving..." : `Save Grades for ${students.length - absentCount} Student${students.length - absentCount !== 1 ? "s" : ""}${absentCount > 0 ? ` · ${absentCount} Absent` : ""}`}
               </button>
             </div>
           </div>
