@@ -25,6 +25,7 @@ import DataExport from "./pages/DataExport"
 import AttendanceReport from "./pages/AttendanceReport"
 import GrievanceManagement from "./pages/GrievanceManagement"
 import StudentGrievance from "./pages/StudentGrievance"
+import Inquiry from "./pages/Inquiry"
 
 // ─── Loading Spinner ─────────────────────────────────────────
 function LoadingScreen() {
@@ -147,6 +148,7 @@ export default function App() {
         <Route path="/data-export"         element={<AdminRoute><DataExport /></AdminRoute>} />
         <Route path="/attendance-report"   element={<AdminRoute><AttendanceReport /></AdminRoute>} />
         <Route path="/grievances"           element={<AdminRoute><GrievanceManagement /></AdminRoute>} />
+        <Route path="/inquiries"            element={<AdminRoute><Inquiry /></AdminRoute>} />
 
         {/* Teacher routes */}
         <Route path="/teacher" element={<TeacherRoute><TeacherDashboard /></TeacherRoute>} />
@@ -168,6 +170,7 @@ export default function App() {
         <Route path="/staff/import"             element={<StaffRoute><ImportStudents /></StaffRoute>} />
         <Route path="/staff/attendance-report"  element={<StaffRoute><AttendanceReport /></StaffRoute>} />
         <Route path="/staff/grievances"         element={<StaffRoute><GrievanceManagement /></StaffRoute>} />
+        <Route path="/staff/inquiries"          element={<StaffRoute><Inquiry /></StaffRoute>} />
 
         {/* Student routes */}
         <Route path="/student/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />

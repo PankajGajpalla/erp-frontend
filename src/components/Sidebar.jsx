@@ -81,6 +81,7 @@ export default function Sidebar() {
     { to: "/import",          label: "📥 Import Students" },
     { to: "/admin-accounts",  label: "⚙️ Admin Accounts" },
     { to: "/grievances",      label: "📩 Grievances" },
+    { to: "/inquiries",       label: "🔎 Inquiries" },
     { to: "/audit-log",       label: "🔍 Audit Log" },
     { to: "/data-export",     label: "📤 Data Export" },
   ]
@@ -118,6 +119,7 @@ export default function Sidebar() {
     { to: "/staff/import",       label: "📥 Import Students" },
     { to: "/staff/courses",      label: "📚 Courses" },
     { to: "/staff/grievances",   label: "📩 Grievances" },
+    { to: "/staff/inquiries",    label: "🔎 Inquiries" },
   ]
 
   const links = isAdmin ? adminLinks : isTeacher ? teacherLinks : isStaff ? staffLinks : studentLinks

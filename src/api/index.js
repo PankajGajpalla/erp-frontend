@@ -158,3 +158,15 @@ export const getAllGrievancesAPI   = (status = "")    => API.get("/grievances", 
 export const replyGrievanceAPI    = (id, data)        => API.put(`/grievances/${id}/reply`, data)
 export const resolveGrievanceAPI  = (id)              => API.patch(`/grievances/${id}/resolve`)
 export const reopenGrievanceAPI   = (id)              => API.patch(`/grievances/${id}/reopen`)
+
+// ─── Inquiries ────────────────────────────────────────────────
+export const getInquiriesAPI        = (params = {})  => API.get("/inquiries", { params })
+export const getInquiryAPI          = (id)           => API.get(`/inquiries/${id}`)
+export const createInquiryAPI       = (data)         => API.post("/inquiries", data)
+export const updateInquiryAPI       = (id, data)     => API.put(`/inquiries/${id}`, data)
+export const deleteInquiryAPI       = (id)           => API.delete(`/inquiries/${id}`)
+export const admitInquiryAPI        = (id)           => API.post(`/inquiries/${id}/admit`)
+export const addFollowUpAPI         = (id, data)     => API.post(`/inquiries/${id}/followup`, data)
+export const getPendingFollowUpsAPI = ()             => API.get("/inquiries/pending/followup")
+export const getInquiryStatsAPI     = ()             => API.get("/inquiries/stats/summary")
+export const inquiryBulkSmsAPI      = (data)         => API.post("/inquiries/bulk-sms", data)
