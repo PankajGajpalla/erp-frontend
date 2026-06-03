@@ -2,8 +2,8 @@ import { useEffect, useMemo, useState } from "react"
 import Sidebar from "../components/Sidebar"
 import { useAuth } from "../context/AuthContext"
 import {
-  getGradesAPI, addGradeAPI, deleteGradeAPI, getStudentAPI,
-  getCoursesAPI, getSubjectsByCourseAPI, getStudentsByCourseAPI, searchStudentsAPI,
+  getGradesAPI, addGradeAPI, deleteGradeAPI,
+  getCoursesAPI, getSubjectsByCourseAPI, getStudentsByCourseAPI,
 } from "../api"
 import ReportCardModal from "../components/ReportCardModal"
 
@@ -326,459 +326,366 @@ function AddGrades() {
   )
 }
 
-// ── View Performance (admin — with delete + report card) ───────
+// ── View Performance (course-first flat list) ─────────────────
 function ViewPerformance() {
-  const [viewMode, setViewMode]               = useState("search")
-
-  // Search
-  const [searchQuery, setSearchQuery]         = useState("")
-  const [searchResults, setSearchResults]     = useState([])
-  const [searching, setSearching]             = useState(false)
-
-  // Browse by course
-  const [courses, setCourses]                 = useState([])
-  const [selectedCourse, setSelectedCourse]   = useState("")
-  const [courseStudents, setCourseStudents]   = useState([])
-  const [courseLoading, setCourseLoading]     = useState(false)
-
-  // Student data
-  const [student, setStudent]                 = useState(null)
-  const [grades, setGrades]                   = useState([])
-  const [subjects, setSubjects]               = useState([])   // for add-grade dropdown
-  const [loadingSubjects, setLoadingSubjects] = useState(false)
-  const [loading, setLoading]                 = useState(false)
-  const [error, setError]                     = useState("")
-  const [success, setSuccess]                 = useState("")
-
-  // Add grade inline
-  const EMPTY = { testTitle: "", subjectId: "", marks: "", totalMarks: "" }
-  const [showAddForm, setShowAddForm]         = useState(false)
-  const [addForm, setAddForm]                 = useState(EMPTY)
-  const [adding, setAdding]                   = useState(false)
-
-  // Delete
+  const [courses, setCourses]               = useState([])
+  const [selectedCourse, setSelectedCourse] = useState(null)
+  const [allGrades, setAllGrades]           = useState([])   // flat list with .student attached
+  const [loading, setLoading]               = useState(false)
+  const [error, setError]                   = useState("")
+  const [success, setSuccess]               = useState("")
+  const [filter, setFilter]                 = useState("")
+  const [subjectFilter, setSubjectFilter]   = useState("")
   const [deleteConfirmId, setDeleteConfirmId] = useState(null)
 
-  // Report card
-  const [showReportCard, setShowReportCard]   = useState(false)
+  // Per-student detail panel
+  const [detailStudent, setDetailStudent]   = useState(null)
+  const [showReportCard, setShowReportCard] = useState(false)
 
   useEffect(() => {
-    getCoursesAPI().then((r) => setCourses(r.data.courses || [])).catch(() => {})
+    getCoursesAPI().then(r => setCourses(r.data.courses || [])).catch(() => {})
   }, [])
-
-  useEffect(() => {
-    if (!selectedCourse) { setCourseStudents([]); return }
-    setCourseLoading(true)
-    getStudentsByCourseAPI(selectedCourse)
-      .then((r) => setCourseStudents(r.data.students || r.data || []))
-      .catch(() => setCourseStudents([]))
-      .finally(() => setCourseLoading(false))
-  }, [selectedCourse])
 
   useEffect(() => {
     if (success) { const t = setTimeout(() => setSuccess(""), 3000); return () => clearTimeout(t) }
   }, [success])
 
-  async function handleSearch(e) {
-    e.preventDefault()
-    if (!searchQuery.trim()) { setError("Enter a name, student ID, email or phone"); return }
-    setSearching(true); setError(""); setSearchResults([]); setStudent(null); setGrades([])
+  async function loadCourseGrades(course) {
+    setSelectedCourse(course)
+    setAllGrades([])
+    setFilter("")
+    setSubjectFilter("")
+    setDetailStudent(null)
+    setError("")
+    if (!course) return
+    setLoading(true)
     try {
-      const res = await searchStudentsAPI(searchQuery.trim())
-      const list = res.data.students || []
-      if (list.length === 0)    setError("No student found matching that query")
-      else if (list.length === 1) await loadStudentGrades(list[0])
-      else setSearchResults(list)
-    } catch { setError("Search failed — try again") }
-    finally { setSearching(false) }
-  }
-
-  async function loadStudentGrades(s) {
-    setLoading(true); setError(""); setSearchResults([])
-    setStudent(null); setGrades([]); setShowAddForm(false); setAddForm(EMPTY)
-    try {
-      const [studentRes, gradesRes] = await Promise.all([getStudentAPI(s.id), getGradesAPI(s.id)])
-      const profile = studentRes.data
-      setStudent(profile)
-      setGrades(gradesRes.data.grades || [])
-      if ((gradesRes.data.grades || []).length === 0) setError("No grades found for this student yet.")
-      // Load subjects for add-grade dropdown
-      if (profile.course) {
-        setLoadingSubjects(true)
-        try {
-          const cRes = await getCoursesAPI()
-          const match = cRes.data.courses.find(c => c.name === profile.course)
-          if (match) {
-            const sjRes = await getSubjectsByCourseAPI(match.id)
-            setSubjects(sjRes.data.subjects || [])
-          }
-        } catch { /* non-fatal */ }
-        finally { setLoadingSubjects(false) }
+      const studentsRes = await getStudentsByCourseAPI(course.name)
+      const students = studentsRes.data.students || []
+      if (students.length === 0) { setLoading(false); return }
+      // Parallel grade fetch for all students
+      const results = await Promise.all(
+        students.map(s =>
+          getGradesAPI(s.id)
+            .then(r => ({ student: s, grades: r.data.grades || [] }))
+            .catch(() => ({ student: s, grades: [] }))
+        )
+      )
+      const flat = []
+      for (const { student, grades } of results) {
+        for (const g of grades) flat.push({ ...g, student })
       }
-    } catch { setError("Failed to load student data") }
-    finally { setLoading(false) }
-  }
-
-  async function handleAddGrade(e) {
-    e.preventDefault(); setError("")
-    if (!addForm.testTitle.trim())                             { setError("Test title is required"); return }
-    if (!addForm.subjectId)                                    { setError("Select a subject"); return }
-    if (!addForm.marks || isNaN(parseFloat(addForm.marks)))    { setError("Enter valid marks"); return }
-    if (!addForm.totalMarks || parseFloat(addForm.totalMarks) <= 0) { setError("Enter total marks > 0"); return }
-    if (parseFloat(addForm.marks) > parseFloat(addForm.totalMarks)) { setError("Marks cannot exceed total marks"); return }
-    if (parseFloat(addForm.marks) < 0)                        { setError("Marks cannot be negative"); return }
-    const selectedSubject = subjects.find(s => s.id === parseInt(addForm.subjectId))
-    setAdding(true)
-    try {
-      await addGradeAPI({
-        student_id: student.id,
-        subject: selectedSubject?.name || addForm.subjectId,
-        marks: parseFloat(addForm.marks),
-        total_marks: parseFloat(addForm.totalMarks),
-        test_title: addForm.testTitle.trim(),
+      // Sort: test_date desc first, then id desc (most recently added)
+      flat.sort((a, b) => {
+        if (a.test_date && b.test_date) return new Date(b.test_date) - new Date(a.test_date)
+        if (a.test_date) return -1
+        if (b.test_date) return 1
+        return b.id - a.id
       })
-      setSuccess(`Grade added — ${addForm.testTitle} / ${selectedSubject?.name}`)
-      setAddForm(EMPTY); setShowAddForm(false)
-      await loadStudentGrades(student)
-    } catch (err) {
-      setError(err.response?.data?.detail || "Failed to add grade")
-    } finally { setAdding(false) }
+      setAllGrades(flat)
+    } catch {
+      setError("Failed to load grades")
+    } finally {
+      setLoading(false)
+    }
   }
 
   async function handleDelete(id) {
     try {
       await deleteGradeAPI(id)
-      setSuccess("Grade deleted!")
+      setSuccess("Grade deleted")
       setDeleteConfirmId(null)
-      if (student) await loadStudentGrades(student)
-    } catch { setError("Delete failed"); setDeleteConfirmId(null) }
+      setAllGrades(prev => prev.filter(g => g.id !== id))
+    } catch {
+      setError("Delete failed")
+      setDeleteConfirmId(null)
+    }
   }
 
-  function clearStudent() {
-    setStudent(null); setGrades([]); setError(""); setSuccess("")
-    setSearchQuery(""); setSearchResults([])
-    setSelectedCourse(""); setCourseStudents([])
-    setShowAddForm(false); setAddForm(EMPTY)
-  }
+  // Unique subjects for filter dropdown
+  const uniqueSubjects = useMemo(() => [...new Set(allGrades.map(g => g.subject))].sort(), [allGrades])
 
-  const { grouped, subjects_, avgPct, overall } = useMemo(() => {
-    const grouped   = groupBySubject(grades)
-    const subjects_ = Object.keys(grouped)
-    const totalMarks = grades.reduce((s, g) => s + g.marks, 0)
-    const totalMax   = grades.reduce((s, g) => s + g.total_marks, 0)
-    const avgPct     = totalMax > 0 ? ((totalMarks / totalMax) * 100).toFixed(1) : 0
-    const overall    = overallGrade(parseFloat(avgPct))
-    return { grouped, subjects_, avgPct, overall }
-  }, [grades])
+  // Filtered flat list
+  const filtered = useMemo(() => {
+    let list = allGrades
+    if (subjectFilter) list = list.filter(g => g.subject === subjectFilter)
+    if (filter.trim()) {
+      const q = filter.toLowerCase()
+      list = list.filter(g =>
+        g.student.name.toLowerCase().includes(q) ||
+        g.subject.toLowerCase().includes(q) ||
+        (g.test_title || "").toLowerCase().includes(q)
+      )
+    }
+    return list
+  }, [allGrades, filter, subjectFilter])
+
+  // Course-level stats
+  const stats = useMemo(() => {
+    if (!allGrades.length) return null
+    const studentIds = new Set(allGrades.map(g => g.student.id))
+    const avgPct = (allGrades.reduce((s, g) => s + (g.marks / g.total_marks) * 100, 0) / allGrades.length).toFixed(1)
+    return { students: studentIds.size, tests: allGrades.length, avgPct, subjects: uniqueSubjects.length }
+  }, [allGrades, uniqueSubjects])
+
+  // Per-student grades (for drill-down panel)
+  const detailGrades = useMemo(() => {
+    if (!detailStudent) return []
+    return allGrades.filter(g => g.student.id === detailStudent.id)
+  }, [allGrades, detailStudent])
+
+  const detailStats = useMemo(() => {
+    if (!detailGrades.length) return null
+    const totalM = detailGrades.reduce((s, g) => s + g.marks, 0)
+    const totalMax = detailGrades.reduce((s, g) => s + g.total_marks, 0)
+    const avgPct = totalMax > 0 ? ((totalM / totalMax) * 100).toFixed(1) : 0
+    return { avgPct, overall: overallGrade(parseFloat(avgPct)) }
+  }, [detailGrades])
+
+  function fmtDate(d) {
+    if (!d) return "—"
+    return new Date(d).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "2-digit" })
+  }
 
   return (
     <div className="space-y-5">
 
-      {/* ── Student selector ── */}
-      <div className="card overflow-hidden">
-        <div className="flex items-center justify-between px-5 pt-4 pb-0">
-          <h3 className="text-base font-semibold text-gray-700">Find Student</h3>
-          <div className="flex border rounded-lg overflow-hidden text-sm">
-            <button onClick={() => { setViewMode("search"); setSelectedCourse(""); setCourseStudents([]) }}
-              className={`px-4 py-1.5 font-medium transition ${viewMode === "search" ? "bg-gray-800 text-white" : "bg-white text-gray-500 hover:bg-gray-50"}`}>
-              Search
-            </button>
-            <button onClick={() => { setViewMode("course"); setSearchQuery(""); setSearchResults([]) }}
-              className={`px-4 py-1.5 font-medium transition ${viewMode === "course" ? "bg-gray-800 text-white" : "bg-white text-gray-500 hover:bg-gray-50"}`}>
-              Browse by Course
-            </button>
+      {/* ── Course selector + stats ── */}
+      <div className="card p-5">
+        <div className="flex flex-wrap gap-5 items-end">
+          <div className="flex-1 min-w-[200px]">
+            <label className="form-label">Select Course</label>
+            <select
+              value={selectedCourse?.id || ""}
+              onChange={e => {
+                const c = courses.find(c => c.id === parseInt(e.target.value))
+                loadCourseGrades(c || null)
+              }}
+              className="inp"
+            >
+              <option value="">— Choose a course to view grades —</option>
+              {courses.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
           </div>
-        </div>
 
-        <div className="p-5 space-y-3">
-          {viewMode === "search" ? (
-            <form onSubmit={handleSearch} className="flex gap-2">
-              <input type="text" placeholder="Search by name, STU0001, email or phone…"
-                value={searchQuery}
-                onChange={(e) => { setSearchQuery(e.target.value); setSearchResults([]) }}
-                className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-              <button type="submit" disabled={searching}
-                className="bg-gray-700 text-white px-5 py-2 rounded-lg hover:bg-gray-800 transition disabled:opacity-50 text-sm">
-                {searching ? "…" : "Search"}
-              </button>
-            </form>
-          ) : (
-            <div className="space-y-3">
-              <div>
-                <label className="form-label">Select Course</label>
-                <select value={selectedCourse}
-                  onChange={(e) => { setSelectedCourse(e.target.value); setStudent(null); setGrades([]) }}
-                  className="inp">
-                  <option value="">— Choose a course —</option>
-                  {courses.map((c) => <option key={c.id} value={c.name}>{c.name}</option>)}
-                </select>
-              </div>
-              {courseLoading ? (
-                <div className="flex items-center gap-2 text-gray-400 text-sm py-1">
-                  <div className="w-4 h-4 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />Loading students…
+          {stats && (
+            <div className="flex gap-5">
+              {[
+                { label: "Students",  value: stats.students,  color: "text-blue-600" },
+                { label: "Entries",   value: stats.tests,     color: "text-gray-800" },
+                { label: "Avg Score", value: `${stats.avgPct}%`, color: pctColor(parseFloat(stats.avgPct)) },
+                { label: "Subjects",  value: stats.subjects,  color: "text-purple-600" },
+              ].map(s => (
+                <div key={s.label} className="text-center">
+                  <p className={`text-2xl font-bold ${s.color}`}>{s.value}</p>
+                  <p className="text-xs text-gray-400">{s.label}</p>
                 </div>
-              ) : selectedCourse && courseStudents.length === 0 ? (
-                <p className="text-sm text-gray-400">No students in this course.</p>
-              ) : courseStudents.length > 0 ? (
-                <>
-                  <p className="text-xs text-gray-400">{courseStudents.length} student{courseStudents.length !== 1 ? "s" : ""} — click to view grades</p>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 max-h-56 overflow-y-auto pr-1">
-                    {courseStudents.map((s) => (
-                      <button key={s.id} onClick={() => loadStudentGrades(s)}
-                        className={`text-left rounded-lg border px-3 py-2.5 transition hover:shadow-md hover:border-blue-400 hover:bg-blue-50
-                          ${student?.id === s.id ? "border-blue-500 bg-blue-50 shadow-md" : "border-gray-200 bg-white"}`}>
-                        <div className="flex items-center gap-2 mb-1">
-                          <div className="w-7 h-7 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-xs font-bold flex-shrink-0">
-                            {s.name.charAt(0).toUpperCase()}
-                          </div>
-                          <span className="font-mono text-xs text-gray-400">{s.student_code || `#${s.id}`}</span>
-                        </div>
-                        <p className="text-sm font-semibold text-gray-800 leading-tight truncate">{s.name}</p>
-                        {s.phone && <p className="text-xs text-gray-400 truncate mt-0.5">{s.phone}</p>}
-                      </button>
-                    ))}
-                  </div>
-                </>
-              ) : null}
+              ))}
             </div>
           )}
-
-          {/* Multiple search matches */}
-          {searchResults.length > 1 && (
-            <div>
-              <p className="text-xs text-gray-500 mb-2">{searchResults.length} students found — click one:</p>
-              <div className="divide-y border rounded-lg overflow-hidden">
-                {searchResults.map((s) => (
-                  <button key={s.id} onClick={() => loadStudentGrades(s)}
-                    className="w-full text-left px-4 py-2.5 hover:bg-blue-50 transition flex items-center gap-4 text-sm">
-                    <span className="font-mono text-xs text-gray-400 w-20 shrink-0">{s.student_code || `#${s.id}`}</span>
-                    <span className="font-medium text-gray-800 flex-1">{s.name}</span>
-                    <span className="text-gray-400 text-xs">{s.course || ""}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {error && <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-2"><p className="text-red-600 text-sm">{error}</p></div>}
-          {success && <div className="bg-green-50 border border-green-200 rounded-lg px-4 py-2"><p className="text-green-600 text-sm">{success}</p></div>}
         </div>
       </div>
 
-      {/* Loading */}
+      {/* Feedback */}
       {loading && (
         <div className="flex items-center gap-3 text-gray-400 text-sm p-4">
           <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-          Loading grades…
+          Loading grades for all students…
+        </div>
+      )}
+      {error   && <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-2.5"><p className="text-red-600 text-sm">{error}</p></div>}
+      {success && <div className="bg-green-50 border border-green-200 rounded-lg px-4 py-2.5"><p className="text-green-600 text-sm">{success}</p></div>}
+
+      {/* Empty state */}
+      {selectedCourse && !loading && allGrades.length === 0 && !error && (
+        <div className="card p-14 text-center">
+          <p className="text-4xl mb-3">📝</p>
+          <p className="text-gray-400">No grades recorded for <strong>{selectedCourse.name}</strong> yet.</p>
+          <p className="text-xs text-gray-400 mt-1">Use the "Add Grades" tab to enter test results.</p>
         </div>
       )}
 
-      {/* Student banner */}
-      {student && !loading && (
-        <div className="bg-white rounded-xl shadow p-5 flex items-center gap-4">
-          {student.photo
-            ? <img src={student.photo} alt="" className="w-12 h-12 rounded-full object-cover flex-shrink-0" />
-            : <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center text-xl flex-shrink-0">🎓</div>
-          }
-          <div className="flex-1">
-            <p className="text-lg font-bold text-gray-800">{student.name}</p>
-            <p className="text-gray-500 text-sm">
-              <span className="font-mono mr-2">{student.student_code || `#${student.id}`}</span>
-              {student.course && <span>· {student.course}</span>}
-            </p>
+      {/* ── Main flat list ── */}
+      {allGrades.length > 0 && !loading && (
+        <div className="card overflow-hidden">
+
+          {/* Filter bar */}
+          <div className="p-4 border-b flex flex-wrap gap-3 items-center bg-gray-50">
+            <input
+              type="text"
+              placeholder="Search student, subject or test title…"
+              value={filter}
+              onChange={e => setFilter(e.target.value)}
+              className="flex-1 min-w-[180px] border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <select
+              value={subjectFilter}
+              onChange={e => setSubjectFilter(e.target.value)}
+              className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">All Subjects</option>
+              {uniqueSubjects.map(s => <option key={s} value={s}>{s}</option>)}
+            </select>
+            <span className="text-xs text-gray-400 whitespace-nowrap">
+              {filtered.length}{filtered.length !== allGrades.length ? ` of ${allGrades.length}` : ""} entries
+            </span>
           </div>
-          {grades.length > 0 && (
-            <div className="text-right mr-2">
-              <p className={`text-2xl font-bold ${overall.color}`}>{overall.grade}</p>
-              <p className="text-xs text-gray-400">{avgPct}% average</p>
-            </div>
-          )}
-          <div className="flex gap-2 flex-shrink-0">
-            {grades.length > 0 && (
-              <button onClick={() => setShowReportCard(true)}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg text-xs font-medium transition">
-                📄 Report Card
-              </button>
-            )}
-            <button onClick={() => setShowAddForm(v => !v)}
-              className="bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-lg text-xs font-medium transition">
-              {showAddForm ? "✕ Cancel" : "+ Add Grade"}
-            </button>
-            <button onClick={clearStudent}
-              className="text-gray-400 hover:text-red-500 text-xl font-bold leading-none transition px-1">×</button>
+
+          {/* Table */}
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm min-w-[680px]">
+              <thead>
+                <tr className="bg-gray-800 text-white text-xs uppercase tracking-wide">
+                  <th className="text-left px-4 py-3 w-24">Date</th>
+                  <th className="text-left px-4 py-3">Student</th>
+                  <th className="text-left px-4 py-3">Subject</th>
+                  <th className="text-left px-4 py-3">Test</th>
+                  <th className="text-center px-4 py-3 w-24">Score</th>
+                  <th className="text-center px-4 py-3 w-16">%</th>
+                  <th className="text-center px-4 py-3 w-16">Grade</th>
+                  <th className="w-10 px-2 py-3" />
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.length === 0 ? (
+                  <tr><td colSpan="8" className="px-4 py-10 text-center text-gray-400">No matching entries</td></tr>
+                ) : filtered.map(g => {
+                  const pct = ((g.marks / g.total_marks) * 100).toFixed(1)
+                  return (
+                    <tr key={g.id} className="border-t hover:bg-gray-50 transition">
+                      <td className="px-4 py-3 text-xs text-gray-400 whitespace-nowrap">{fmtDate(g.test_date)}</td>
+                      <td className="px-4 py-3">
+                        <button
+                          onClick={() => setDetailStudent(prev => prev?.id === g.student.id ? null : g.student)}
+                          className="text-left group"
+                        >
+                          <p className="font-semibold text-gray-800 group-hover:text-blue-600 transition leading-tight">{g.student.name}</p>
+                          <p className="text-xs text-gray-400">{g.student.student_code || `#${g.student.id}`}</p>
+                        </button>
+                      </td>
+                      <td className="px-4 py-3 text-gray-600 text-sm">{g.subject}</td>
+                      <td className="px-4 py-3 font-medium text-gray-700">{g.test_title || <span className="text-gray-400 italic text-xs">Unnamed</span>}</td>
+                      <td className="px-4 py-3 text-center font-mono text-gray-700">{g.marks}/{g.total_marks}</td>
+                      <td className="px-4 py-3 text-center">
+                        <span className={`font-semibold text-sm ${pctColor(parseFloat(pct))}`}>{pct}%</span>
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${gradeColor(g.grade)}`}>{g.grade}</span>
+                      </td>
+                      <td className="px-2 py-3 text-center">
+                        {deleteConfirmId === g.id ? (
+                          <div className="flex flex-col gap-1 items-center">
+                            <button onClick={() => handleDelete(g.id)} className="bg-red-500 text-white px-2 py-0.5 rounded text-xs w-full">Yes</button>
+                            <button onClick={() => setDeleteConfirmId(null)} className="bg-gray-200 text-gray-700 px-2 py-0.5 rounded text-xs w-full">No</button>
+                          </div>
+                        ) : (
+                          <button onClick={() => setDeleteConfirmId(g.id)}
+                            className="text-gray-300 hover:text-red-500 transition text-base leading-none">🗑️</button>
+                        )}
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
           </div>
         </div>
       )}
 
-      {/* Add Grade Form */}
-      {showAddForm && student && !loading && (
-        <div className="bg-white rounded-xl shadow p-5 border-l-4 border-green-500">
-          <h3 className="text-sm font-semibold text-gray-700 mb-4">Add Grade for {student.name}</h3>
-          <form onSubmit={handleAddGrade}>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
-              <div className="sm:col-span-2">
-                <label className="form-label">Test Title *</label>
-                <input type="text" value={addForm.testTitle}
-                  onChange={e => setAddForm(f => ({ ...f, testTitle: e.target.value }))}
-                  placeholder="e.g. Unit Test 1, Mid Term, Final Exam"
-                  className="inp" />
+      {/* ── Per-student drill-down panel ── */}
+      {detailStudent && detailGrades.length > 0 && (
+        <div className="card overflow-hidden border-t-4 border-blue-500">
+          {/* Panel header */}
+          <div className="flex items-center justify-between px-5 py-4 bg-blue-50 border-b">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-lg font-bold text-blue-600 flex-shrink-0">
+                {detailStudent.name.charAt(0).toUpperCase()}
               </div>
               <div>
-                <label className="form-label">Subject *</label>
-                {loadingSubjects ? (
-                  <div className="border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-400">Loading...</div>
-                ) : subjects.length > 0 ? (
-                  <select value={addForm.subjectId}
-                    onChange={e => setAddForm(f => ({ ...f, subjectId: e.target.value }))}
-                    className="inp">
-                    <option value="">Select subject</option>
-                    {subjects.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                  </select>
-                ) : (
-                  <input type="text" value={addForm.subjectId}
-                    onChange={e => setAddForm(f => ({ ...f, subjectId: e.target.value }))}
-                    placeholder="Type subject name"
-                    className="inp" />
-                )}
-                {!loadingSubjects && subjects.length === 0 && student?.course && (
-                  <p className="text-xs text-orange-500 mt-1">No subjects for "{student.course}" — type manually</p>
-                )}
+                <p className="font-bold text-gray-800">{detailStudent.name}</p>
+                <p className="text-xs text-gray-500">
+                  {detailStudent.student_code || `#${detailStudent.id}`}
+                  {selectedCourse && ` · ${selectedCourse.name}`}
+                  {detailStats && ` · ${detailGrades.length} test${detailGrades.length !== 1 ? "s" : ""}`}
+                </p>
               </div>
-              <div>
-                <label className="form-label">Total Marks *</label>
-                <input type="number" value={addForm.totalMarks} min="1"
-                  onChange={e => setAddForm(f => ({ ...f, totalMarks: e.target.value }))}
-                  placeholder="e.g. 100"
-                  className="inp" />
-              </div>
-              <div>
-                <label className="form-label">Marks Obtained *</label>
-                <input type="number" value={addForm.marks} min="0" max={addForm.totalMarks || undefined}
-                  onChange={e => setAddForm(f => ({ ...f, marks: e.target.value }))}
-                  placeholder="e.g. 75"
-                  className="inp" />
-                {addForm.marks && addForm.totalMarks && parseFloat(addForm.marks) > parseFloat(addForm.totalMarks) && (
-                  <p className="text-xs text-red-500 mt-0.5">Exceeds total marks!</p>
-                )}
-              </div>
-              {addForm.marks && addForm.totalMarks && parseFloat(addForm.totalMarks) > 0 && (
-                <div className="flex items-center gap-3 bg-gray-50 rounded-lg px-4 py-2 sm:col-span-2">
-                  <span className="text-xs text-gray-500">Preview:</span>
-                  <span className="font-semibold text-gray-700 text-sm">
-                    {((parseFloat(addForm.marks) / parseFloat(addForm.totalMarks)) * 100).toFixed(1)}%
-                  </span>
-                  {(() => {
-                    const pct = (parseFloat(addForm.marks) / parseFloat(addForm.totalMarks)) * 100
-                    const g = pct >= 90 ? "A+" : pct >= 80 ? "A" : pct >= 70 ? "B" : pct >= 60 ? "C" : pct >= 50 ? "D" : "F"
-                    return <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${gradeColor(g)}`}>{g}</span>
-                  })()}
+              {detailStats && (
+                <div className="ml-4 flex items-center gap-3">
+                  <div className="text-center">
+                    <p className={`text-xl font-bold ${pctColor(parseFloat(detailStats.avgPct))}`}>{detailStats.avgPct}%</p>
+                    <p className="text-xs text-gray-400">Avg</p>
+                  </div>
+                  <div className="text-center">
+                    <p className={`text-xl font-bold ${detailStats.overall.color}`}>{detailStats.overall.grade}</p>
+                    <p className="text-xs text-gray-400">Grade</p>
+                  </div>
                 </div>
               )}
             </div>
-            <button type="submit" disabled={adding}
-              className="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition font-medium disabled:opacity-50 text-sm">
-              {adding ? "Saving..." : "Save Grade"}
-            </button>
-          </form>
-        </div>
-      )}
-
-      {/* Summary cards */}
-      {grades.length > 0 && !loading && (
-        <>
-          <div className="grid grid-cols-3 gap-4">
-            <div className="bg-white rounded-xl shadow p-5 border-l-4 border-blue-500">
-              <p className="text-sm text-gray-500">Subjects</p>
-              <p className="text-2xl font-bold text-gray-800">{subjects_.length}</p>
-            </div>
-            <div className="bg-white rounded-xl shadow p-5 border-l-4 border-green-500">
-              <p className="text-sm text-gray-500">Overall Score</p>
-              <p className="text-2xl font-bold text-gray-800">{avgPct}%</p>
-            </div>
-            <div className="bg-white rounded-xl shadow p-5 border-l-4 border-purple-500">
-              <p className="text-sm text-gray-500">Overall Grade</p>
-              <p className={`text-2xl font-bold ${overall.color}`}>{overall.grade}</p>
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <button
+                onClick={() => setShowReportCard(true)}
+                className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg text-xs font-medium transition">
+                📄 Report Card
+              </button>
+              <button
+                onClick={() => setDetailStudent(null)}
+                className="text-gray-400 hover:text-red-500 text-xl font-bold leading-none transition px-1">×</button>
             </div>
           </div>
 
-          {/* Subject-wise tables */}
-          <div className="space-y-4">
-            {subjects_.map((subject) => {
-              const tests  = grouped[subject]
+          {/* Subject-wise breakdown */}
+          <div className="p-4 space-y-3">
+            {Object.entries(groupBySubject(detailGrades)).map(([subject, tests]) => {
               const sTotal = tests.reduce((s, g) => s + g.marks, 0)
               const sMax   = tests.reduce((s, g) => s + g.total_marks, 0)
               const sPct   = sMax > 0 ? ((sTotal / sMax) * 100).toFixed(1) : 0
               const sGrade = overallGrade(parseFloat(sPct))
               return (
-                <div key={subject} className="card overflow-hidden">
-                  <div className="flex items-center justify-between px-5 py-4 border-b bg-gray-50">
-                    <div>
-                      <p className="font-semibold text-gray-800">{subject}</p>
-                      <p className="text-xs text-gray-400 mt-0.5">{tests.length} test{tests.length !== 1 ? "s" : ""}</p>
-                    </div>
-                    <div className="flex items-center gap-3">
+                <div key={subject} className="border rounded-xl overflow-hidden">
+                  <div className="flex items-center justify-between px-4 py-2.5 bg-gray-50 border-b">
+                    <p className="font-semibold text-gray-700 text-sm">{subject}</p>
+                    <div className="flex items-center gap-2">
                       <div className="hidden sm:flex items-center gap-2">
-                        <div className="w-24 bg-gray-200 rounded-full h-2">
-                          <div className={`h-2 rounded-full ${barColor(parseFloat(sPct))}`} style={{ width: `${Math.min(sPct, 100)}%` }} />
+                        <div className="w-20 bg-gray-200 rounded-full h-1.5">
+                          <div className={`h-1.5 rounded-full ${barColor(parseFloat(sPct))}`} style={{ width: `${Math.min(sPct, 100)}%` }} />
                         </div>
-                        <span className={`text-sm font-semibold ${pctColor(parseFloat(sPct))}`}>{sPct}%</span>
+                        <span className={`text-xs font-semibold ${pctColor(parseFloat(sPct))}`}>{sPct}%</span>
                       </div>
-                      <span className={`px-3 py-1 rounded-full text-sm font-bold ${gradeColor(sGrade.grade)}`}>{sGrade.grade}</span>
+                      <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${gradeColor(sGrade.grade)}`}>{sGrade.grade}</span>
                     </div>
                   </div>
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm min-w-[400px]">
-                      <thead>
-                        <tr className="text-xs text-gray-500 border-b bg-gray-50">
-                          <th className="text-left px-5 py-2 font-medium">Test</th>
-                          <th className="text-left px-5 py-2 font-medium">Marks</th>
-                          <th className="text-left px-5 py-2 font-medium">Total</th>
-                          <th className="text-left px-5 py-2 font-medium">%</th>
-                          <th className="text-left px-5 py-2 font-medium">Grade</th>
-                          <th className="px-5 py-2" />
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {tests.map((g) => {
-                          const pct = ((g.marks / g.total_marks) * 100).toFixed(1)
-                          return (
-                            <tr key={g.id} className="border-t hover:bg-gray-50 transition">
-                              <td className="px-5 py-3 font-medium text-gray-700">{g.test_title || <span className="text-gray-400 italic">Unnamed</span>}</td>
-                              <td className="px-5 py-3">{g.marks}</td>
-                              <td className="px-5 py-3 text-gray-500">{g.total_marks}</td>
-                              <td className="px-5 py-3">
-                                <span className={`font-semibold ${pctColor(parseFloat(pct))}`}>{pct}%</span>
-                              </td>
-                              <td className="px-5 py-3">
-                                <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${gradeColor(g.grade)}`}>{g.grade}</span>
-                              </td>
-                              <td className="px-5 py-3 text-right">
-                                {deleteConfirmId === g.id ? (
-                                  <div className="flex gap-1 justify-end items-center">
-                                    <span className="text-xs text-red-600">Delete?</span>
-                                    <button onClick={() => handleDelete(g.id)} className="bg-red-500 text-white px-2 py-0.5 rounded text-xs">Yes</button>
-                                    <button onClick={() => setDeleteConfirmId(null)} className="bg-gray-200 text-gray-700 px-2 py-0.5 rounded text-xs">No</button>
-                                  </div>
-                                ) : (
-                                  <button onClick={() => setDeleteConfirmId(g.id)}
-                                    className="bg-red-500 hover:bg-red-600 text-white px-2 py-0.5 rounded text-xs">Delete</button>
-                                )}
-                              </td>
-                            </tr>
-                          )
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
+                  <table className="w-full text-sm">
+                    <tbody>
+                      {tests.map(g => {
+                        const pct = ((g.marks / g.total_marks) * 100).toFixed(1)
+                        return (
+                          <tr key={g.id} className="border-t hover:bg-gray-50 transition">
+                            <td className="px-4 py-2.5 text-xs text-gray-400 w-20 whitespace-nowrap">{fmtDate(g.test_date)}</td>
+                            <td className="px-4 py-2.5 font-medium text-gray-700">
+                              {g.test_title || <span className="italic text-gray-400 text-xs">Unnamed</span>}
+                            </td>
+                            <td className="px-4 py-2.5 text-center font-mono text-gray-600">{g.marks}/{g.total_marks}</td>
+                            <td className="px-4 py-2.5 text-center">
+                              <span className={`font-semibold text-xs ${pctColor(parseFloat(pct))}`}>{pct}%</span>
+                            </td>
+                            <td className="px-4 py-2.5 text-center">
+                              <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${gradeColor(g.grade)}`}>{g.grade}</span>
+                            </td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
                 </div>
               )
             })}
           </div>
-        </>
+        </div>
       )}
 
-      {showReportCard && student && (
-        <ReportCardModal studentId={student.id} onClose={() => setShowReportCard(false)} />
+      {showReportCard && detailStudent && (
+        <ReportCardModal studentId={detailStudent.id} onClose={() => setShowReportCard(false)} />
       )}
     </div>
   )
