@@ -155,6 +155,7 @@ function AllInquiries() {
   const [filterStatus, setFilterStatus] = useState("")
   const [filterMode, setFilterMode]     = useState("")
   const [filterCourse, setFilterCourse] = useState("")
+  const [filterName, setFilterName]     = useState("")
 
   // Edit modal state
   const [editInq, setEditInq]     = useState(null)
@@ -250,6 +251,7 @@ function AllInquiries() {
     if (filterStatus && i.status !== filterStatus) return false
     if (filterMode   && i.mode   !== filterMode)   return false
     if (filterCourse && i.course_interested !== filterCourse) return false
+    if (filterName.trim() && !i.student_name.toLowerCase().includes(filterName.toLowerCase().trim())) return false
     return true
   })
 
@@ -260,6 +262,13 @@ function AllInquiries() {
 
       {/* Filters */}
       <div className="card p-4 flex flex-wrap gap-3 items-center">
+        <input
+          type="text"
+          placeholder="Search by name…"
+          value={filterName}
+          onChange={e => setFilterName(e.target.value)}
+          className="inp w-44 bg-white"
+        />
         <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} className="inp w-auto bg-white">
           <option value="">All Status</option>
           <option value="inquiry">Inquiry</option>
@@ -278,8 +287,8 @@ function AllInquiries() {
           {courses.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
         </select>
         <button onClick={load} className="btn-primary text-sm">Apply</button>
-        {(filterStatus || filterMode || filterCourse) && (
-          <button onClick={() => { setFilterStatus(""); setFilterMode(""); setFilterCourse(""); }} className="btn-ghost text-sm">Clear</button>
+        {(filterStatus || filterMode || filterCourse || filterName) && (
+          <button onClick={() => { setFilterStatus(""); setFilterMode(""); setFilterCourse(""); setFilterName(""); }} className="btn-ghost text-sm">Clear</button>
         )}
         <span className="text-xs text-slate-400 ml-auto">{filtered.length} inquiries</span>
       </div>
