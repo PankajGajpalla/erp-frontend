@@ -40,6 +40,7 @@ export default function Inquiry() {
               { key: "dashboard",  label: "📊 Dashboard" },
               { key: "all",        label: "📋 All Inquiries" },
               { key: "add",        label: "➕ Add Inquiry" },
+              { key: "import",     label: "📥 Import Excel" },
               { key: "followups",  label: "🔔 Follow-ups Due" },
             ]}
             active={activeTab}
@@ -49,6 +50,7 @@ export default function Inquiry() {
         {activeTab === "dashboard" && <Dashboard />}
         {activeTab === "all"       && <AllInquiries />}
         {activeTab === "add"       && <AddInquiry onSuccess={() => setActiveTab("all")} />}
+        {activeTab === "import"    && <ImportInquiries onSuccess={() => setActiveTab("all")} />}
         {activeTab === "followups" && <FollowUps />}
       </main>
     </div>
@@ -622,6 +624,422 @@ function InquiryFormFields({ form, setForm, courses }) {
         <textarea value={form.custom_remark} onChange={e => set("custom_remark", e.target.value)}
           placeholder="Any additional notes about this inquiry…" rows={2} className="inp" />
       </div>
+    </div>
+  )
+}
+
+// ─── Import Inquiries from Excel ─────────────────────────────
+function ImportInquiries({ onSuccess }) {
+  const [rows, setRows]           = useState([])   // parsed + validated preview rows
+  const [fileName, setFileName]   = useState("")
+  const [dragOver, setDragOver]   = useState(false)
+  const [importing, setImporting] = useState(false)
+  const [progress, setProgress]   = useState(0)
+  const [result, setResult]       = useState(null)  // { saved, failed, errors[] }
+  const [parseError, setParseError] = useState("")
+
+  // ── Column config ──
+  // header label (lowercase match) → field key
+  const COL_MAP = {
+    "date":               "date",
+    "student name":       "student_name",
+    "name":               "student_name",
+    "course":             "course_interested",
+    "course interested":  "course_interested",
+    "student phone":      "student_phone",
+    "phone":              "student_phone",
+    "mobile":             "student_phone",
+    "parent phone":       "parent_phone",
+    "father phone":       "parent_phone",
+    "mode":               "mode",
+    "attended by":        "attended_by",
+    "staff":              "attended_by",
+    "amount":             "negotiated_amount",
+    "negotiated amount":  "negotiated_amount",
+    "fees":               "negotiated_amount",
+    "referral":           "referral_source",
+    "referred by":        "referral_source",
+    "referral source":    "referral_source",
+    "remarks":            "remarks",
+    "interest level":     "remarks",
+    "status":             "status",
+    "comment":            "custom_remark",
+    "comments":           "custom_remark",
+    "custom remark":      "custom_remark",
+    "notes":              "custom_remark",
+  }
+
+  function normaliseMode(val) {
+    if (!val) return "walk_in"
+    const v = String(val).toLowerCase().trim()
+    if (v.includes("phone") || v.includes("call")) return "phone"
+    return "walk_in"
+  }
+
+  function normaliseRemarks(val) {
+    if (!val) return "interested"
+    const v = String(val).toLowerCase().trim()
+    if (v.includes("not") || v.includes("uninterested")) return "not_interested"
+    if (v.includes("demo")) return "demo_requested"
+    if (v.includes("other")) return "other"
+    return "interested"
+  }
+
+  function normaliseStatus(val) {
+    if (!val) return "inquiry"
+    const v = String(val).toLowerCase().trim()
+    if (v.includes("admit")) return "admitted"
+    if (v.includes("not") || v.includes("close")) return "not_interested"
+    if (v.includes("demo")) return "demo_requested"
+    if (v.includes("interest")) return "interested"
+    return "inquiry"
+  }
+
+  function parseExcelDate(val) {
+    if (!val) return new Date().toISOString().split("T")[0]
+    // Excel serial number
+    if (typeof val === "number") {
+      const d = new Date(Math.round((val - 25569) * 864e5))
+      return d.toISOString().split("T")[0]
+    }
+    const s = String(val).trim()
+    // DD/MM/YYYY or DD-MM-YYYY
+    const m = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})$/)
+    if (m) {
+      const y = m[3].length === 2 ? `20${m[3]}` : m[3]
+      return `${y}-${m[2].padStart(2,"0")}-${m[1].padStart(2,"0")}`
+    }
+    // YYYY-MM-DD passthrough
+    if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s
+    return new Date().toISOString().split("T")[0]
+  }
+
+  function validateRow(row, idx) {
+    const errs = []
+    if (!row.student_name?.trim()) errs.push("Student Name required")
+    if (!row.mode)                  errs.push("Mode required")
+    return errs
+  }
+
+  async function parseFile(file) {
+    setParseError(""); setRows([]); setResult(null)
+    setFileName(file.name)
+    try {
+      const XLSX = await import("xlsx")
+      const buffer = await file.arrayBuffer()
+      const wb = XLSX.read(buffer, { type: "array", cellDates: false })
+      const ws = wb.Sheets[wb.SheetNames[0]]
+      const raw = XLSX.utils.sheet_to_json(ws, { header: 1, defval: "" })
+      if (raw.length < 2) { setParseError("File is empty or has no data rows"); return }
+
+      // First row = headers
+      const headers = raw[0].map(h => String(h).toLowerCase().trim())
+      const dataRows = raw.slice(1).filter(r => r.some(c => c !== ""))
+
+      const parsed = dataRows.map((r, idx) => {
+        const obj = {}
+        headers.forEach((h, i) => {
+          const field = COL_MAP[h]
+          if (field) obj[field] = r[i]
+        })
+
+        const row = {
+          _idx:              idx + 2,  // Excel row number
+          date:              parseExcelDate(obj.date),
+          student_name:      String(obj.student_name || "").trim(),
+          course_interested: String(obj.course_interested || "").trim(),
+          student_phone:     String(obj.student_phone || "").trim(),
+          parent_phone:      String(obj.parent_phone  || "").trim(),
+          mode:              normaliseMode(obj.mode),
+          attended_by:       String(obj.attended_by || "").trim(),
+          negotiated_amount: obj.negotiated_amount ? parseFloat(obj.negotiated_amount) || "" : "",
+          referral_source:   String(obj.referral_source || "").trim(),
+          remarks:           normaliseRemarks(obj.remarks),
+          status:            normaliseStatus(obj.status),
+          custom_remark:     String(obj.custom_remark || "").trim(),
+        }
+        row._errors = validateRow(row, idx)
+        return row
+      })
+
+      if (parsed.length === 0) { setParseError("No data rows found after the header row"); return }
+      setRows(parsed)
+    } catch (e) {
+      setParseError(`Failed to read file: ${e.message}`)
+    }
+  }
+
+  function handleFileInput(e) {
+    const f = e.target.files?.[0]
+    if (f) parseFile(f)
+  }
+
+  function handleDrop(e) {
+    e.preventDefault(); setDragOver(false)
+    const f = e.dataTransfer.files?.[0]
+    if (f) parseFile(f)
+  }
+
+  async function handleImport() {
+    const valid = rows.filter(r => r._errors.length === 0)
+    if (valid.length === 0) return
+    setImporting(true); setProgress(0); setResult(null)
+    let saved = 0, failed = 0
+    const failedRows = []
+    for (const row of valid) {
+      const payload = {
+        date:              row.date,
+        student_name:      row.student_name,
+        mode:              row.mode,
+        course_interested: row.course_interested || undefined,
+        student_phone:     row.student_phone     || undefined,
+        parent_phone:      row.parent_phone      || undefined,
+        attended_by:       row.attended_by       || undefined,
+        negotiated_amount: row.negotiated_amount !== "" ? parseFloat(row.negotiated_amount) : undefined,
+        referral_source:   row.referral_source   || undefined,
+        remarks:           row.remarks           || undefined,
+        status:            row.status            || "inquiry",
+        custom_remark:     row.custom_remark     || undefined,
+      }
+      try {
+        await createInquiryAPI(payload)
+        saved++
+      } catch {
+        failed++
+        failedRows.push(`Row ${row._idx} (${row.student_name})`)
+      }
+      setProgress(Math.round(((saved + failed) / valid.length) * 100))
+    }
+    setImporting(false)
+    setResult({ saved, failed, failedRows })
+    if (saved > 0) {
+      setRows([])
+      setFileName("")
+    }
+  }
+
+  async function downloadTemplate() {
+    const XLSX = await import("xlsx")
+    const headers = [
+      "Date","Student Name","Course Interested","Student Phone","Parent Phone",
+      "Mode","Attended By","Negotiated Amount","Referral Source","Remarks","Custom Remark","Status"
+    ]
+    const sample = [
+      ["15/06/2025","Rahul Sharma","BCA","9876543210","9876543211","walk_in","Admin","15000","Friend","interested","Wants weekend batch","inquiry"],
+      ["16/06/2025","Priya Patel","BBA","8765432109","","phone","Staff","","Google","demo_requested","","interested"],
+    ]
+    const ws = XLSX.utils.aoa_to_sheet([headers, ...sample])
+    // Column widths
+    ws["!cols"] = headers.map((h, i) => ({ wch: [10,20,20,14,14,10,14,16,16,14,24,12][i] || 14 }))
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, "Inquiries")
+    XLSX.writeFile(wb, "inquiry_import_template.xlsx")
+  }
+
+  const validCount   = rows.filter(r => r._errors.length === 0).length
+  const invalidCount = rows.filter(r => r._errors.length > 0).length
+
+  return (
+    <div className="space-y-5 max-w-5xl">
+
+      {/* Header card */}
+      <div className="card p-5 flex flex-wrap gap-4 items-start justify-between">
+        <div>
+          <h3 className="font-semibold text-slate-800 text-base">Import Inquiries from Excel</h3>
+          <p className="text-sm text-slate-500 mt-1">
+            Upload a <code className="bg-slate-100 px-1 rounded text-xs">.xlsx</code> or{" "}
+            <code className="bg-slate-100 px-1 rounded text-xs">.xls</code> file.
+            First row must be the header row.
+          </p>
+        </div>
+        <button onClick={downloadTemplate}
+          className="flex items-center gap-2 border border-green-500 text-green-700 hover:bg-green-50 px-4 py-2 rounded-lg text-sm font-medium transition">
+          ⬇️ Download Template
+        </button>
+      </div>
+
+      {/* Column reference */}
+      <div className="card p-4">
+        <p className="text-xs font-semibold text-slate-600 mb-2 uppercase tracking-wide">Accepted Column Headers</p>
+        <div className="flex flex-wrap gap-2">
+          {["Date","Student Name","Course Interested","Student Phone","Parent Phone","Mode","Attended By",
+            "Negotiated Amount","Referral Source","Remarks","Custom Remark","Status"].map(h => (
+            <span key={h} className="bg-slate-100 text-slate-600 px-2 py-0.5 rounded text-xs font-mono">{h}</span>
+          ))}
+        </div>
+        <p className="text-xs text-slate-400 mt-2">
+          <strong>Mode:</strong> "phone" or "walk_in" &nbsp;·&nbsp;
+          <strong>Remarks:</strong> interested / not_interested / demo_requested / other &nbsp;·&nbsp;
+          <strong>Date:</strong> DD/MM/YYYY or YYYY-MM-DD
+        </p>
+      </div>
+
+      {/* Drop zone */}
+      {rows.length === 0 && !parseError && (
+        <div
+          onDragOver={e => { e.preventDefault(); setDragOver(true) }}
+          onDragLeave={() => setDragOver(false)}
+          onDrop={handleDrop}
+          className={`border-2 border-dashed rounded-xl p-12 text-center transition cursor-pointer
+            ${dragOver ? "border-blue-500 bg-blue-50" : "border-slate-200 hover:border-blue-300 hover:bg-slate-50"}`}
+          onClick={() => document.getElementById("inq-excel-input").click()}
+        >
+          <p className="text-4xl mb-3">📊</p>
+          <p className="font-semibold text-slate-700">Drop your Excel file here</p>
+          <p className="text-sm text-slate-400 mt-1">or click to browse</p>
+          <input id="inq-excel-input" type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={handleFileInput} />
+        </div>
+      )}
+
+      {/* Already have a file, show replace option */}
+      {rows.length > 0 && (
+        <div className="flex items-center gap-3 flex-wrap">
+          <span className="text-sm text-slate-600">📎 <strong>{fileName}</strong></span>
+          <button
+            onClick={() => { setRows([]); setFileName(""); setResult(null); document.getElementById("inq-excel-input2").click() }}
+            className="text-xs text-blue-600 hover:underline">
+            Replace file
+          </button>
+          <input id="inq-excel-input2" type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={handleFileInput} />
+        </div>
+      )}
+
+      {/* Parse error */}
+      {parseError && (
+        <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-start gap-3">
+          <span className="text-red-500 text-xl">⚠️</span>
+          <div>
+            <p className="font-semibold text-red-700">Could not read file</p>
+            <p className="text-sm text-red-600">{parseError}</p>
+            <button onClick={() => { setParseError(""); document.getElementById("inq-excel-input").click() }}
+              className="text-xs text-blue-600 hover:underline mt-2">Try another file</button>
+          </div>
+        </div>
+      )}
+
+      {/* Import result */}
+      {result && (
+        <div className={`rounded-xl p-4 border ${result.failed === 0 ? "bg-green-50 border-green-200" : "bg-orange-50 border-orange-200"}`}>
+          <p className={`font-semibold ${result.failed === 0 ? "text-green-700" : "text-orange-700"}`}>
+            {result.failed === 0
+              ? `✅ All ${result.saved} inquiries imported successfully!`
+              : `⚠️ ${result.saved} imported · ${result.failed} failed`}
+          </p>
+          {result.failedRows.length > 0 && (
+            <p className="text-xs text-orange-600 mt-1">{result.failedRows.join(", ")}</p>
+          )}
+          {result.saved > 0 && (
+            <button onClick={() => onSuccess?.()} className="mt-2 text-sm text-blue-600 hover:underline">
+              View All Inquiries →
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Preview table */}
+      {rows.length > 0 && (
+        <div className="card overflow-hidden">
+          {/* Preview header */}
+          <div className="p-4 border-b bg-slate-50 flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="font-semibold text-slate-800">Preview — {rows.length} rows found</p>
+              <div className="flex gap-3 mt-1 text-xs">
+                {validCount   > 0 && <span className="text-green-600 font-medium">✓ {validCount} valid</span>}
+                {invalidCount > 0 && <span className="text-red-500 font-medium">✗ {invalidCount} with errors</span>}
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              {importing ? (
+                <div className="flex items-center gap-2 text-sm text-slate-500">
+                  <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+                  Importing… {progress}%
+                </div>
+              ) : (
+                <button
+                  onClick={handleImport}
+                  disabled={validCount === 0}
+                  className="btn-primary disabled:opacity-50">
+                  📥 Import {validCount} Quer{validCount !== 1 ? "ies" : "y"}
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Progress bar */}
+          {importing && (
+            <div className="h-1 bg-slate-100">
+              <div className="h-1 bg-blue-500 transition-all duration-300" style={{ width: `${progress}%` }} />
+            </div>
+          )}
+
+          {/* Table */}
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs min-w-[900px]">
+              <thead>
+                <tr className="bg-slate-800 text-white">
+                  <th className="px-3 py-2 text-left w-8">#</th>
+                  <th className="px-3 py-2 text-left">Date</th>
+                  <th className="px-3 py-2 text-left">Student Name</th>
+                  <th className="px-3 py-2 text-left">Course</th>
+                  <th className="px-3 py-2 text-left">Phone</th>
+                  <th className="px-3 py-2 text-left">Mode</th>
+                  <th className="px-3 py-2 text-left">Attended By</th>
+                  <th className="px-3 py-2 text-left">Remarks</th>
+                  <th className="px-3 py-2 text-left">Status</th>
+                  <th className="px-3 py-2 text-left">Issues</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((row, i) => {
+                  const hasError = row._errors.length > 0
+                  return (
+                    <tr key={i} className={`border-t ${hasError ? "bg-red-50" : i % 2 === 0 ? "bg-white" : "bg-slate-50/50"}`}>
+                      <td className="px-3 py-2 text-slate-400">{row._idx}</td>
+                      <td className="px-3 py-2 text-slate-600 whitespace-nowrap">{row.date}</td>
+                      <td className="px-3 py-2 font-medium text-slate-800">
+                        {row.student_name || <span className="text-red-400 italic">Missing</span>}
+                      </td>
+                      <td className="px-3 py-2 text-slate-600">{row.course_interested || <span className="text-slate-300">—</span>}</td>
+                      <td className="px-3 py-2 text-slate-600">
+                        <p>{row.student_phone || "—"}</p>
+                        {row.parent_phone && <p className="text-slate-400">P: {row.parent_phone}</p>}
+                      </td>
+                      <td className="px-3 py-2">
+                        <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${row.mode === "phone" ? "bg-blue-100 text-blue-700" : "bg-purple-100 text-purple-700"}`}>
+                          {row.mode === "phone" ? "📞" : "🚶"} {row.mode}
+                        </span>
+                      </td>
+                      <td className="px-3 py-2 text-slate-600">{row.attended_by || "—"}</td>
+                      <td className="px-3 py-2 text-slate-600 capitalize">{row.remarks?.replace("_", " ") || "—"}</td>
+                      <td className="px-3 py-2">
+                        <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${
+                          row.status === "admitted" ? "bg-green-100 text-green-700" :
+                          row.status === "not_interested" ? "bg-red-100 text-red-700" :
+                          "bg-blue-100 text-blue-700"}`}>
+                          {row.status}
+                        </span>
+                      </td>
+                      <td className="px-3 py-2">
+                        {hasError ? (
+                          <span className="text-red-500 font-medium">{row._errors.join("; ")}</span>
+                        ) : (
+                          <span className="text-green-500">✓</span>
+                        )}
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          {invalidCount > 0 && (
+            <div className="px-4 py-3 bg-red-50 border-t border-red-100 text-xs text-red-600">
+              ⚠️ {invalidCount} row{invalidCount !== 1 ? "s" : ""} with errors will be skipped during import. Fix the file and re-upload to include them.
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }
