@@ -124,7 +124,7 @@ function AddGrades() {
   async function handleSave() {
     setError(""); setSuccess("")
     const missing  = students.filter((s) => !absent[s.id] && (marks[s.id] === "" || marks[s.id] === undefined))
-    if (missing.length > 0) { setError(`Enter marks for all ${missing.length} remaining students (or mark them absent)`); return }
+    if (missing.length > 0) { setError(`Enter marks for all ${missing.length} remaining students (or skip them)`); return }
     const invalid  = students.filter((s) => !absent[s.id] && parseFloat(marks[s.id]) > parseFloat(totalMarks))
     if (invalid.length > 0) { setError(`Marks exceed total (${totalMarks}) for: ${invalid.map((s) => s.name).join(", ")}`); return }
     const negative = students.filter((s) => !absent[s.id] && parseFloat(marks[s.id]) < 0)
@@ -141,7 +141,7 @@ function AddGrades() {
     }
     setSaving(false); setSaveProgress(0)
     if (failed === 0) {
-      const absentNote = skippedAbsent > 0 ? ` · ${skippedAbsent} absent skipped` : ""
+      const absentNote = skippedAbsent > 0 ? ` · ${skippedAbsent} skipped` : ""
       setSuccess(`Grades saved for ${saved} students — ${testTitle} / ${selectedSubject.name}${absentNote}`)
       setStudents([]); setMarks({}); setAbsent({}); setTestTitle(""); setTestDate(new Date().toISOString().split("T")[0]); setSelectedCourse(null); setSelectedSubject(null); setSubjects([]); setTotalMarks("")
     } else {
@@ -228,7 +228,7 @@ function AddGrades() {
               <div><p className="text-xs text-gray-500 uppercase tracking-wide">Total Marks</p><p className="font-semibold text-gray-700">{totalMarks}</p></div>
               <div className="ml-auto text-right">
                 <p className="text-xs text-gray-500">{filledCount} / {students.length - absentCount} filled</p>
-                {absentCount > 0 && <p className="text-xs text-orange-500 font-medium">{absentCount} absent</p>}
+                {absentCount > 0 && <p className="text-xs text-orange-500 font-medium">{absentCount} skipped</p>}
                 {invalidCount > 0 && <p className="text-xs text-red-600 font-medium">{invalidCount} exceed total!</p>}
               </div>
             </div>
@@ -263,7 +263,7 @@ function AddGrades() {
                     <td className="px-5 py-3">
                       {isAbsent ? (
                         <div className="flex items-center gap-2">
-                          <span className="bg-orange-100 text-orange-700 px-3 py-1 rounded-lg text-sm font-semibold">Absent</span>
+                          <span className="bg-gray-100 text-gray-500 px-3 py-1 rounded-lg text-sm font-semibold">Skipped</span>
                           <button onClick={() => toggleAbsent(s.id)}
                             className="text-xs text-gray-400 hover:text-gray-600 underline">undo</button>
                         </div>
@@ -274,9 +274,9 @@ function AddGrades() {
                             className={`border rounded-lg px-3 py-1.5 w-24 text-sm focus:outline-none focus:ring-2
                               ${isOver || isNeg ? "border-red-400 focus:ring-red-300" : "border-gray-300 focus:ring-blue-500"}`} />
                           <button onClick={() => toggleAbsent(s.id)}
-                            title="Mark student absent for this test — no grade saved, no SMS sent"
-                            className="text-xs text-orange-500 hover:text-orange-700 border border-orange-200 px-2 py-1 rounded-lg hover:bg-orange-50 transition whitespace-nowrap">
-                            Absent
+                            title="Skip student — no grade saved, no SMS sent"
+                            className="text-xs text-gray-500 hover:text-gray-700 border border-gray-200 px-2 py-1 rounded-lg hover:bg-gray-100 transition whitespace-nowrap">
+                            Skip
                           </button>
                         </div>
                       )}
@@ -285,14 +285,14 @@ function AddGrades() {
                     </td>
                     <td className="px-5 py-3">
                       {isAbsent
-                        ? <span className="text-orange-400 text-xs font-medium">—</span>
+                        ? <span className="text-gray-400 text-xs font-medium">—</span>
                         : pct !== null
                           ? <span className={`font-semibold ${parseFloat(pct) >= 50 ? "text-green-600" : "text-red-600"}`}>{pct}%</span>
                           : <span className="text-gray-300">—</span>}
                     </td>
                     <td className="px-5 py-3">
                       {isAbsent
-                        ? <span className="bg-orange-100 text-orange-600 px-2 py-1 rounded-full text-xs font-bold">AB</span>
+                        ? <span className="bg-gray-100 text-gray-500 px-2 py-1 rounded-full text-xs font-bold">—</span>
                         : letterGrade
                           ? <span className={`px-2 py-1 rounded-full text-xs font-bold ${gradeColor(letterGrade)}`}>{letterGrade}</span>
                           : <span className="text-gray-300">—</span>}
@@ -316,7 +316,7 @@ function AddGrades() {
                 className="text-sm text-gray-500 hover:text-gray-700 underline">← Back to test details</button>
               <button onClick={handleSave} disabled={saving || invalidCount > 0}
                 className="btn-success">
-                {saving ? "Saving..." : `Save Grades for ${students.length - absentCount} Student${students.length - absentCount !== 1 ? "s" : ""}${absentCount > 0 ? ` · ${absentCount} Absent` : ""}`}
+                {saving ? "Saving..." : `Save Grades for ${students.length - absentCount} Student${students.length - absentCount !== 1 ? "s" : ""}${absentCount > 0 ? ` · ${absentCount} Skipped` : ""}`}
               </button>
             </div>
           </div>
