@@ -7,6 +7,7 @@ import {
   markAttendanceBulkAPI,
   checkAttendanceBulkAPI,
   getStudentAttendanceAPI,
+  searchStudentsAPI,
 } from "../api"
 
 export default function TeacherAttendance() {
@@ -392,55 +393,149 @@ function MarkAttendance() {
 // VIEW ATTENDANCE
 // ─────────────────────────────────────────────────────────────────────────────
 function ViewAttendance() {
-  const [studentId, setStudentId] = useState("")
-  const [records, setRecords]     = useState([])
-  const [loading, setLoading]     = useState(false)
-  const [error, setError]         = useState("")
+  const [courses, setCourses]             = useState([])
+  const [selectedCourse, setSelectedCourse] = useState("")
+  const [courseStudents, setCourseStudents] = useState([])
+  const [courseLoading, setCourseLoading] = useState(false)
+  const [nameFilter, setNameFilter]       = useState("")
 
-  async function handleSearch(e) {
-    e.preventDefault()
-    if (!studentId) { setError("Enter a student ID"); return }
-    setLoading(true); setError("")
+  const [student, setStudent]   = useState(null)
+  const [records, setRecords]   = useState([])
+  const [loading, setLoading]   = useState(false)
+  const [error, setError]       = useState("")
+
+  useEffect(() => {
+    getCoursesAPI().then((r) => setCourses(r.data.courses || [])).catch(() => {})
+  }, [])
+
+  useEffect(() => {
+    if (!selectedCourse) { setCourseStudents([]); setNameFilter(""); return }
+    setCourseLoading(true)
+    getStudentsByCourseAPI(selectedCourse)
+      .then((r) => setCourseStudents(r.data.students || []))
+      .catch(() => setCourseStudents([]))
+      .finally(() => setCourseLoading(false))
+  }, [selectedCourse])
+
+  async function loadStudentAttendance(s) {
+    setStudent(s); setRecords([]); setError(""); setLoading(true)
     try {
-      const res = await getStudentAttendanceAPI(studentId)
-      setRecords(res.data.attendance)
-      if (res.data.attendance.length === 0) setError("No attendance records found for this student")
+      const res = await getStudentAttendanceAPI(s.id)
+      const att = res.data.attendance || []
+      setRecords(att)
+      if (att.length === 0) setError("No attendance records found for this student yet.")
     } catch { setError("Failed to load attendance") }
     finally { setLoading(false) }
   }
 
+  function clearStudent() {
+    setStudent(null); setRecords([]); setError("")
+  }
+
+  const filtered = nameFilter.trim()
+    ? courseStudents.filter((s) => s.name.toLowerCase().includes(nameFilter.toLowerCase()))
+    : courseStudents
+
   const present = records.filter((r) => r.status === "present").length
+  const absent  = records.filter((r) => r.status === "absent").length
   const total   = records.length
   const pct     = total > 0 ? ((present / total) * 100).toFixed(1) : 0
 
   return (
     <div className="space-y-5">
-      <div className="card p-6">
-        <h3 className="section-title mb-3">View Student Attendance</h3>
-        <form onSubmit={handleSearch} className="flex gap-3">
-          <input type="number" placeholder="Student ID" value={studentId} min="1"
-            onChange={(e) => { setStudentId(e.target.value); setError("") }}
-            className="inp w-40" />
-          <button type="submit" disabled={loading} className="btn-ghost">
-            {loading ? "Searching…" : "Search"}
-          </button>
-        </form>
-        {error && <div className="mt-3"><Alert type="error" message={error} onClose={() => setError("")} /></div>}
+
+      {/* ── Course + Name selector ── */}
+      <div className="card p-6 space-y-4">
+        <h3 className="section-title">View Student Attendance</h3>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div>
+            <label className="form-label">Course</label>
+            <select value={selectedCourse}
+              onChange={(e) => { setSelectedCourse(e.target.value); clearStudent() }}
+              className="inp">
+              <option value="">— Select a course —</option>
+              {courses.map((c) => <option key={c.id} value={c.name}>{c.name}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="form-label">Search by Name</label>
+            <input type="text" placeholder="Type student name…"
+              value={nameFilter} onChange={(e) => setNameFilter(e.target.value)}
+              disabled={!selectedCourse}
+              className="inp" />
+          </div>
+        </div>
+
+        {courseLoading && <LoadingState message="Loading students…" />}
+
+        {!courseLoading && selectedCourse && courseStudents.length === 0 && (
+          <p className="text-sm text-slate-400">No students found in this course.</p>
+        )}
+
+        {filtered.length > 0 && (
+          <div>
+            <p className="text-xs text-slate-400 mb-2">
+              {filtered.length} student{filtered.length !== 1 ? "s" : ""} — click to view attendance
+            </p>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 max-h-60 overflow-y-auto pr-1">
+              {filtered.map((s) => (
+                <button key={s.id} onClick={() => loadStudentAttendance(s)}
+                  className={`text-left rounded-lg border px-3 py-2.5 transition hover:shadow-md hover:border-blue-400 hover:bg-blue-50
+                    ${student?.id === s.id ? "border-blue-500 bg-blue-50 shadow-md" : "border-slate-200 bg-white"}`}>
+                  <div className="flex items-center gap-2 mb-1">
+                    <div className="w-7 h-7 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-xs font-bold flex-shrink-0">
+                      {s.name.charAt(0).toUpperCase()}
+                    </div>
+                    <span className="font-mono text-xs text-slate-400">{s.student_code || `#${s.id}`}</span>
+                  </div>
+                  <p className="text-sm font-semibold text-slate-800 leading-tight truncate">{s.name}</p>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {error && <Alert type="error" message={error} onClose={() => setError("")} />}
       </div>
 
-      {records.length > 0 && (
+      {loading && <LoadingState message="Loading attendance…" />}
+
+      {/* ── Student attendance result ── */}
+      {student && !loading && records.length > 0 && (
         <>
-          <div className="grid grid-cols-3 gap-4">
-            {[["Total Classes", total, "border-blue-500", "text-blue-600"],
-              ["Present", present, "border-green-500", "text-green-600"],
-              [`${pct}%`, "Attendance", "border-purple-500", "text-purple-600"]].map(([val, label, border, text]) => (
-              <div key={label} className={`card p-5 border-l-4 ${border}`}>
-                <p className="text-xs text-slate-500">{label}</p>
-                <p className={`text-2xl font-bold ${text}`}>{val}</p>
-              </div>
-            ))}
+          {/* Student banner */}
+          <div className="card p-4 flex items-center gap-4">
+            <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center text-lg flex-shrink-0">🎓</div>
+            <div className="flex-1">
+              <p className="font-bold text-slate-800">{student.name}</p>
+              <p className="text-xs text-slate-400 font-mono">{student.student_code || `#${student.id}`} · {selectedCourse}</p>
+            </div>
+            <button onClick={clearStudent} className="text-slate-400 hover:text-red-500 text-xl font-bold leading-none transition">×</button>
           </div>
+
+          {/* Stats */}
+          <div className="grid grid-cols-3 gap-4">
+            <div className="card p-5 border-l-4 border-blue-500">
+              <p className="text-xs text-slate-500">Total Classes</p>
+              <p className="text-2xl font-bold text-blue-600">{total}</p>
+            </div>
+            <div className="card p-5 border-l-4 border-green-500">
+              <p className="text-xs text-slate-500">Present</p>
+              <p className="text-2xl font-bold text-green-600">{present}</p>
+            </div>
+            <div className="card p-5 border-l-4 border-purple-500">
+              <p className="text-xs text-slate-500">Attendance %</p>
+              <p className={`text-2xl font-bold ${parseFloat(pct) >= 75 ? "text-green-600" : parseFloat(pct) >= 50 ? "text-orange-500" : "text-red-600"}`}>{pct}%</p>
+            </div>
+          </div>
+
+          {/* Records table */}
           <div className="card overflow-hidden">
+            <div className="px-5 py-3 border-b border-slate-100 flex justify-between items-center">
+              <p className="font-semibold text-slate-700">{student.name} — Attendance Log</p>
+              {absent > 0 && <span className="text-xs text-red-500 font-medium">{absent} absent</span>}
+            </div>
             <table className="tbl">
               <thead>
                 <tr><th>Date</th><th>Status</th></tr>
