@@ -2,7 +2,7 @@ import axios from "axios";
 
 // ✅ Use environment variable for base URL
 const API = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || "https://erp-backend-37nj.onrender.com",
+  baseURL: import.meta.env.VITE_API_URL || "https://erp-backend-8wcj.onrender.com",
 });
 
 // ✅ Attach token to every request
