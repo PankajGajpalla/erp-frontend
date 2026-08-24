@@ -32,6 +32,11 @@ const EMPTY_FORM = {
   medium: "",
   admission_date: "",
   photo: "",
+  inst1_date: "", inst1_amount: "",
+  inst2_date: "", inst2_amount: "",
+  inst3_date: "", inst3_amount: "",
+  inst4_date: "", inst4_amount: "",
+  inst5_date: "", inst5_amount: "",
 }
 
 export default function Students() {
@@ -178,6 +183,11 @@ export default function Students() {
       medium: form.medium || null,
       admission_date: form.admission_date || null,
       photo: form.photo || null,
+      inst1_date: form.inst1_date || null, inst1_amount: form.inst1_amount !== "" ? parseFloat(form.inst1_amount) : null,
+      inst2_date: form.inst2_date || null, inst2_amount: form.inst2_amount !== "" ? parseFloat(form.inst2_amount) : null,
+      inst3_date: form.inst3_date || null, inst3_amount: form.inst3_amount !== "" ? parseFloat(form.inst3_amount) : null,
+      inst4_date: form.inst4_date || null, inst4_amount: form.inst4_amount !== "" ? parseFloat(form.inst4_amount) : null,
+      inst5_date: form.inst5_date || null, inst5_amount: form.inst5_amount !== "" ? parseFloat(form.inst5_amount) : null,
     }
 
     setSubmitting(true)
@@ -229,6 +239,11 @@ export default function Students() {
       medium: student.medium || "",
       admission_date: student.admission_date || "",
       photo: student.photo || "",
+      inst1_date: student.inst1_date || "", inst1_amount: student.inst1_amount ?? "",
+      inst2_date: student.inst2_date || "", inst2_amount: student.inst2_amount ?? "",
+      inst3_date: student.inst3_date || "", inst3_amount: student.inst3_amount ?? "",
+      inst4_date: student.inst4_date || "", inst4_amount: student.inst4_amount ?? "",
+      inst5_date: student.inst5_date || "", inst5_amount: student.inst5_amount ?? "",
     })
     setAdditionalCourseIds((student.additional_courses || []).map((c) => c.id))
     setPhotoPreview(student.photo || null)
@@ -489,6 +504,32 @@ export default function Students() {
                   <option value="english">English</option>
                 </select>
               </div>
+            </div>
+
+            {/* Fee Instalments */}
+            <SectionTitle>Fee Instalments (Optional)</SectionTitle>
+            <div className="mb-5 space-y-3">
+              <p className="text-xs text-slate-400 -mt-3">Enter instalment schedule — date and amount for each instalment.</p>
+              {[1, 2, 3, 4, 5].map(n => (
+                <div key={n} className="flex gap-3 items-center">
+                  <span className="text-xs font-semibold text-slate-500 w-20 flex-shrink-0">Inst. {n}</span>
+                  <input
+                    type="date"
+                    className="inp flex-1"
+                    value={form[`inst${n}_date`]}
+                    onChange={e => setForm(p => ({ ...p, [`inst${n}_date`]: e.target.value }))}
+                  />
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    placeholder="Amount (₹)"
+                    className="inp flex-1"
+                    value={form[`inst${n}_amount`]}
+                    onChange={e => setForm(p => ({ ...p, [`inst${n}_amount`]: e.target.value }))}
+                  />
+                </div>
+              ))}
             </div>
 
             {/* Additional Courses */}
@@ -785,6 +826,27 @@ export default function Students() {
                 <div className="col-span-2"><DetailRow label="Permanent Address" value={viewStudent.permanent_address} /></div>
                 <div className="col-span-2"><DetailRow label="Local Address" value={viewStudent.local_address} /></div>
               </div>
+
+              {/* Instalment Schedule */}
+              {[1,2,3,4,5].some(n => viewStudent[`inst${n}_date`] || viewStudent[`inst${n}_amount`]) && (
+                <div className="mt-4">
+                  <p className="text-xs text-slate-400 font-medium mb-2">Fee Instalment Schedule</p>
+                  <div className="space-y-1.5">
+                    {[1,2,3,4,5].map(n => {
+                      const d = viewStudent[`inst${n}_date`]
+                      const a = viewStudent[`inst${n}_amount`]
+                      if (!d && !a) return null
+                      return (
+                        <div key={n} className="flex justify-between items-center bg-slate-50 rounded-lg px-3 py-1.5 text-sm">
+                          <span className="text-slate-500 font-medium">Instalment {n}</span>
+                          <span className="text-slate-700">{d || "—"}</span>
+                          <span className="font-semibold text-slate-800">{a != null ? `₹${Number(a).toLocaleString("en-IN")}` : "—"}</span>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
 
               <div className="mt-5 flex gap-2 flex-wrap">
                 <button onClick={() => setReportCardId(viewStudent.id)} className="btn-primary">📄 Report Card</button>
