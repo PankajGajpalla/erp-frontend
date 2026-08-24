@@ -83,6 +83,7 @@ export default function Sidebar() {
     { to: "/grievances",      label: "📩 Grievances" },
     { to: "/inquiries",       label: "🔎 Inquiries" },
     { to: "/tasks",           label: "✅ Tasks" },
+    { to: "/expenses",        label: "💸 Expenses" },
     { to: "/audit-log",       label: "🔍 Audit Log" },
     { to: "/data-export",     label: "📤 Data Export" },
   ]

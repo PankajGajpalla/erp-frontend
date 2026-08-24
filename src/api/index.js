@@ -159,6 +159,13 @@ export const replyGrievanceAPI    = (id, data)        => API.put(`/grievances/${
 export const resolveGrievanceAPI  = (id)              => API.patch(`/grievances/${id}/resolve`)
 export const reopenGrievanceAPI   = (id)              => API.patch(`/grievances/${id}/reopen`)
 
+// ─── Expenses ────────────────────────────────────────────────────────────────
+export const createExpenseAPI  = (data)       => API.post("/expenses", data)
+export const getExpensesAPI    = (params={})  => API.get("/expenses", { params })
+export const getExpenseStatsAPI= ()           => API.get("/expenses/stats")
+export const editExpenseAPI    = (id, data)   => API.put(`/expenses/${id}`, data)
+export const deleteExpenseAPI  = (id)         => API.delete(`/expenses/${id}`)
+
 // ─── Tasks ───────────────────────────────────────────────────────────────────
 export const getEmployeesAPI      = ()           => API.get("/users/employees")
 export const createTaskAPI        = (data)       => API.post("/tasks", data)

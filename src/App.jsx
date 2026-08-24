@@ -28,6 +28,7 @@ import StudentGrievance from "./pages/StudentGrievance"
 import Inquiry from "./pages/Inquiry"
 import Tasks from "./pages/Tasks"
 import MyTasks from "./pages/MyTasks"
+import Expenses from "./pages/Expenses"
 
 // ─── Loading Spinner ─────────────────────────────────────────
 function LoadingScreen() {
@@ -152,6 +153,7 @@ export default function App() {
         <Route path="/grievances"           element={<AdminRoute><GrievanceManagement /></AdminRoute>} />
         <Route path="/inquiries"            element={<AdminRoute><Inquiry /></AdminRoute>} />
         <Route path="/tasks"                element={<AdminRoute><Tasks /></AdminRoute>} />
+        <Route path="/expenses"             element={<AdminRoute><Expenses /></AdminRoute>} />
 
         {/* Teacher routes */}
         <Route path="/teacher" element={<TeacherRoute><TeacherDashboard /></TeacherRoute>} />
