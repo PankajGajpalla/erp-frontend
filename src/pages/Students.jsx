@@ -13,6 +13,8 @@ import {
   setStudentAdditionalCoursesAPI,
   getStudentCredentialsAPI,
   updateStudentCredentialsAPI,
+  sendStudentWhatsAppAPI,
+  bulkSendWhatsAppReportAPI,
 } from "../api"
 
 const EMPTY_FORM = {
@@ -62,6 +64,10 @@ export default function Students() {
   const [loginLoading, setLoginLoading] = useState(false)
   const formRef = useRef(null)
   const fileInputRef = useRef(null)
+  const [sendingReport, setSendingReport]   = useState(false)
+  const [bulkSending, setBulkSending]       = useState(false)
+  const [reportResult, setReportResult]     = useState(null) // { success, message }
+  const [bulkResult, setBulkResult]         = useState(null) // { sent, failed, total }
 
   useEffect(() => { fetchStudents(); fetchCourses() }, [])
 
@@ -245,6 +251,33 @@ export default function Students() {
     setAdditionalCourseIds((prev) =>
       prev.includes(courseId) ? prev.filter((id) => id !== courseId) : [...prev, courseId]
     )
+  }
+
+  async function handleSendReport(studentId) {
+    setSendingReport(true)
+    setReportResult(null)
+    try {
+      const r = await sendStudentWhatsAppAPI(studentId)
+      setReportResult({ success: true, message: r.data.message })
+    } catch (err) {
+      setReportResult({ success: false, message: err.response?.data?.detail || "Failed to send report" })
+    } finally {
+      setSendingReport(false)
+    }
+  }
+
+  async function handleBulkSendReport(course) {
+    if (!course) return
+    setBulkSending(true)
+    setBulkResult(null)
+    try {
+      const r = await bulkSendWhatsAppReportAPI(course)
+      setBulkResult(r.data)
+    } catch (err) {
+      setBulkResult({ error: err.response?.data?.detail || "Bulk send failed" })
+    } finally {
+      setBulkSending(false)
+    }
   }
 
   async function handleDelete(id) {
@@ -526,7 +559,29 @@ export default function Students() {
             </select>
             <button onClick={() => { setSearch(""); setCourseFilter("all") }} className="btn-ghost">Clear</button>
             <span className="text-sm text-slate-400">{filtered.length} of {students.length} students</span>
+            {courseFilter !== "all" && (
+              <button
+                onClick={() => handleBulkSendReport(courseFilter)}
+                disabled={bulkSending}
+                className="btn bg-green-500 hover:bg-green-600 text-white text-sm disabled:opacity-50 whitespace-nowrap"
+              >
+                {bulkSending ? "Sending…" : `📲 Send Report to ${courseFilter}`}
+              </button>
+            )}
           </div>
+          {bulkResult && (
+            <div className={`mx-4 mb-3 px-4 py-2 rounded-lg text-sm ${bulkResult.error ? "bg-red-50 text-red-700" : "bg-green-50 text-green-700"}`}>
+              {bulkResult.error ? `❌ ${bulkResult.error}` : (
+                <>✅ Sent to {bulkResult.sent}/{bulkResult.total} parents.
+                  {bulkResult.failed?.length > 0 && (
+                    <span className="ml-2 text-orange-600">
+                      Failed: {bulkResult.failed.map(f => f.name).join(", ")}
+                    </span>
+                  )}
+                </>
+              )}
+            </div>
+          )}
         </div>
 
         {/* ── STUDENT TABLE ── */}
@@ -733,9 +788,21 @@ export default function Students() {
 
               <div className="mt-5 flex gap-2 flex-wrap">
                 <button onClick={() => setReportCardId(viewStudent.id)} className="btn-primary">📄 Report Card</button>
+                <button
+                  onClick={() => handleSendReport(viewStudent.id)}
+                  disabled={sendingReport}
+                  className="btn bg-green-500 hover:bg-green-600 text-white disabled:opacity-50"
+                >
+                  {sendingReport ? "Sending…" : "📲 Send Report"}
+                </button>
                 <button onClick={() => { setViewStudent(null); handleEdit(viewStudent) }} className="btn bg-yellow-400 hover:bg-yellow-500 text-white">Edit</button>
-                <button onClick={() => setViewStudent(null)} className="btn-ghost">Close</button>
+                <button onClick={() => { setViewStudent(null); setReportResult(null) }} className="btn-ghost">Close</button>
               </div>
+              {reportResult && (
+                <div className={`mt-3 px-3 py-2 rounded-lg text-sm ${reportResult.success ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700"}`}>
+                  {reportResult.success ? "✅" : "❌"} {reportResult.message}
+                </div>
+              )}
             </div>
           </div>
         )}

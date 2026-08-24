@@ -159,6 +159,11 @@ export const replyGrievanceAPI    = (id, data)        => API.put(`/grievances/${
 export const resolveGrievanceAPI  = (id)              => API.patch(`/grievances/${id}/resolve`)
 export const reopenGrievanceAPI   = (id)              => API.patch(`/grievances/${id}/reopen`)
 
+// ─── Student Reports (WhatsApp) ──────────────────────────────────────────────
+export const getStudentReportAPI       = (id)     => API.get(`/students/${id}/report`)
+export const sendStudentWhatsAppAPI    = (id)     => API.post(`/students/${id}/send-whatsapp-report`)
+export const bulkSendWhatsAppReportAPI = (course) => API.post("/students/bulk-send-whatsapp-report", { course })
+
 // ─── Inquiries ────────────────────────────────────────────────
 export const getInquiriesAPI        = (params = {})  => API.get("/inquiries", { params })
 export const getInquiryAPI          = (id)           => API.get(`/inquiries/${id}`)
