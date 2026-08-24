@@ -159,6 +159,15 @@ export const replyGrievanceAPI    = (id, data)        => API.put(`/grievances/${
 export const resolveGrievanceAPI  = (id)              => API.patch(`/grievances/${id}/resolve`)
 export const reopenGrievanceAPI   = (id)              => API.patch(`/grievances/${id}/reopen`)
 
+// ─── Tasks ───────────────────────────────────────────────────────────────────
+export const getEmployeesAPI      = ()           => API.get("/users/employees")
+export const createTaskAPI        = (data)       => API.post("/tasks", data)
+export const getAllTasksAPI        = (params={})  => API.get("/tasks", { params })
+export const getMyTasksAPI        = ()           => API.get("/tasks/my")
+export const editTaskAPI          = (id, data)   => API.put(`/tasks/${id}`, data)
+export const updateTaskStatusAPI  = (id, data)   => API.patch(`/tasks/${id}/status`, data)
+export const deleteTaskAPI        = (id)         => API.delete(`/tasks/${id}`)
+
 // ─── Student Reports (WhatsApp) ──────────────────────────────────────────────
 export const getStudentReportAPI       = (id)     => API.get(`/students/${id}/report`)
 export const sendStudentWhatsAppAPI    = (id)     => API.post(`/students/${id}/send-whatsapp-report`)

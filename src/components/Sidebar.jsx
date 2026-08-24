@@ -82,6 +82,7 @@ export default function Sidebar() {
     { to: "/admin-accounts",  label: "⚙️ Admin Accounts" },
     { to: "/grievances",      label: "📩 Grievances" },
     { to: "/inquiries",       label: "🔎 Inquiries" },
+    { to: "/tasks",           label: "✅ Tasks" },
     { to: "/audit-log",       label: "🔍 Audit Log" },
     { to: "/data-export",     label: "📤 Data Export" },
   ]
@@ -105,6 +106,7 @@ export default function Sidebar() {
     { to: "/teacher/timetable",     label: "🗓️ Timetable" },
     { to: "/teacher/exam-schedule", label: "📅 Exam Schedule" },
     { to: "/teacher/notices",       label: "📢 Notices" },
+    { to: "/teacher/my-tasks",      label: "✅ My Tasks" },
   ]
 
   const staffLinks = [
@@ -120,6 +122,7 @@ export default function Sidebar() {
     { to: "/staff/courses",      label: "📚 Courses" },
     { to: "/staff/grievances",   label: "📩 Grievances" },
     { to: "/staff/inquiries",    label: "🔎 Inquiries" },
+    { to: "/staff/my-tasks",     label: "✅ My Tasks" },
   ]
 
   const links = isAdmin ? adminLinks : isTeacher ? teacherLinks : isStaff ? staffLinks : studentLinks

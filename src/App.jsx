@@ -26,6 +26,8 @@ import AttendanceReport from "./pages/AttendanceReport"
 import GrievanceManagement from "./pages/GrievanceManagement"
 import StudentGrievance from "./pages/StudentGrievance"
 import Inquiry from "./pages/Inquiry"
+import Tasks from "./pages/Tasks"
+import MyTasks from "./pages/MyTasks"
 
 // ─── Loading Spinner ─────────────────────────────────────────
 function LoadingScreen() {
@@ -149,6 +151,7 @@ export default function App() {
         <Route path="/attendance-report"   element={<AdminRoute><AttendanceReport /></AdminRoute>} />
         <Route path="/grievances"           element={<AdminRoute><GrievanceManagement /></AdminRoute>} />
         <Route path="/inquiries"            element={<AdminRoute><Inquiry /></AdminRoute>} />
+        <Route path="/tasks"                element={<AdminRoute><Tasks /></AdminRoute>} />
 
         {/* Teacher routes */}
         <Route path="/teacher" element={<TeacherRoute><TeacherDashboard /></TeacherRoute>} />
@@ -157,7 +160,8 @@ export default function App() {
         <Route path="/teacher/grades" element={<TeacherRoute><TeacherGrades /></TeacherRoute>} />
         <Route path="/teacher/timetable" element={<TeacherRoute><Timetable /></TeacherRoute>} />
         <Route path="/teacher/exam-schedule" element={<TeacherRoute><ExamSchedule /></TeacherRoute>} />
-        <Route path="/teacher/notices" element={<TeacherRoute><Notices /></TeacherRoute>} />
+        <Route path="/teacher/notices"   element={<TeacherRoute><Notices /></TeacherRoute>} />
+        <Route path="/teacher/my-tasks" element={<TeacherRoute><MyTasks /></TeacherRoute>} />
 
         {/* Staff routes */}
         <Route path="/staff/dashboard"     element={<StaffRoute><StaffDashboard /></StaffRoute>} />
@@ -171,6 +175,7 @@ export default function App() {
         <Route path="/staff/attendance-report"  element={<StaffRoute><AttendanceReport /></StaffRoute>} />
         <Route path="/staff/grievances"         element={<StaffRoute><GrievanceManagement /></StaffRoute>} />
         <Route path="/staff/inquiries"          element={<StaffRoute><Inquiry /></StaffRoute>} />
+        <Route path="/staff/my-tasks"           element={<StaffRoute><MyTasks /></StaffRoute>} />
 
         {/* Student routes */}
         <Route path="/student/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
