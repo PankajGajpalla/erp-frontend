@@ -178,6 +178,7 @@ export default function App() {
         <Route path="/staff/grievances"         element={<StaffRoute><GrievanceManagement /></StaffRoute>} />
         <Route path="/staff/inquiries"          element={<StaffRoute><Inquiry /></StaffRoute>} />
         <Route path="/staff/my-tasks"           element={<StaffRoute><MyTasks /></StaffRoute>} />
+        <Route path="/staff/expenses"           element={<StaffRoute><Expenses /></StaffRoute>} />
 
         {/* Student routes */}
         <Route path="/student/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />

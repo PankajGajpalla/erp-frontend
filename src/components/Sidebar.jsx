@@ -124,6 +124,7 @@ export default function Sidebar() {
     { to: "/staff/grievances",   label: "📩 Grievances" },
     { to: "/staff/inquiries",    label: "🔎 Inquiries" },
     { to: "/staff/my-tasks",     label: "✅ My Tasks" },
+    { to: "/staff/expenses",     label: "💸 Expenses" },
   ]
 
   const links = isAdmin ? adminLinks : isTeacher ? teacherLinks : isStaff ? staffLinks : studentLinks
