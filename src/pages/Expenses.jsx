@@ -107,7 +107,10 @@ export default function Expenses() {
       setExpenses(prev => prev.filter(e => e.id !== id))
       await refetchStats()
       setSuccess("Expense deleted"); setDeleteId(null)
-    } catch { setError("Delete failed"); setDeleteId(null) }
+    } catch (err) {
+      setError(err.response?.data?.detail || "Delete failed")
+      setDeleteId(null)
+    }
   }
 
   const filtered = useMemo(() => {
