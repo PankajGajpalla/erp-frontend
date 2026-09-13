@@ -216,11 +216,19 @@ function AllInquiries() {
   async function handleEditSave() {
     setSaving(true)
     try {
-      await updateInquiryAPI(editInq.id, editForm)
+      // Send only editable fields; blank amount must be null, not "", or validation fails
+      const { id, created_at, admission_date, follow_ups, ...payload } = editForm
+      payload.negotiated_amount = payload.negotiated_amount === "" || payload.negotiated_amount == null
+        ? null
+        : parseFloat(payload.negotiated_amount)
+      await updateInquiryAPI(editInq.id, payload)
       setSuccess("Updated!")
       setEditInq(null)
       load()
-    } catch { setError("Update failed") }
+    } catch (err) {
+      const detail = err.response?.data?.detail
+      setError(Array.isArray(detail) ? detail.map(d => d.msg).join(", ") : detail || "Update failed")
+    }
     finally { setSaving(false) }
   }
 
